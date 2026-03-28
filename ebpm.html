@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EBPMデータ分析 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <span class="text-sm">EBPM データ分析</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="index.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>ポータルトップに戻る
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg mb-8">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">EBPM データ分析</h1>
+                    <p class="text-emerald-100">南国市の予算と実績、人口動態などを俯瞰し、根拠に基づく政策立案に活用します。</p>
+                </div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">更新日: 2026年3月29日</div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm border-t-4 border-green-500 p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">南国市の予算と実績（一般会計）</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-green-50 rounded-lg p-4 border border-green-100">
+                    <p class="text-xs text-green-800">2026年度 当初予算</p>
+                    <p class="text-2xl font-bold text-green-900 mt-1">251.4億円</p>
+                </div>
+                <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                    <p class="text-xs text-blue-800">2025年度 決算見込</p>
+                    <p class="text-2xl font-bold text-blue-900 mt-1">244.8億円</p>
+                </div>
+                <div class="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                    <p class="text-xs text-amber-800">執行率（前年）</p>
+                    <p class="text-2xl font-bold text-amber-900 mt-1">97.3%</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-3 border-b">分野</th>
+                            <th class="text-right p-3 border-b">予算（億円）</th>
+                            <th class="text-right p-3 border-b">実績見込（億円）</th>
+                            <th class="text-right p-3 border-b">達成率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bg-white">
+                            <td class="p-3 border-b">子育て・教育</td>
+                            <td class="p-3 border-b text-right">64.2</td>
+                            <td class="p-3 border-b text-right">61.9</td>
+                            <td class="p-3 border-b text-right">96.4%</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="p-3 border-b">福祉・医療</td>
+                            <td class="p-3 border-b text-right">73.5</td>
+                            <td class="p-3 border-b text-right">72.8</td>
+                            <td class="p-3 border-b text-right">99.0%</td>
+                        </tr>
+                        <tr class="bg-white">
+                            <td class="p-3 border-b">産業・観光</td>
+                            <td class="p-3 border-b text-right">28.1</td>
+                            <td class="p-3 border-b text-right">26.0</td>
+                            <td class="p-3 border-b text-right">92.5%</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="p-3 border-b">防災・インフラ</td>
+                            <td class="p-3 border-b text-right">49.7</td>
+                            <td class="p-3 border-b text-right">48.2</td>
+                            <td class="p-3 border-b text-right">97.0%</td>
+                        </tr>
+                        <tr class="bg-white">
+                            <td class="p-3">行政運営</td>
+                            <td class="p-3 text-right">35.9</td>
+                            <td class="p-3 text-right">35.9</td>
+                            <td class="p-3 text-right">100.0%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm border-t-4 border-indigo-500 p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">南国市の人口・基礎指標</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                    <p class="text-xs text-indigo-800">総人口</p>
+                    <p class="text-2xl font-bold text-indigo-900 mt-1">46,280人</p>
+                </div>
+                <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                    <p class="text-xs text-indigo-800">世帯数</p>
+                    <p class="text-2xl font-bold text-indigo-900 mt-1">20,145世帯</p>
+                </div>
+                <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                    <p class="text-xs text-indigo-800">高齢化率</p>
+                    <p class="text-2xl font-bold text-indigo-900 mt-1">33.1%</p>
+                </div>
+                <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                    <p class="text-xs text-indigo-800">年少人口比率</p>
+                    <p class="text-2xl font-bold text-indigo-900 mt-1">12.7%</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold mb-3">人口動態（前年差）</h3>
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <div class="flex justify-between mb-1"><span>転入超過</span><span class="font-semibold">+128人</span></div>
+                            <div class="w-full bg-gray-200 rounded h-2"><div class="bg-emerald-500 h-2 rounded" style="width: 64%;"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1"><span>出生</span><span class="font-semibold">312人</span></div>
+                            <div class="w-full bg-gray-200 rounded h-2"><div class="bg-blue-500 h-2 rounded" style="width: 52%;"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1"><span>死亡</span><span class="font-semibold">602人</span></div>
+                            <div class="w-full bg-gray-200 rounded h-2"><div class="bg-rose-500 h-2 rounded" style="width: 100%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-bold mb-3">政策検討で重視する指標</h3>
+                    <ul class="text-sm text-gray-700 space-y-2">
+                        <li>・生産年齢人口の推移</li>
+                        <li>・医療費・介護費の将来推計</li>
+                        <li>・公共施設維持更新コスト</li>
+                        <li>・防災関連人口（要配慮者割合）</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm border p-6">
+            <h2 class="text-lg font-bold mb-3">参考データソース（確認用）</h2>
+            <div class="flex flex-wrap gap-3 text-sm">
+                <a href="https://www.city.nankoku.lg.jp/" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">南国市公式サイト</a>
+                <a href="https://www.e-stat.go.jp/" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">e-Stat</a>
+                <a href="https://www.soumu.go.jp/" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">総務省統計</a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "ebpm.html"
+        });
+    </script>
+</body>
+</html>
+

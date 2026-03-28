@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ユーザー管理 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <header class="bg-indigo-700 text-white p-4 shadow">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="system-settings.html" class="font-bold hover:text-indigo-100">システム設定</a>
+            <div id="authArea"></div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="system-settings.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">システム設定へ戻る</a>
+        </div>
+
+        <h1 class="text-3xl font-bold mb-2">ログインユーザー管理</h1>
+        <p class="text-sm text-slate-600 mb-6">登録済みユーザーの権限を変更できます（adminのみ）。</p>
+
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th class="text-left p-3 border-b">メール</th>
+                        <th class="text-left p-3 border-b">表示名</th>
+                        <th class="text-left p-3 border-b">現在の権限</th>
+                        <th class="text-left p-3 border-b">変更</th>
+                    </tr>
+                </thead>
+                <tbody id="userRows"></tbody>
+            </table>
+        </div>
+
+        <p id="message" class="mt-4 text-sm text-slate-700"></p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        const userRows = document.getElementById("userRows");
+        const message = document.getElementById("message");
+
+        function renderRows(items, client) {
+            userRows.innerHTML = "";
+            items.forEach((item) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="p-3 border-b">${item.email || ""}</td>
+                    <td class="p-3 border-b">${item.display_name || ""}</td>
+                    <td class="p-3 border-b">${item.role || "viewer"}</td>
+                    <td class="p-3 border-b">
+                        <select data-id="${item.user_id}" class="roleSelect border border-slate-300 rounded px-2 py-1 mr-2">
+                            <option value="viewer" ${item.role === "viewer" ? "selected" : ""}>viewer</option>
+                            <option value="editor" ${item.role === "editor" ? "selected" : ""}>editor</option>
+                            <option value="admin" ${item.role === "admin" ? "selected" : ""}>admin</option>
+                        </select>
+                        <button data-id="${item.user_id}" class="saveRole bg-indigo-600 text-white px-3 py-1 rounded">保存</button>
+                    </td>
+                `;
+                userRows.appendChild(tr);
+            });
+
+            document.querySelectorAll(".saveRole").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const userId = button.getAttribute("data-id");
+                    const select = document.querySelector(`.roleSelect[data-id='${userId}']`);
+                    const role = select.value;
+
+                    const { error } = await client
+                        .from("profiles")
+                        .update({ role })
+                        .eq("user_id", userId);
+
+                    if (error) {
+                        message.textContent = `更新失敗: ${error.message}`;
+                        return;
+                    }
+
+                    message.textContent = "権限を更新しました。";
+                    await loadUsers(client);
+                });
+            });
+        }
+
+        async function loadUsers(client) {
+            const { data, error } = await client
+                .from("profiles")
+                .select("user_id,email,display_name,role")
+                .order("email", { ascending: true });
+
+            if (error) {
+                message.textContent = `読込失敗: ${error.message}`;
+                return;
+            }
+
+            renderRows(data || [], client);
+        }
+
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "admin",
+            authTargetId: "authArea",
+            returnTo: "user-management.html",
+            onReady: async ({ client }) => {
+                await loadUsers(client);
+            }
+        });
+    </script>
+</body>
+</html>

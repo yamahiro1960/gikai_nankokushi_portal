@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高知県の条例 | 議員ナレッジ共有</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="knowledge.html" class="text-lg font-bold hover:text-gray-200">議員ナレッジ共有</a>
+            <span class="text-sm">高知県の条例</span>
+        </div>
+    </header>
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6"><a href="knowledge.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">ナレッジトップへ戻る</a></div>
+        <h1 class="text-3xl font-bold mb-2">高知県の条例</h1>
+        <p class="text-gray-600 mb-6">県条例と例規集にアクセスできます。</p>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-500 mb-6">
+            <h2 class="font-bold mb-3">主要リンク</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <a href="https://www.google.com/search?q=高知県+例規集" target="_blank" rel="noopener noreferrer" class="p-3 rounded-lg border border-gray-200 hover:bg-blue-50">高知県例規集</a>
+                <a href="https://www.google.com/search?q=site%3Apref.kochi.lg.jp+高知県+情報公開条例" target="_blank" rel="noopener noreferrer" class="p-3 rounded-lg border border-gray-200 hover:bg-blue-50">高知県情報公開条例</a>
+                <a href="https://www.google.com/search?q=site%3Apref.kochi.lg.jp+高知県+個人情報保護条例" target="_blank" rel="noopener noreferrer" class="p-3 rounded-lg border border-gray-200 hover:bg-blue-50">高知県個人情報保護条例</a>
+                <a href="https://www.google.com/search?q=site%3Apref.kochi.lg.jp+高知県+行政手続条例" target="_blank" rel="noopener noreferrer" class="p-3 rounded-lg border border-gray-200 hover:bg-blue-50">高知県行政手続条例</a>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="font-bold mb-3">さらに開く</h2>
+            <a href="https://www.google.com/search?q=site%3Apref.kochi.lg.jp+高知県+条例" target="_blank" rel="noopener noreferrer" class="inline-block bg-indigo-700 text-white px-4 py-2 rounded-lg hover:bg-indigo-800">高知県条例を検索</a>
+        </div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "kochi-ordinances.html"
+        });
+    </script>
+</body>
+</html>
+

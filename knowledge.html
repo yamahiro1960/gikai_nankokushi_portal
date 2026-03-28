@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>議員ナレッジ共有 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <span class="text-sm">議員ナレッジ共有</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="index.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>ポータルトップに戻る
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-purple-600 to-indigo-700 text-white shadow-lg mb-8">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">議員ナレッジ共有</h1>
+                    <p class="text-purple-100">カテゴリごとのボタンから、必要な資料ページを開いて情報を確認できます。</p>
+                </div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: ナレッジ参照</div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm border-t-4 border-purple-500 p-6">
+            <h2 class="text-xl font-bold mb-5 flex items-center gap-2">
+                <i class="fas fa-book-open text-purple-600"></i>
+                ナレッジカテゴリ
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a href="shisatsu-plan.html" class="block p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition">
+                    <p class="font-semibold text-gray-800">視察計画</p>
+                    <p class="text-xs text-gray-500 mt-1">視察候補、日程、準備項目を確認</p>
+                </a>
+
+                <a href="shisatsu-records.html" class="block p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition">
+                    <p class="font-semibold text-gray-800">視察実績</p>
+                    <p class="text-xs text-gray-500 mt-1">過去の視察結果と活用状況を確認</p>
+                </a>
+
+                <a href="municipalities-research.html" class="block p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition">
+                    <p class="font-semibold text-gray-800">調査資料</p>
+                    <p class="text-xs text-gray-500 mt-1">自治体別の調査テーマと資料リンク</p>
+                </a>
+
+                <a href="nankoku-ordinances.html" class="block p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition">
+                    <p class="font-semibold text-gray-800">南国市の条例</p>
+                    <p class="text-xs text-gray-500 mt-1">南国市条例を条例ごとに確認</p>
+                </a>
+
+                <a href="kochi-ordinances.html" class="block p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition">
+                    <p class="font-semibold text-gray-800">高知県の条例</p>
+                    <p class="text-xs text-gray-500 mt-1">県条例や例規情報を確認</p>
+                </a>
+
+                <a href="national-laws.html" class="block p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition">
+                    <p class="font-semibold text-gray-800">国の法律</p>
+                    <p class="text-xs text-gray-500 mt-1">主要法令と法令検索への導線</p>
+                </a>
+
+                <a href="constitution.html" class="block p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition">
+                    <p class="font-semibold text-gray-800">憲法</p>
+                    <p class="text-xs text-gray-500 mt-1">日本国憲法の条文と主要テーマ</p>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "knowledge.html"
+        });
+    </script>
+</body>
+</html>
+

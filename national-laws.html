@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>国の法律 | 議員ナレッジ共有</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="knowledge.html" class="text-lg font-bold hover:text-gray-200">議員ナレッジ共有</a>
+            <span class="text-sm">国の法律</span>
+        </div>
+    </header>
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6"><a href="knowledge.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">ナレッジトップへ戻る</a></div>
+        <h1 class="text-3xl font-bold mb-2">国の法律</h1>
+        <p class="text-gray-600 mb-6">法令検索、主要法令、分野別の入口を配置しています。</p>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-red-500 mb-6">
+            <h2 class="font-bold mb-3">法令検索</h2>
+            <div class="flex flex-wrap gap-3">
+                <a href="https://laws.e-gov.go.jp/" target="_blank" rel="noopener noreferrer" class="bg-red-100 text-red-800 px-4 py-2 rounded-lg font-semibold">e-Gov法令検索</a>
+                <a href="https://www.google.com/search?q=e-Gov+法令検索+地方自治法" target="_blank" rel="noopener noreferrer" class="bg-white border border-gray-300 px-4 py-2 rounded-lg">地方自治法を開く</a>
+                <a href="https://www.google.com/search?q=e-Gov+法令検索+地方公務員法" target="_blank" rel="noopener noreferrer" class="bg-white border border-gray-300 px-4 py-2 rounded-lg">地方公務員法を開く</a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a href="https://www.google.com/search?q=e-Gov+法令検索+地方財政法" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-red-50">地方財政法</a>
+            <a href="https://www.google.com/search?q=e-Gov+法令検索+地方税法" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-red-50">地方税法</a>
+            <a href="https://www.google.com/search?q=e-Gov+法令検索+行政手続法" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-red-50">行政手続法</a>
+            <a href="https://www.google.com/search?q=e-Gov+法令検索+個人情報保護法" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-red-50">個人情報保護法</a>
+        </div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "national-laws.html"
+        });
+    </script>
+</body>
+</html>
+

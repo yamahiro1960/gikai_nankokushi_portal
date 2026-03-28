@@ -1,0 +1,45 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>産業建設常任委員会 視察計画 | 議員ナレッジ共有</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="shisatsu-plan.html" class="text-lg font-bold hover:text-gray-200">視察計画</a>
+            <span class="text-sm">産業建設常任委員会</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="shisatsu-plan.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">視察計画に戻る</a>
+        </div>
+
+        <h1 class="text-3xl font-bold mb-2">産業建設常任委員会 視察計画状況</h1>
+        <p class="text-gray-600 mb-6">下のGoogleドキュメントを表示しています。URL差し替えはこのページ内のリンク先を変更してください。</p>
+
+        <div class="mb-4 flex flex-wrap gap-3">
+            <a href="https://docs.google.com/document/d/REPLACE_SANGYO_DOC_ID/edit" target="_blank" rel="noopener noreferrer" class="bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-800">Googleドキュメントを別タブで開く</a>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <iframe src="https://docs.google.com/document/d/REPLACE_SANGYO_DOC_ID/preview" class="w-full" style="height: 75vh;" title="産業建設常任委員会 視察計画 Googleドキュメント"></iframe>
+        </div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "plan-sangyo-kensetsu.html"
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>南国市議会DXポータル | デジタル執務室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- ヘッダー -->
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold font-sans tracking-wider">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </h1>
+            <div class="text-right">
+                <div class="text-sm mb-1">2026年3月29日 運用中</div>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <!-- メインメッセージ -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-bold mb-2">こんにちは、議員。</h2>
+            <p class="text-gray-600">本日の政策立案と議会DXの進捗を確認しましょう。</p>
+        </section>
+
+        <!-- タイル型メニュー -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 議案資料アーカイブ -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-400 hover:shadow-md transition">
+                <div class="text-blue-400 text-3xl mb-4"><i class="fas fa-file-pdf"></i></div>
+                <h3 class="text-lg font-bold mb-2">議案や資料のアーカイブ</h3>
+                <p class="text-sm text-gray-500 mb-4">予算書や会議録を全文検索。必要な資料に即座にアクセス</p>
+                <a href="archive.html" class="inline-block bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100">開く</a>
+            </div>
+
+            <!-- ナレッジ共有 (Wiki) -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-purple-500 hover:shadow-md transition">
+                <div class="text-purple-500 text-3xl mb-4"><i class="fas fa-lightbulb"></i></div>
+                <h3 class="text-lg font-bold mb-2">議員ナレッジ共有</h3>
+                <p class="text-sm text-gray-500 mb-4">他自治体の視察報告や、DX活用マニュアルなどを共有・閲覧できます。</p>
+                <a href="knowledge.html" class="inline-block bg-purple-50 text-purple-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-100">閲覧する</a>
+            </div>
+
+            <!-- EBPM データ分析 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-green-500 hover:shadow-md transition">
+                <div class="text-green-500 text-3xl mb-4"><i class="fas fa-chart-line"></i></div>
+                <h3 class="text-lg font-bold mb-2">EBPM データ分析</h3>
+                <p class="text-sm text-gray-500 mb-4">市の予算・決算データを可視化。根拠に基づいた政策提案をサポートします。</p>
+                <a href="ebpm.html" class="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200">分析画面へ</a>
+            </div>
+
+            <!-- 住民の声 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-orange-500 hover:shadow-md transition">
+                <div class="text-orange-500 text-3xl mb-4"><i class="fas fa-comment-dots"></i></div>
+                <h3 class="text-lg font-bold mb-2">住民の声</h3>
+                <p class="text-sm text-gray-500 mb-4">SNSやデジタル意見箱から届いた要望をAIが分析し、課題を抽出します。</p>
+                <a href="residents-voices.html" class="inline-block bg-orange-100 text-orange-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-200">声を確認</a>
+            </div>
+
+            <!-- AI政策アシスタント -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-indigo-500 hover:shadow-md transition">
+                <div class="text-indigo-500 text-3xl mb-4"><i class="fas fa-robot"></i></div>
+                <h3 class="text-lg font-bold mb-2">AI政策アシスタント</h3>
+                <p class="text-sm text-gray-500 mb-4">Gemini APIを活用した質問原稿の作成や、他市事例の要約を行います。</p>
+                <a href="ai-assistant.html" class="inline-block bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-200">起動する</a>
+            </div>
+
+            <!-- 開発者・システム設定 -->
+            <div class="bg-gray-100 p-6 rounded-xl shadow-sm border-t-4 border-gray-400 hover:shadow-md transition">
+                <div class="text-gray-400 text-3xl mb-4"><i class="fas fa-cog"></i></div>
+                <h3 class="text-lg font-bold mb-2 text-gray-600">システム設定</h3>
+                <p class="text-sm text-gray-400 mb-4">GitHub/clasp連携、データベースのメンテナンスを行います。</p>
+                <a href="system-settings.html" class="inline-block bg-white text-gray-500 border border-gray-300 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50">管理画面</a>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            authTargetId: "authArea",
+            returnTo: "index.html"
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>憲法 | 議員ナレッジ共有</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="knowledge.html" class="text-lg font-bold hover:text-gray-200">議員ナレッジ共有</a>
+            <span class="text-sm">憲法</span>
+        </div>
+    </header>
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6"><a href="knowledge.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">ナレッジトップへ戻る</a></div>
+        <h1 class="text-3xl font-bold mb-2">日本国憲法</h1>
+        <p class="text-gray-600 mb-6">条文の全文と議会活動で参照しやすいテーマを整理しています。</p>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-emerald-500 mb-6">
+            <h2 class="font-bold mb-3">まず開く</h2>
+            <div class="flex flex-wrap gap-3">
+                <a href="https://elaws.e-gov.go.jp/document?lawid=321CONSTITUTION" target="_blank" rel="noopener noreferrer" class="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-lg font-semibold">日本国憲法 全文</a>
+                <a href="https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/shiryo/dl-constitution.htm" target="_blank" rel="noopener noreferrer" class="bg-white border border-gray-300 px-4 py-2 rounded-lg">衆議院掲載ページ</a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white p-5 rounded-lg border border-gray-200">
+                <h3 class="font-bold mb-2">基本原理</h3>
+                <p class="text-sm text-gray-700">前文、国民主権、基本的人権の尊重、平和主義</p>
+            </div>
+            <div class="bg-white p-5 rounded-lg border border-gray-200">
+                <h3 class="font-bold mb-2">国会・立法</h3>
+                <p class="text-sm text-gray-700">第4章 国会、法律制定手続、議員の役割</p>
+            </div>
+            <div class="bg-white p-5 rounded-lg border border-gray-200">
+                <h3 class="font-bold mb-2">地方自治</h3>
+                <p class="text-sm text-gray-700">第8章 地方自治（第92条〜第95条）</p>
+            </div>
+            <div class="bg-white p-5 rounded-lg border border-gray-200">
+                <h3 class="font-bold mb-2">財政</h3>
+                <p class="text-sm text-gray-700">第7章 財政（予算、決算、会計検査）</p>
+            </div>
+        </div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "constitution.html"
+        });
+    </script>
+</body>
+</html>
+

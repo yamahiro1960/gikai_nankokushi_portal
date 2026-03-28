@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>南国市の条例 | 議員ナレッジ共有</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="knowledge.html" class="text-lg font-bold hover:text-gray-200">議員ナレッジ共有</a>
+            <span class="text-sm">南国市の条例</span>
+        </div>
+    </header>
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6"><a href="knowledge.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">ナレッジトップへ戻る</a></div>
+        <h1 class="text-3xl font-bold mb-2">南国市の条例</h1>
+        <p class="text-gray-600 mb-6">条例ごとのリンクから内容を確認できます。</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市議会基本条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市議会基本条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市情報公開条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市情報公開条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市個人情報保護条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市個人情報保護条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市行政手続条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市行政手続条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市文書管理条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市文書管理条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市財政状況の公表に関する条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市財政状況の公表に関する条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市議会委員会条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市議会委員会条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市職員定数条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市職員定数条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市職員給与条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市職員給与条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市税条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市税条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市都市計画条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市都市計画条例</a>
+            <a href="https://www.google.com/search?q=site%3Acity.nankoku.lg.jp+南国市+南国市防災会議条例" target="_blank" rel="noopener noreferrer" class="bg-white p-4 rounded-lg border border-gray-200 hover:bg-purple-50">南国市防災会議条例</a>
+        </div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "nankoku-ordinances.html"
+        });
+    </script>
+</body>
+</html>
+

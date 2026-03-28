@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI政策アシスタント | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <span class="text-sm">AI政策アシスタント</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="index.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>ポータルトップに戻る
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-cyan-600 to-indigo-700 text-white shadow-lg mb-8">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">AI政策アシスタント</h1>
+                    <p class="text-cyan-100">論点整理、質問原稿作成、施策比較を1画面で支援します。</p>
+                </div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: 議会質問準備</div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-cyan-500">
+                <p class="text-xs text-gray-500">今日の提案</p>
+                <h2 class="font-bold text-lg mt-1 mb-2">人口減少対策の重点化</h2>
+                <p class="text-sm text-gray-600">子育て定住施策の費用対効果を、転入超過と出生数の2指標で比較しましょう。</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-emerald-500">
+                <p class="text-xs text-gray-500">質問下書き</p>
+                <h2 class="font-bold text-lg mt-1 mb-2">総務常任委員会向け</h2>
+                <p class="text-sm text-gray-600">DX投資の効果測定指標（時間削減率、住民満足度）を確認する質問が有効です。</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-amber-500">
+                <p class="text-xs text-gray-500">比較分析</p>
+                <h2 class="font-bold text-lg mt-1 mb-2">先進自治体2都市</h2>
+                <p class="text-sm text-gray-600">横須賀市と明石市の先行施策を、実施コストと成果指標で比較できます。</p>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                <h2 class="text-xl font-bold mb-4">政策案の自動生成</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="topic" class="text-sm font-semibold text-gray-700">政策テーマ</label>
+                        <input id="topic" type="text" value="子育て・定住促進" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="target" class="text-sm font-semibold text-gray-700">対象</label>
+                        <input id="target" type="text" value="20代-40代の子育て世帯" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="budget" class="text-sm font-semibold text-gray-700">予算上限（万円）</label>
+                            <input id="budget" type="number" value="5000" min="0" step="100" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="period" class="text-sm font-semibold text-gray-700">実施期間</label>
+                            <select id="period" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                                <option value="6か月">6か月</option>
+                                <option value="1年" selected>1年</option>
+                                <option value="2年">2年</option>
+                                <option value="3年">3年</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="generatePlan" class="w-full bg-cyan-600 text-white py-2.5 rounded-lg font-semibold hover:bg-cyan-700">
+                        <i class="fas fa-wand-magic-sparkles mr-2"></i>政策案を生成
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                <h2 class="text-xl font-bold mb-4">AI出力</h2>
+                <div id="aiOutput" class="text-sm text-gray-700 whitespace-pre-line leading-7 bg-slate-50 border border-slate-200 rounded-lg p-4 min-h-[320px]">
+政策案タイトル: 子育て世帯定住支援パッケージ
+
+1. 目的
+子育て世帯の転入促進と定住率向上を図る。
+
+2. 施策の骨子
+・保育支援情報のワンストップ提供
+・住宅取得支援の対象拡充
+・通園・通学の移動負担軽減
+
+3. KPI案
+・転入超過数
+・出生数
+・子育て世帯アンケート満足度
+
+4. 議会質問の観点
+・予算配分の妥当性
+・既存施策との重複回避
+・年度内評価の実施計画
+                </div>
+            </div>
+        </section>
+
+        <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h2 class="text-xl font-bold mb-4">質問原稿メーカー</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button class="question-btn bg-indigo-50 text-indigo-700 px-4 py-3 rounded-lg font-semibold hover:bg-indigo-100" data-template="dx">DX推進の質問を作る</button>
+                <button class="question-btn bg-emerald-50 text-emerald-700 px-4 py-3 rounded-lg font-semibold hover:bg-emerald-100" data-template="welfare">福祉施策の質問を作る</button>
+                <button class="question-btn bg-amber-50 text-amber-700 px-4 py-3 rounded-lg font-semibold hover:bg-amber-100" data-template="education">教育施策の質問を作る</button>
+            </div>
+            <div id="questionOutput" class="mt-4 text-sm text-gray-700 whitespace-pre-line bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[120px]"></div>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script>
+        const output = document.getElementById("aiOutput");
+        const questionOutput = document.getElementById("questionOutput");
+
+        function makePlanText() {
+            const topic = document.getElementById("topic").value.trim() || "政策テーマ";
+            const target = document.getElementById("target").value.trim() || "対象住民";
+            const budget = document.getElementById("budget").value || "0";
+            const period = document.getElementById("period").value;
+
+            return `政策案タイトル: ${topic} 実行プラン\n\n1. 目的\n${target}に対して、実効性の高い支援を${period}で実装する。\n\n2. 施策の骨子\n・データに基づく対象者抽出\n・申請手続きのオンライン化\n・関係課横断での伴走支援\n\n3. 予算計画\n・上限予算: ${budget}万円\n・初期費用と運用費を分離して管理\n\n4. KPI案\n・利用率\n・満足度\n・コスト対効果\n\n5. 議会質問の観点\n・事業効果の測定タイミング\n・既存事業との統合可能性\n・翌年度展開の判断基準`;
+        }
+
+        document.getElementById("generatePlan").addEventListener("click", () => {
+            output.textContent = makePlanText();
+        });
+
+        const questionTemplates = {
+            dx: "質問案（DX推進）\n1. 本市におけるDX投資の成果指標は何か。\n2. 住民手続き時間の削減目標をどのように設定しているか。\n3. 効果検証の結果を来年度予算にどう反映するか。",
+            welfare: "質問案（福祉施策）\n1. 高齢者・子育て世帯への重点支援の優先順位は何か。\n2. 福祉施策の利用率向上に向けた改善策は何か。\n3. 実施後のアウトカム評価をどの指標で行うか。",
+            education: "質問案（教育施策）\n1. 学習環境改善のための投資効果をどう測るか。\n2. 不登校支援の体制強化は十分か。\n3. 教育予算の重点化方針をどのように説明するか。"
+        };
+
+        document.querySelectorAll(".question-btn").forEach((button) => {
+            button.addEventListener("click", () => {
+                const key = button.getAttribute("data-template");
+                questionOutput.textContent = questionTemplates[key] || "テンプレートを準備中です。";
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "ai-assistant.html"
+        });
+    </script>
+</body>
+</html>
+

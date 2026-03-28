@@ -1,0 +1,74 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>システム設定 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <div class="text-right">
+                <span class="text-sm">システム設定</span>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="index.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>ポータルに戻る
+            </a>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-gray-400">
+            <h1 class="text-2xl font-bold mb-2 text-gray-700">システム設定</h1>
+            <p class="text-gray-600 mb-6">議会情報の表示内容は「今議会設定（Webスプレッドシート）」から更新できます。</p>
+
+            <div class="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                <h2 class="text-lg font-bold mb-3 text-gray-700">今議会設定</h2>
+                <p class="text-sm text-gray-600 mb-4">下のボタンを押すと、ブラウザ上で議会情報を編集できます。保存すると今議会の資料ページの赤枠情報へ反映されます。</p>
+                <a href="gikai-settings-web.html" class="inline-block bg-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-800">
+                    今議会設定を開く
+                </a>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-5 border border-gray-200 mt-4">
+                <h2 class="text-lg font-bold mb-3 text-gray-700">ログインユーザー管理</h2>
+                <p class="text-sm text-gray-600 mb-4">ログイン可能ユーザーの権限（viewer/editor/admin）を登録・変更します。</p>
+                <a href="user-management.html" class="inline-block bg-slate-700 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800">
+                    ユーザー管理を開く
+                </a>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-5 border border-gray-200 mt-4">
+                <h2 class="text-lg font-bold mb-3 text-gray-700">テスト公開と本番移行</h2>
+                <p class="text-sm text-gray-600 mb-2">GitHub Pages でのテスト公開、Supabase 接続、Google ログイン設定、本番移行手順を文書化しています。</p>
+                <p class="text-sm text-indigo-700">ワークスペース内の DEPLOY_GUIDE.md を参照してください。</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "admin",
+            authTargetId: "authArea",
+            returnTo: "system-settings.html"
+        });
+    </script>
+</body>
+</html>
+

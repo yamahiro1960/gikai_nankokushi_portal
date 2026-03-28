@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今議会設定（Webスプレッドシート） | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <div class="text-right">
+                <span class="text-sm">今議会設定（Webスプレッドシート）</span>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6 flex items-center gap-4">
+            <a href="system-settings.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>システム設定に戻る
+            </a>
+            <a href="session.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                今議会の資料ページを開く
+            </a>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-pink-500">
+            <h1 class="text-2xl font-bold mb-2">今議会設定</h1>
+            <p class="text-gray-600 mb-2">表を編集して保存すると、今議会の資料ページの赤枠情報に反映されます。</p>
+            <p class="text-sm text-indigo-700 mb-6">保存先は Supabase です。テスト版でも本番版へ移し替えやすい構成になっています。</p>
+
+            <div class="overflow-x-auto">
+                <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
+                    <tbody class="text-sm">
+                        <tr>
+                            <td class="p-3 border-b border-gray-200 font-semibold bg-gray-50">定例会名</td>
+                            <td class="p-3 border-b border-gray-200"><input id="setting-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text"></td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 border-b border-gray-200 font-semibold bg-gray-50">開始日</td>
+                            <td class="p-3 border-b border-gray-200"><input id="setting-start-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="date"></td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 border-b border-gray-200 font-semibold bg-gray-50">終了日</td>
+                            <td class="p-3 border-b border-gray-200"><input id="setting-end-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="date"></td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 border-b border-gray-200 font-semibold bg-gray-50">会場</td>
+                            <td class="p-3 border-b border-gray-200"><input id="setting-place" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="text"></td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 border-b border-gray-200 font-semibold bg-gray-50">議案数</td>
+                            <td class="p-3 border-b border-gray-200"><input id="setting-bills-count" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="number" inputmode="numeric" min="0" step="1" placeholder="例: 12"></td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 border-b border-gray-200 font-semibold bg-gray-50">報告数</td>
+                            <td class="p-3 border-b border-gray-200"><input id="setting-reports-count" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="number" inputmode="numeric" min="0" step="1" placeholder="例: 3"></td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 border-b border-gray-200 font-semibold bg-gray-50">議発数</td>
+                            <td class="p-3 border-b border-gray-200"><input id="setting-gihatsu-count" class="w-full px-3 py-2 border border-gray-300 rounded-lg" type="number" inputmode="numeric" min="0" step="1" placeholder="例: 1"></td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 border-b border-gray-200 font-semibold bg-gray-50">ステータス</td>
+                            <td class="p-3 border-b border-gray-200">
+                                <select id="setting-status" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                                    <option value="準備中">準備中</option>
+                                    <option value="進行中">進行中</option>
+                                    <option value="終了">終了</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-6 flex flex-wrap gap-3">
+                <button id="save-button" class="bg-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-800">保存</button>
+                <button id="reset-button" class="bg-white text-gray-700 border border-gray-300 px-5 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50">初期値に戻す</button>
+                <a href="session.html" class="inline-block bg-pink-100 text-pink-800 px-5 py-2 rounded-lg text-sm font-semibold hover:bg-pink-200">今議会の資料で確認</a>
+            </div>
+
+            <p id="save-message" class="mt-4 text-sm text-green-700"></p>
+        </div>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script>
+        function digitsOnly(value) {
+            return String(value || "").replace(/\D/g, "");
+        }
+
+        function readInputs() {
+            return {
+                "定例会名": document.getElementById("setting-title").value.trim(),
+                "開始日": document.getElementById("setting-start-date").value,
+                "終了日": document.getElementById("setting-end-date").value,
+                "会場": document.getElementById("setting-place").value.trim(),
+                "議案数": digitsOnly(document.getElementById("setting-bills-count").value),
+                "報告数": digitsOnly(document.getElementById("setting-reports-count").value),
+                "議発数": digitsOnly(document.getElementById("setting-gihatsu-count").value),
+                "ステータス": document.getElementById("setting-status").value.trim()
+            };
+        }
+
+        function writeInputs(settings) {
+            document.getElementById("setting-title").value = settings["定例会名"] || "";
+            document.getElementById("setting-start-date").value = settings["開始日"] || "";
+            document.getElementById("setting-end-date").value = settings["終了日"] || "";
+            document.getElementById("setting-place").value = settings["会場"] || "";
+            document.getElementById("setting-bills-count").value = digitsOnly(settings["議案数"] || settings["議案"] || "");
+            document.getElementById("setting-reports-count").value = digitsOnly(settings["報告数"] || settings["報告"] || "");
+            document.getElementById("setting-gihatsu-count").value = digitsOnly(settings["議発数"] || settings["議発"] || "");
+            const status = settings["ステータス"] || "進行中";
+            const statusSelect = document.getElementById("setting-status");
+            const allowed = ["準備中", "進行中", "終了"];
+            statusSelect.value = allowed.includes(status) ? status : "進行中";
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="meeting-settings.js"></script>
+    <script>
+        let meetingClient = null;
+
+        async function loadSettings() {
+            const settings = await window.portalMeetingSettings.load(meetingClient);
+            writeInputs(settings);
+        }
+
+        async function saveSettings() {
+            try {
+                const settings = readInputs();
+                await window.portalMeetingSettings.save(meetingClient, settings);
+                document.getElementById("save-message").textContent = "保存しました。続けて編集できます。今議会の資料ページで更新結果を確認できます。";
+            } catch (error) {
+                document.getElementById("save-message").textContent = `保存に失敗しました: ${error.message}`;
+            }
+        }
+
+        async function resetSettings() {
+            const defaults = window.portalMeetingSettings.defaultSettings;
+            writeInputs(defaults);
+            try {
+                await window.portalMeetingSettings.save(meetingClient, defaults);
+                document.getElementById("save-message").textContent = "初期値に戻して保存しました。";
+            } catch (error) {
+                document.getElementById("save-message").textContent = `初期化の保存に失敗しました: ${error.message}`;
+            }
+        }
+
+        document.getElementById("save-button").addEventListener("click", saveSettings);
+        document.getElementById("reset-button").addEventListener("click", resetSettings);
+
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "editor",
+            authTargetId: "authArea",
+            returnTo: "gikai-settings-web.html",
+            onReady: async ({ client }) => {
+                meetingClient = client;
+                await loadSettings();
+            }
+        });
+    </script>
+</body>
+</html>
+

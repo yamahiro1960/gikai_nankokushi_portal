@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
+        <h1 class="text-2xl font-bold mb-2">南国市議会DXポータル</h1>
+        <p class="text-sm text-slate-600 mb-6">ログインまたは新規登録をしてください。</p>
+
+        <div class="mb-6">
+            <button id="googleLoginButton" class="w-full flex items-center justify-center gap-3 border border-slate-300 bg-white py-2 rounded-lg font-semibold hover:bg-slate-50">
+                <span class="text-red-500 text-lg">G</span>
+                <span>Googleアカウントでログイン</span>
+            </button>
+            <p class="mt-2 text-xs text-slate-500">Googleログインを使う場合は、Supabase 側で Google Provider の設定が必要です。</p>
+        </div>
+
+        <div class="relative mb-6">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-slate-200"></div>
+            </div>
+            <div class="relative flex justify-center text-xs uppercase">
+                <span class="bg-white px-2 text-slate-400">またはメールアドレスで利用</span>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-sm font-semibold text-slate-700" for="email">メールアドレス</label>
+                <input id="email" type="email" class="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="user@example.com">
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-slate-700" for="password">パスワード</label>
+                <input id="password" type="password" class="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="8文字以上">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button id="loginButton" class="bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700">ログイン</button>
+                <button id="signupButton" class="bg-emerald-600 text-white py-2 rounded-lg font-semibold hover:bg-emerald-700">新規登録</button>
+            </div>
+        </div>
+
+        <p id="message" class="mt-4 text-sm text-slate-700"></p>
+
+        <div class="mt-6 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+            初回登録ユーザーは viewer 権限で作成されます。管理者が user-management.html で editor/admin を付与してください。
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const returnTo = params.get("returnTo") || window.DEFAULT_RETURN_PATH || "index.html";
+        const supabase = window.supabase.createClient(window.AUTH_CONFIG.supabaseUrl, window.AUTH_CONFIG.supabaseAnonKey);
+
+        const emailInput = document.getElementById("email");
+        const passwordInput = document.getElementById("password");
+        const message = document.getElementById("message");
+        const googleLoginButton = document.getElementById("googleLoginButton");
+
+        function buildReturnUrl() {
+            const loginUrl = new URL("login.html", window.location.href);
+            loginUrl.searchParams.set("returnTo", returnTo);
+            return loginUrl.toString();
+        }
+
+        async function ensureProfile(user, email) {
+            const { data: existing } = await supabase
+                .from("profiles")
+                .select("user_id")
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+            if (existing) {
+                return;
+            }
+
+            await supabase.from("profiles").insert({
+                user_id: user.id,
+                email: email,
+                display_name: email,
+                role: "viewer"
+            });
+        }
+
+        async function forwardIfLoggedIn() {
+            const { data, error } = await supabase.auth.getSession();
+            if (error || !data || !data.session || !data.session.user) {
+                return;
+            }
+
+            const user = data.session.user;
+            await ensureProfile(user, user.email || "");
+            window.location.href = returnTo;
+        }
+
+        googleLoginButton.addEventListener("click", async () => {
+            if (!window.AUTH_CONFIG.googleEnabled) {
+                message.textContent = "Googleログインは現在無効です。auth-config.js を確認してください。";
+                return;
+            }
+
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                    redirectTo: buildReturnUrl()
+                }
+            });
+
+            if (error) {
+                message.textContent = `Googleログイン失敗: ${error.message}`;
+            }
+        });
+
+        document.getElementById("loginButton").addEventListener("click", async () => {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                message.textContent = `ログイン失敗: ${error.message}`;
+                return;
+            }
+
+            if (data && data.user) {
+                await ensureProfile(data.user, email);
+            }
+
+            message.textContent = "ログインしました。";
+            window.location.href = returnTo;
+        });
+
+        document.getElementById("signupButton").addEventListener("click", async () => {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            const { data, error } = await supabase.auth.signUp({ email, password });
+            if (error) {
+                message.textContent = `登録失敗: ${error.message}`;
+                return;
+            }
+
+            if (data && data.user) {
+                await ensureProfile(data.user, email);
+            }
+
+            message.textContent = "登録完了。メール確認後にログインしてください。";
+        });
+
+        forwardIfLoggedIn();
+    </script>
+</body>
+</html>
