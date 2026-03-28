@@ -1,6 +1,6 @@
 window.AUTH_CONFIG = {
-    supabaseUrl: "https://YOUR_PROJECT_ID.supabase.co",
-    supabaseAnonKey: "YOUR_SUPABASE_ANON_KEY",
+    supabaseUrl: "https://gnnfzimhfizbfhvwuzbf.supabase.co",
+    supabaseAnonKey: "sb_publishable__SRHapM6Zzz01tC--VG9YQ_-xN3re0Q",
     googleEnabled: true
 };
 
