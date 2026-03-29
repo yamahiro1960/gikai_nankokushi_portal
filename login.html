@@ -53,6 +53,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
     <script>
+        const LOGIN_PAUSED = true;
+
         const params = new URLSearchParams(window.location.search);
         const returnTo = params.get("returnTo") || window.DEFAULT_RETURN_PATH || "index.html";
 
@@ -62,6 +64,8 @@
         const passwordInput = document.getElementById("password");
         const message = document.getElementById("message");
         const googleLoginButton = document.getElementById("googleLoginButton");
+        const loginButton = document.getElementById("loginButton");
+        const signupButton = document.getElementById("signupButton");
 
         function buildReturnUrl() {
             const loginUrl = new URL("login.html", window.location.href);
@@ -71,6 +75,20 @@
 
         function showMessage(text) {
             message.textContent = text;
+        }
+
+        function applyPausedState() {
+            emailInput.disabled = true;
+            passwordInput.disabled = true;
+            googleLoginButton.disabled = true;
+            loginButton.disabled = true;
+            signupButton.disabled = true;
+
+            googleLoginButton.classList.add("opacity-50", "cursor-not-allowed");
+            loginButton.classList.add("opacity-50", "cursor-not-allowed");
+            signupButton.classList.add("opacity-50", "cursor-not-allowed");
+
+            showMessage("現在、ログイン機能は一時停止中です。しばらくしてから再度お試しください。");
         }
 
         function initSupabaseClient() {
@@ -116,6 +134,11 @@
         }
 
         googleLoginButton.addEventListener("click", async () => {
+            if (LOGIN_PAUSED) {
+                showMessage("現在、ログイン機能は一時停止中です。");
+                return;
+            }
+
             if (!window.AUTH_CONFIG.googleEnabled) {
                 showMessage("Googleログインは現在無効です。auth-config.js を確認してください。");
                 return;
@@ -139,7 +162,12 @@
             }
         });
 
-        document.getElementById("loginButton").addEventListener("click", async () => {
+        loginButton.addEventListener("click", async () => {
+            if (LOGIN_PAUSED) {
+                showMessage("現在、ログイン機能は一時停止中です。");
+                return;
+            }
+
             const email = emailInput.value.trim();
             const password = passwordInput.value;
 
@@ -157,7 +185,12 @@
             window.location.href = returnTo;
         });
 
-        document.getElementById("signupButton").addEventListener("click", async () => {
+        signupButton.addEventListener("click", async () => {
+            if (LOGIN_PAUSED) {
+                showMessage("現在、ログイン機能は一時停止中です。");
+                return;
+            }
+
             const email = emailInput.value.trim();
             const password = passwordInput.value;
 
@@ -175,6 +208,11 @@
         });
 
         try {
+            if (LOGIN_PAUSED) {
+                applyPausedState();
+                return;
+            }
+
             initSupabaseClient();
             forwardIfLoggedIn();
         } catch (error) {
