@@ -55,7 +55,8 @@
     <script>
         const params = new URLSearchParams(window.location.search);
         const returnTo = params.get("returnTo") || window.DEFAULT_RETURN_PATH || "index.html";
-        const supabase = window.supabase.createClient(window.AUTH_CONFIG.supabaseUrl, window.AUTH_CONFIG.supabaseAnonKey);
+
+        let supabase = null;
 
         const emailInput = document.getElementById("email");
         const passwordInput = document.getElementById("password");
@@ -66,6 +67,22 @@
             const loginUrl = new URL("login.html", window.location.href);
             loginUrl.searchParams.set("returnTo", returnTo);
             return loginUrl.toString();
+        }
+
+        function showMessage(text) {
+            message.textContent = text;
+        }
+
+        function initSupabaseClient() {
+            if (!window.AUTH_CONFIG || !window.AUTH_CONFIG.supabaseUrl || !window.AUTH_CONFIG.supabaseAnonKey) {
+                throw new Error("auth-config.js の Supabase 設定が不足しています。");
+            }
+
+            if (!window.supabase || !window.supabase.createClient) {
+                throw new Error("Supabase SDK の読み込みに失敗しました。ネットワークまたはCDNを確認してください。");
+            }
+
+            supabase = window.supabase.createClient(window.AUTH_CONFIG.supabaseUrl, window.AUTH_CONFIG.supabaseAnonKey);
         }
 
         async function ensureProfile(user, email) {
@@ -100,19 +117,25 @@
 
         googleLoginButton.addEventListener("click", async () => {
             if (!window.AUTH_CONFIG.googleEnabled) {
-                message.textContent = "Googleログインは現在無効です。auth-config.js を確認してください。";
+                showMessage("Googleログインは現在無効です。auth-config.js を確認してください。");
                 return;
             }
 
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: "google",
-                options: {
-                    redirectTo: buildReturnUrl()
-                }
-            });
+            showMessage("Googleログインへ移動中...");
 
-            if (error) {
-                message.textContent = `Googleログイン失敗: ${error.message}`;
+            try {
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: {
+                        redirectTo: buildReturnUrl()
+                    }
+                });
+
+                if (error) {
+                    showMessage(`Googleログイン失敗: ${error.message}`);
+                }
+            } catch (error) {
+                showMessage(`Googleログイン失敗: ${error.message || error}`);
             }
         });
 
@@ -122,7 +145,7 @@
 
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
-                message.textContent = `ログイン失敗: ${error.message}`;
+                showMessage(`ログイン失敗: ${error.message}`);
                 return;
             }
 
@@ -130,7 +153,7 @@
                 await ensureProfile(data.user, email);
             }
 
-            message.textContent = "ログインしました。";
+            showMessage("ログインしました。");
             window.location.href = returnTo;
         });
 
@@ -140,7 +163,7 @@
 
             const { data, error } = await supabase.auth.signUp({ email, password });
             if (error) {
-                message.textContent = `登録失敗: ${error.message}`;
+                showMessage(`登録失敗: ${error.message}`);
                 return;
             }
 
@@ -148,10 +171,15 @@
                 await ensureProfile(data.user, email);
             }
 
-            message.textContent = "登録完了。メール確認後にログインしてください。";
+            showMessage("登録完了。メール確認後にログインしてください。");
         });
 
-        forwardIfLoggedIn();
+        try {
+            initSupabaseClient();
+            forwardIfLoggedIn();
+        } catch (error) {
+            showMessage(error.message || String(error));
+        }
     </script>
 </body>
 </html>
