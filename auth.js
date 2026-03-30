@@ -29,6 +29,10 @@ window.portalAuth = (() => {
         return getRoleScore(minRole);
     }
 
+    function isAuthPaused() {
+        return !!(window.AUTH_CONFIG && window.AUTH_CONFIG.authPaused);
+    }
+
     function toLogin(returnTo) {
         const path = returnTo || window.location.pathname.split("/").pop() || window.DEFAULT_RETURN_PATH;
         window.location.href = `login.html?returnTo=${encodeURIComponent(path)}`;
@@ -84,6 +88,13 @@ window.portalAuth = (() => {
             returnTo,
             onReady
         } = options;
+
+        if (isAuthPaused()) {
+            if (typeof onReady === "function") {
+                onReady({ session: null, profile: null, role: "viewer", client: supabase });
+            }
+            return;
+        }
 
         const { data } = await supabase.auth.getSession();
         const session = data ? data.session : null;

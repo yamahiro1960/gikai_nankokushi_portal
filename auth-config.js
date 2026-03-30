@@ -1,7 +1,8 @@
 window.AUTH_CONFIG = {
     supabaseUrl: "https://gnnfzimhfizbfhvwuzbf.supabase.co",
     supabaseAnonKey: "sb_publishable__SRHapM6Zzz01tC--VG9YQ_-xN3re0Q",
-    googleEnabled: true
+    googleEnabled: true,
+    authPaused: true
 };
 
 window.ROLE_ORDER = {
