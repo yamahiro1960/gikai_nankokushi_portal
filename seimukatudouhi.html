@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>政務活動費 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- PDF モーダルビューア -->
+    <div id="pdfModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl flex flex-col" style="height:90vh">
+            <div class="flex items-center justify-between p-4 border-b shrink-0">
+                <span id="pdfModalTitle" class="font-bold text-gray-700 truncate mr-4"></span>
+                <button onclick="closePdfModal()" class="text-gray-400 hover:text-gray-700 text-xl shrink-0">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <iframe id="pdfFrame" class="flex-1 w-full rounded-b-xl" src=""></iframe>
+        </div>
+    </div>
+
+    <header class="bg-cyan-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <span class="text-sm">政務活動費</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4 max-w-4xl">
+        <div class="mb-6 flex gap-4 text-sm">
+            <a href="giin-gikai-unei.html" class="text-cyan-700 hover:text-cyan-900 font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>議員・議会運営
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg mb-8">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold mb-2">政務活動費</h1>
+                <p class="text-teal-50">手引き・記載例（PDF）・各種様式（Word）を一か所で確認できます。</p>
+            </div>
+        </section>
+
+        <!-- 手引き -->
+        <section class="mb-8">
+            <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                <i class="fas fa-book text-teal-600"></i>手引き
+            </h2>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                <button
+                    onclick="openPdf('giingikaiunei/seimukatudouhi/' + encodeURIComponent('政務活動費の手引き（H28.4.1）.pdf'), '政務活動費の手引き（H28.4.1）')"
+                    class="w-full flex items-center gap-3 px-5 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-sm font-semibold transition">
+                    <i class="fas fa-file-pdf text-lg"></i>
+                    政務活動費の手引き（H28.4.1）
+                </button>
+            </div>
+        </section>
+
+        <!-- 記載例（PDF） -->
+        <section class="mb-8">
+            <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                <i class="fas fa-file-pdf text-rose-600"></i>記載例（PDF）
+            </h2>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                    onclick="openPdf(buildKisaiPath('別記様式（収支報告書）.pdf'), '別記様式（収支報告書）記載例')"
+                    class="flex items-center gap-3 px-4 py-3 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-sm font-semibold transition">
+                    <i class="fas fa-file-pdf"></i>別記様式（収支報告書）
+                </button>
+                <button
+                    onclick="openPdf(buildKisaiPath('第１号様式（出納簿).pdf'), '第１号様式（出納簿）記載例')"
+                    class="flex items-center gap-3 px-4 py-3 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-sm font-semibold transition">
+                    <i class="fas fa-file-pdf"></i>第１号様式（出納簿）
+                </button>
+                <button
+                    onclick="openPdf(buildKisaiPath('第２号様式（記録簿）.pdf'), '第２号様式（記録簿）記載例')"
+                    class="flex items-center gap-3 px-4 py-3 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-sm font-semibold transition">
+                    <i class="fas fa-file-pdf"></i>第２号様式（記録簿）
+                </button>
+                <button
+                    onclick="openPdf(buildKisaiPath('第３号様式（領収書等貼付用紙).pdf'), '第３号様式（領収書等貼付用紙）記載例')"
+                    class="flex items-center gap-3 px-4 py-3 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-sm font-semibold transition">
+                    <i class="fas fa-file-pdf"></i>第３号様式（領収書等貼付用紙）
+                </button>
+                <button
+                    onclick="openPdf(buildKisaiPath('第４号様式（支払証明書）.pdf'), '第４号様式（支払証明書）記載例')"
+                    class="flex items-center gap-3 px-4 py-3 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-sm font-semibold transition">
+                    <i class="fas fa-file-pdf"></i>第４号様式（支払証明書）
+                </button>
+            </div>
+        </section>
+
+        <!-- 様式ダウンロード（Word） -->
+        <section class="mb-8">
+            <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                <i class="fas fa-file-word text-blue-600"></i>様式ダウンロード（Word）
+            </h2>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 grid grid-cols-1 sm:grid-cols-2 gap-3" id="shorui-grid"></div>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: false,
+            minRole: "viewer",
+            returnTo: "seimukatudouhi.html"
+        });
+
+        const SHORUI_FILES = [
+            '別記様式（収支報告書）.docx',
+            '第１号様式（出納簿）.docx',
+            '第２号様式（記録簿）.docx',
+            '第３号様式（領収書等貼付用紙）.docx',
+            '第４号様式（支払証明書）.docx',
+            '第５号様式（切手・はがき等受払簿）.docx',
+            '第６号様式（備品台帳）.docx'
+        ];
+
+        (function renderShorui() {
+            const grid = document.getElementById('shorui-grid');
+            SHORUI_FILES.forEach(function(name) {
+                const label = name.replace('.docx', '');
+                const href = 'giingikaiunei/seimukatudouhi/shorui/' + encodeURIComponent(name);
+                const a = document.createElement('a');
+                a.href = href;
+                a.download = name;
+                a.className = 'flex items-center gap-3 px-4 py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm font-semibold transition';
+                a.innerHTML = '<i class="fas fa-download"></i>' + label;
+                grid.appendChild(a);
+            });
+        })();
+
+        function buildKisaiPath(fileName) {
+            return 'giingikaiunei/seimukatudouhi/kisairei/' + encodeURIComponent(fileName);
+        }
+
+        function openPdf(path, title) {
+            document.getElementById('pdfModalTitle').textContent = title;
+            document.getElementById('pdfFrame').src = path;
+            document.getElementById('pdfModal').classList.remove('hidden');
+        }
+
+        function closePdfModal() {
+            document.getElementById('pdfModal').classList.add('hidden');
+            document.getElementById('pdfFrame').src = '';
+        }
+
+        // Escキーでモーダルを閉じる
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closePdfModal();
+        });
+    </script>
+</body>
+</html>
