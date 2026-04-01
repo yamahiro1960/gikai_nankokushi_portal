@@ -44,6 +44,8 @@ alter table public.meeting_settings enable row level security;
 alter table public.member_positions_master enable row level security;
 alter table public.member_directory enable row level security;
 
+-- profiles ポリシー
+drop policy if exists profiles_select_own_or_admin on public.profiles;
 create policy profiles_select_own_or_admin on public.profiles
 for select using (
     auth.uid() = user_id
@@ -53,9 +55,11 @@ for select using (
     )
 );
 
+drop policy if exists profiles_insert_own on public.profiles;
 create policy profiles_insert_own on public.profiles
 for insert with check (auth.uid() = user_id);
 
+drop policy if exists profiles_update_admin_only on public.profiles;
 create policy profiles_update_admin_only on public.profiles
 for update using (
     exists (
@@ -64,9 +68,12 @@ for update using (
     )
 );
 
+-- meeting_settings ポリシー（認証ユーザー向け）
+drop policy if exists meeting_settings_select_authenticated on public.meeting_settings;
 create policy meeting_settings_select_authenticated on public.meeting_settings
 for select using (auth.uid() is not null);
 
+drop policy if exists meeting_settings_upsert_editor_or_admin on public.meeting_settings;
 create policy meeting_settings_upsert_editor_or_admin on public.meeting_settings
 for insert with check (
     exists (
@@ -75,6 +82,7 @@ for insert with check (
     )
 );
 
+drop policy if exists meeting_settings_update_editor_or_admin on public.meeting_settings;
 create policy meeting_settings_update_editor_or_admin on public.meeting_settings
 for update using (
     exists (
@@ -85,39 +93,52 @@ for update using (
 
 -- ----------------------------------------------------------------------
 -- 暫定: ログイン認証を稼働させるまでの無認証運用ポリシー
--- authPaused=true の間、anonロールで meeting_settings を読み書き可能にする。
--- 本番で認証運用へ移行する際は、以下3つのポリシーを削除すること。
+-- authPaused=true の間、anonロールで各テーブルを読み書き可能にする。
+-- 本番で認証運用へ移行する際は、_anon_temp が付くポリシーを削除すること。
 -- ----------------------------------------------------------------------
+drop policy if exists meeting_settings_select_anon_temp on public.meeting_settings;
 create policy meeting_settings_select_anon_temp on public.meeting_settings
 for select to anon using (true);
 
+drop policy if exists meeting_settings_insert_anon_temp on public.meeting_settings;
 create policy meeting_settings_insert_anon_temp on public.meeting_settings
 for insert to anon with check (true);
 
+drop policy if exists meeting_settings_update_anon_temp on public.meeting_settings;
 create policy meeting_settings_update_anon_temp on public.meeting_settings
 for update to anon using (true);
 
+-- member_positions_master ポリシー
+drop policy if exists member_positions_master_select_anon_temp on public.member_positions_master;
 create policy member_positions_master_select_anon_temp on public.member_positions_master
 for select to anon using (true);
 
+drop policy if exists member_positions_master_insert_anon_temp on public.member_positions_master;
 create policy member_positions_master_insert_anon_temp on public.member_positions_master
 for insert to anon with check (true);
 
+drop policy if exists member_positions_master_update_anon_temp on public.member_positions_master;
 create policy member_positions_master_update_anon_temp on public.member_positions_master
 for update to anon using (true);
 
+drop policy if exists member_positions_master_delete_anon_temp on public.member_positions_master;
 create policy member_positions_master_delete_anon_temp on public.member_positions_master
 for delete to anon using (true);
 
+-- member_directory ポリシー
+drop policy if exists member_directory_select_anon_temp on public.member_directory;
 create policy member_directory_select_anon_temp on public.member_directory
 for select to anon using (true);
 
+drop policy if exists member_directory_insert_anon_temp on public.member_directory;
 create policy member_directory_insert_anon_temp on public.member_directory
 for insert to anon with check (true);
 
+drop policy if exists member_directory_update_anon_temp on public.member_directory;
 create policy member_directory_update_anon_temp on public.member_directory
 for update to anon using (true);
 
+drop policy if exists member_directory_delete_anon_temp on public.member_directory;
 create policy member_directory_delete_anon_temp on public.member_directory
 for delete to anon using (true);
 
