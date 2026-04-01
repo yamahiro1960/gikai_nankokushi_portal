@@ -140,13 +140,13 @@
         };
 
         const DOCUMENT_TYPE_META = {
-            summary: { title: "一覧表", buttonClass: "bg-slate-700 hover:bg-slate-800" },
-            bill: { title: "議案", buttonClass: "bg-indigo-700 hover:bg-indigo-800" },
-            report: { title: "報告", buttonClass: "bg-emerald-700 hover:bg-emerald-800" },
-            reason: { title: "提案理由", buttonClass: "bg-amber-600 hover:bg-amber-700" },
-            policy: { title: "施政方針", buttonClass: "bg-rose-700 hover:bg-rose-800" },
-            study: { title: "勉強会資料", buttonClass: "bg-cyan-700 hover:bg-cyan-800" },
-            doc: { title: "Word文書（DL）", buttonClass: "bg-violet-700 hover:bg-violet-800" }
+            summary: { title: "一覧表",     buttonClass: "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300" },
+            bill:    { title: "議案",       buttonClass: "bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200" },
+            report:  { title: "報告",       buttonClass: "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200" },
+            reason:  { title: "提案理由",   buttonClass: "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200" },
+            policy:  { title: "施政方針",   buttonClass: "bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200" },
+            study:   { title: "勉強会資料", buttonClass: "bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200" },
+            doc:     { title: "Word文書（DL）", buttonClass: "bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200" }
         };
 
         const DOCUMENT_TYPE_ORDER = ["summary", "bill", "report", "reason", "policy", "study", "doc"];
@@ -225,13 +225,13 @@
                         const a = document.createElement("a");
                         a.href = buildPdfPath(session, documentInfo);
                         a.download = documentInfo.fileName;
-                        a.className = `${getButtonClass(documentInfo.type)} text-white px-3 py-2 rounded-lg text-sm font-semibold transition text-left flex items-center gap-2`;
+                        a.className = `${getButtonClass(documentInfo.type)} px-3 py-2 rounded-lg text-sm font-semibold transition text-left flex items-center gap-2`;
                         a.innerHTML = `<i class="fas fa-download text-xs"></i>${documentInfo.label}`;
                         grid.appendChild(a);
                     } else {
                         const button = document.createElement("button");
                         button.type = "button";
-                        button.className = `${getButtonClass(documentInfo.type)} text-white px-3 py-2 rounded-lg text-sm font-semibold transition text-left`;
+                        button.className = `${getButtonClass(documentInfo.type)} px-3 py-2 rounded-lg text-sm font-semibold transition text-left`;
                         button.textContent = documentInfo.label;
                         button.addEventListener("click", () => showPdf(session, documentInfo));
                         grid.appendChild(button);
