@@ -42,6 +42,21 @@
             <div id="bill-buttons" class="space-y-5"></div>
         </section>
 
+        <!-- 前後ナビゲーションバー -->
+        <div id="nav-bar" class="hidden flex items-center justify-between gap-3 bg-white rounded-xl shadow-sm px-5 py-3 mb-3">
+            <button id="btn-prev"
+                onclick="navigatePdf(-1)"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition">
+                <i class="fas fa-chevron-left"></i>前の資料
+            </button>
+            <span id="nav-counter" class="text-xs text-gray-500 font-medium"></span>
+            <button id="btn-next"
+                onclick="navigatePdf(1)"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition">
+                次の資料<i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
         <section class="bg-white p-6 rounded-xl shadow-sm">
             <div class="flex items-center justify-between gap-4 flex-wrap mb-4">
                 <h2 id="viewer-title" class="text-lg font-bold">資料を選択してください</h2>
@@ -177,17 +192,56 @@
             return (DOCUMENT_TYPE_META[type] || DOCUMENT_TYPE_META.bill).buttonClass;
         }
 
-        function showPdf(session, documentInfo) {
-            const pdfPath = buildPdfPath(session, documentInfo);
-            const viewer = document.getElementById("pdf-viewer");
-            const title = document.getElementById("viewer-title");
-            const link = document.getElementById("pdf-open-link");
-            const pathLabel = document.getElementById("pdf-path-label");
+        // ナビゲーション用ステート（PDF表示可能な資料のみ対象）
+        let navDocuments = [];
+        let navIndex = -1;
 
-            title.textContent = documentInfo.label;
-            viewer.src = pdfPath;
-            link.href = pdfPath;
-            pathLabel.textContent = `表示中: ${pdfPath}`;
+        function updateNavBar() {
+            const bar = document.getElementById("nav-bar");
+            const counter = document.getElementById("nav-counter");
+            const btnPrev = document.getElementById("btn-prev");
+            const btnNext = document.getElementById("btn-next");
+
+            if (navDocuments.length === 0) {
+                bar.classList.add("hidden");
+                return;
+            }
+            bar.classList.remove("hidden");
+            counter.textContent = `${navIndex + 1} / ${navDocuments.length}`;
+            btnPrev.disabled = navIndex <= 0;
+            btnNext.disabled = navIndex >= navDocuments.length - 1;
+        }
+
+        function navigatePdf(delta) {
+            const newIndex = navIndex + delta;
+            if (newIndex < 0 || newIndex >= navDocuments.length) return;
+            const session = getSessionNumber();
+            showPdfByIndex(session, newIndex);
+        }
+
+        function showPdfByIndex(session, index) {
+            navIndex = index;
+            const documentInfo = navDocuments[index];
+            const pdfPath = buildPdfPath(session, documentInfo);
+            document.getElementById("viewer-title").textContent = documentInfo.label;
+            document.getElementById("pdf-viewer").src = pdfPath;
+            document.getElementById("pdf-open-link").href = pdfPath;
+            document.getElementById("pdf-path-label").textContent = `表示中: ${pdfPath}`;
+            updateNavBar();
+        }
+
+        function showPdf(session, documentInfo) {
+            const index = navDocuments.indexOf(documentInfo);
+            if (index !== -1) {
+                showPdfByIndex(session, index);
+            } else {
+                // docタイプなどnav対象外の場合はそのまま表示
+                const pdfPath = buildPdfPath(session, documentInfo);
+                document.getElementById("viewer-title").textContent = documentInfo.label;
+                document.getElementById("pdf-viewer").src = pdfPath;
+                document.getElementById("pdf-open-link").href = pdfPath;
+                document.getElementById("pdf-path-label").textContent = `表示中: ${pdfPath}`;
+            }
         }
 
         function renderBillButtons(session) {
@@ -248,14 +302,18 @@
             const session = getSessionNumber();
             const documents = getDocuments(session);
 
+            // PDF表示可能な資料のみナビゲーション対象にする（doc除外）
+            navDocuments = documents.filter(d => d.type !== "doc");
+            navIndex = -1;
+
             document.getElementById("session-title").textContent = `第${session}回議会`;
             document.getElementById("session-description").textContent = documents.length > 0
                 ? "議案・報告・提案理由・施政方針などのPDFを表示できます。"
                 : "この回次のPDFはまだ登録されていません。";
             renderBillButtons(session);
 
-            if (documents.length > 0) {
-                showPdf(session, documents[0]);
+            if (navDocuments.length > 0) {
+                showPdfByIndex(session, 0);
                 return;
             }
 
@@ -263,6 +321,7 @@
             document.getElementById("pdf-open-link").href = "#";
             document.getElementById("pdf-viewer").src = "about:blank";
             document.getElementById("pdf-path-label").textContent = "";
+            updateNavBar();
         }
 
         portalAuth.init({
