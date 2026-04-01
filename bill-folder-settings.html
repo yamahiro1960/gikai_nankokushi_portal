@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>議案PDF登録 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <div class="text-right">
+                <span class="text-sm">議案PDF登録</span>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="system-settings.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>システム設定に戻る
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg mb-8">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">議案PDF登録</h1>
+                    <p class="text-emerald-50">議案・報告・提案理由・施政方針のPDFを、ローカル作業フォルダー内へ正しく配置するための確認画面です。</p>
+                </div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: ローカル配置案内</div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-emerald-500 mb-6">
+            <h2 class="text-xl font-bold text-gray-700 mb-3">保存先フォルダー</h2>
+            <p class="text-sm text-gray-600 mb-4">議案PDFは、ポータルの作業フォルダー直下に作成した gian フォルダー配下へ、回次ごとのサブフォルダーに入れます。</p>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 space-y-2">
+                <p><span class="font-semibold">ローカル作業フォルダー:</span> C:\Users\nanko\OneDrive\デスクトップ\My_Developments\giin\gikai_nankokushi_portal</p>
+                <p><span class="font-semibold">配置先の基本形:</span> gian\回次\PDFファイル名.pdf</p>
+                <p id="folder-path-preview"><span class="font-semibold">現在の配置先:</span> gian\446</p>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
+            <h2 class="text-xl font-bold text-gray-700 mb-3">回次を選ぶ</h2>
+            <p class="text-sm text-gray-600 mb-4">回次を選ぶと、保存先フォルダー名と公開URLの例を確認できます。</p>
+            <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                <label for="session-select" class="text-sm font-semibold text-gray-700">議会回次</label>
+                <select id="session-select" class="w-full sm:w-56 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="446">第446回議会</option>
+                    <option value="445">第445回議会</option>
+                    <option value="444">第444回議会</option>
+                    <option value="443">第443回議会</option>
+                    <option value="442">第442回議会</option>
+                    <option value="441">第441回議会</option>
+                    <option value="440">第440回議会</option>
+                </select>
+            </div>
+            <div class="mt-4 bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-sm text-emerald-900 space-y-2">
+                <p id="session-folder-label"><span class="font-semibold">保存先フォルダー:</span> gian\446</p>
+                <p id="session-url-label"><span class="font-semibold">公開URL例:</span> https://yamahiro1960.github.io/gikai_nankokushi_portal/gian/446/議案第１号：令和７年度一般会計補正予算.pdf</p>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
+            <h2 class="text-xl font-bold text-gray-700 mb-3">入れるファイルの種類</h2>
+            <p class="text-sm text-gray-600 mb-4">現在の画面では、次の4種類のPDFを想定しています。既定のファイル名は変えずにそのまま配置してください。</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p class="font-semibold text-gray-800 mb-1">議案</p>
+                    <p>例: 議案第１号：令和７年度一般会計補正予算.pdf</p>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p class="font-semibold text-gray-800 mb-1">報告</p>
+                    <p>例: 報告第１号：一般会計補正予算.pdf</p>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p class="font-semibold text-gray-800 mb-1">提案理由</p>
+                    <p>例: 提案理由（446回）.pdf</p>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p class="font-semibold text-gray-800 mb-1">施政方針</p>
+                    <p>例: 施政方針（446回）.pdf</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-700 mb-3">作業手順</h2>
+            <ol class="space-y-3 text-sm text-gray-700 list-decimal list-inside">
+                <li>ローカル作業フォルダー内に gian フォルダーを作成する</li>
+                <li>その中に回次フォルダー（例: 446）を作成する</li>
+                <li>議案・報告・提案理由・施政方針のPDFを、既定ファイル名のまま入れる</li>
+                <li>必要に応じて GitHub へコミット・プッシュして GitHub Pages へ反映する</li>
+            </ol>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        function updateSessionPreview() {
+            const session = document.getElementById("session-select").value;
+            const folderText = `gian\\${session}`;
+            const exampleFile = session === "446"
+                ? "議案第１号：令和７年度一般会計補正予算.pdf"
+                : `議案第１号：第${session}回議会のPDFファイル.pdf`;
+            const encodedFile = encodeURIComponent(exampleFile);
+
+            document.getElementById("folder-path-preview").innerHTML = `<span class="font-semibold">現在の配置先:</span> ${folderText}`;
+            document.getElementById("session-folder-label").innerHTML = `<span class="font-semibold">保存先フォルダー:</span> ${folderText}`;
+            document.getElementById("session-url-label").innerHTML = `<span class="font-semibold">公開URL例:</span> https://yamahiro1960.github.io/gikai_nankokushi_portal/gian/${session}/${encodedFile}`;
+        }
+
+        document.getElementById("session-select").addEventListener("change", updateSessionPreview);
+        updateSessionPreview();
+
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "admin",
+            authTargetId: "authArea",
+            returnTo: "bill-folder-settings.html"
+        });
+    </script>
+</body>
+</html>
