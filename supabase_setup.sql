@@ -55,6 +55,20 @@ for update using (
     )
 );
 
+-- ----------------------------------------------------------------------
+-- 暫定: ログイン認証を稼働させるまでの無認証運用ポリシー
+-- authPaused=true の間、anonロールで meeting_settings を読み書き可能にする。
+-- 本番で認証運用へ移行する際は、以下3つのポリシーを削除すること。
+-- ----------------------------------------------------------------------
+create policy meeting_settings_select_anon_temp on public.meeting_settings
+for select to anon using (true);
+
+create policy meeting_settings_insert_anon_temp on public.meeting_settings
+for insert to anon with check (true);
+
+create policy meeting_settings_update_anon_temp on public.meeting_settings
+for update to anon using (true);
+
 insert into public.meeting_settings (setting_key, setting_payload)
 values (
     'current',
