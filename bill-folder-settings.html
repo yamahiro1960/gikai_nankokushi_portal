@@ -100,54 +100,86 @@
 
         <section class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
             <h2 class="text-xl font-bold text-gray-700 mb-3">作業手順</h2>
-            <ol class="space-y-3 text-sm text-gray-700 list-decimal list-inside">
-                <li><strong>タイル1:</strong> デスクトップの議案フォルダー内に新しいフォルダーを作成する</li>
-                <li><strong>タイル2:</strong> 回数をフォルダー名とする（例: 446, 445）</li>
-                <li><strong>タイル3:</strong> そのフォルダーにPDFファイルを貼り付ける</li>
-                <li>勉強会資料の場合は benkyoukai サブフォルダーを作成して、その中へ入れる</li>
-                <li>下の「議案アップロード」フォームから、フォルダー内のPDFを選択して「アップロード」をクリック</li>
+            <ol class="space-y-4 text-sm text-gray-700">
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 font-bold text-indigo-600 w-6">1</span>
+                    <div>
+                        <p class="font-semibold">デスクトップ内に議案フォルダーを作成</p>
+                        <p class="text-xs text-gray-500 mt-1">例: gian</p>
+                    </div>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 font-bold text-indigo-600 w-6">2</span>
+                    <div>
+                        <p class="font-semibold">フォルダー名を「回次_西暦_月」の形式で作成</p>
+                        <p class="text-xs text-gray-500 mt-1">例: 446_2026_03（第446回議会、2026年3月）</p>
+                        <p class="text-xs text-gray-500 mt-1">形式: <span class="font-mono bg-gray-100 px-2 py-1 rounded">{回次}_{西暦}_{月}</span></p>
+                    </div>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 font-bold text-indigo-600 w-6">3</span>
+                    <div>
+                        <p class="font-semibold">PDFファイルをフォルダーに配置</p>
+                        <p class="text-xs text-gray-500 mt-1">勉強会資料は <span class="font-mono bg-gray-100 px-2 py-1 rounded">benkyoukai</span> サブフォルダーに配置</p>
+                    </div>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 font-bold text-indigo-600 w-6">4</span>
+                    <div>
+                        <p class="font-semibold">下の「フォルダー選択」ボタンで作成したフォルダーを指定</p>
+                        <p class="text-xs text-gray-500 mt-1">その後「実行」をクリックするとアップロードが開始します</p>
+                    </div>
+                </li>
             </ol>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mb-6">
-            <h2 class="text-xl font-bold text-gray-700 mb-4">議案アップロード</h2>
-            <p class="text-sm text-gray-600 mb-6">フォルダーに配置したPDFファイルを選択して、下のボタンをクリックするとシステムに登録されます。ファイル名から自動的に種類（議案・報告など）が判定されます。</p>
+            <h2 class="text-xl font-bold text-gray-700 mb-4">議案フォルダーアップロード</h2>
+            <p class="text-sm text-gray-600 mb-6">作成したフォルダー（446_2026_03など）を指定して、すべてのPDFファイルをアップロードします。</p>
 
             <div class="space-y-4">
-                <!-- 回次選択 -->
-                <div>
-                    <label for="upload-session-select" class="block text-sm font-semibold text-gray-700 mb-2">回次を選択</label>
-                    <select id="upload-session-select" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="446">第446回議会</option>
-                        <option value="445">第445回議会</option>
-                        <option value="444">第444回議会</option>
-                        <option value="443">第443回議会</option>
-                        <option value="442">第442回議会</option>
-                        <option value="441">第441回議会</option>
-                        <option value="440">第440回議会</option>
-                    </select>
+                <!-- フォルダー情報表示 -->
+                <div id="folder-info-section" class="hidden">
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                        <p class="text-sm font-semibold text-indigo-800 mb-2">選択済みフォルダー</p>
+                        <p id="selected-folder-name" class="text-md font-mono text-indigo-700 bg-white px-3 py-2 rounded border border-indigo-300"></p>
+                    </div>
                 </div>
 
-                <!-- ファイル選択 -->
+                <!-- ファイルプレビュー -->
+                <div id="file-preview-section" class="hidden">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">アップロード予定ファイル</h3>
+                    <div id="file-list" class="space-y-2 max-h-64 overflow-y-auto bg-gray-50 border border-gray-200 rounded-lg p-4"></div>
+                    <p id="file-count" class="text-xs text-gray-500 mt-2"></p>
+                </div>
+
+                <!-- フォルダー選択 -->
                 <div>
-                    <label for="pdf-file-input" class="block text-sm font-semibold text-gray-700 mb-2">PDFファイルを選択（複数選択可）</label>
-                    <div class="border-2 border-dashed border-indigo-300 rounded-lg p-6 text-center bg-indigo-50 hover:bg-indigo-100 transition cursor-pointer" onclick="document.getElementById('pdf-file-input').click()">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-indigo-500 mb-2"></i>
-                        <p class="text-sm font-semibold text-indigo-700">PDFファイルを選択してください</p>
-                        <p class="text-xs text-indigo-600">クリックするか、ファイルをドラッグ&ドロップできます</p>
-                    </div>
-                    <input id="pdf-file-input" type="file" accept=".pdf" multiple class="hidden" onchange="handleFileSelect(event)">
-                    <div id="file-list" class="mt-4 space-y-2"></div>
+                    <input id="directory-input" type="file" webkitdirectory mozdirectory directory multiple accept=".pdf" class="hidden">
+                    <button onclick="selectFolder()" class="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2">
+                        <i class="fas fa-folder-open"></i>フォルダーを選択
+                    </button>
                 </div>
 
                 <!-- アップロードボタン -->
-                <div class="flex gap-3 justify-end pt-4">
+                <div id="upload-button-section" class="hidden flex gap-3 justify-end pt-4">
                     <button onclick="resetUploadForm()" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold rounded-lg transition">
                         クリア
                     </button>
-                    <button id="upload-btn" onclick="uploadDocuments()" disabled class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white font-semibold rounded-lg transition">
-                        <i class="fas fa-arrow-up mr-2"></i>登録
+                    <button id="execute-upload-btn" onclick="executeUpload()" disabled class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-semibold rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-upload"></i>実行
                     </button>
+                </div>
+
+                <!-- 進捗表示 -->
+                <div id="upload-progress" class="hidden">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm font-semibold text-blue-800 mb-2">アップロード中...</p>
+                        <div class="w-full bg-blue-200 rounded-full h-2">
+                            <div id="progress-bar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p id="progress-text" class="text-xs text-blue-700 mt-2">0 / 0</p>
+                    </div>
                 </div>
 
                 <!-- 結果メッセージ -->
@@ -187,8 +219,174 @@
         document.getElementById("session-select").addEventListener("change", updateSessionPreview);
         updateSessionPreview();
 
-        // ======== アップロード機能 ========
+        // ======== フォルダーアップロード機能 ========
         let selectedFiles = [];
+        let folderName = "";
+
+        function selectFolder() {
+            document.getElementById("directory-input").click();
+        }
+
+        document.getElementById("directory-input").addEventListener("change", handleFolderSelect);
+
+        function handleFolderSelect(event) {
+            const files = Array.from(event.target.files).filter(f => f.type === "application/pdf");
+            
+            if (files.length === 0) {
+                showUploadMessage("PDFファイルが見つかりません", "error");
+                return;
+            }
+
+            // フォルダー名を抽出（最初のファイルの path から）
+            const filePath = files[0].webkitRelativePath;
+            const pathParts = filePath.split("/");
+            folderName = pathParts[0];
+
+            // フォルダー名形式の検証：XXX_YYYY_MM
+            const folderPattern = /^\d{3,}_\d{4}_\d{2}$/;
+            if (!folderPattern.test(folderName)) {
+                showUploadMessage(
+                    `フォルダー名の形式が不正です: "${folderName}"\n正しい形式: 446_2026_03（回次_西暦_月）`,
+                    "error"
+                );
+                document.getElementById("directory-input").value = "";
+                return;
+            }
+
+            selectedFiles = files;
+            displayFolderInfo();
+            displayFilePreview();
+        }
+
+        function displayFolderInfo() {
+            const section = document.getElementById("folder-info-section");
+            document.getElementById("selected-folder-name").textContent = folderName;
+            section.classList.remove("hidden");
+        }
+
+        function displayFilePreview() {
+            const section = document.getElementById("file-preview-section");
+            const listEl = document.getElementById("file-list");
+            const countEl = document.getElementById("file-count");
+
+            listEl.innerHTML = "";
+            selectedFiles.forEach(file => {
+                const relativePath = file.webkitRelativePath || file.name;
+                const item = document.createElement("div");
+                item.className = "flex items-center gap-2 text-xs text-gray-700 bg-white p-2 rounded border border-gray-300";
+                item.innerHTML = `
+                    <i class="fas fa-file-pdf text-red-500"></i>
+                    <span class="font-mono flex-1">${relativePath}</span>
+                    <span class="text-gray-500">${(file.size / 1024).toFixed(1)} KB</span>
+                `;
+                listEl.appendChild(item);
+            });
+
+            countEl.textContent = `合計: ${selectedFiles.length}ファイル (${(selectedFiles.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(2)} MB)`;
+            section.classList.remove("hidden");
+
+            const uploadBtnSection = document.getElementById("upload-button-section");
+            document.getElementById("execute-upload-btn").disabled = false;
+            uploadBtnSection.classList.remove("hidden");
+        }
+
+        function resetUploadForm() {
+            document.getElementById("directory-input").value = "";
+            selectedFiles = [];
+            folderName = "";
+            document.getElementById("folder-info-section").classList.add("hidden");
+            document.getElementById("file-preview-section").classList.add("hidden");
+            document.getElementById("upload-button-section").classList.add("hidden");
+            document.getElementById("upload-message").classList.add("hidden");
+            document.getElementById("upload-progress").classList.add("hidden");
+        }
+
+        async function executeUpload() {
+            if (selectedFiles.length === 0 || !folderName) {
+                showUploadMessage("ファイルが選択されていません", "error");
+                return;
+            }
+
+            const uploadBtn = document.getElementById("execute-upload-btn");
+            const progressSection = document.getElementById("upload-progress");
+            uploadBtn.disabled = true;
+            progressSection.classList.remove("hidden");
+
+            try {
+                // フォルダー名から回次、年月を抽出
+                const parts = folderName.split("_");
+                const session = parts[0]; // 446
+                const year = parts[1];    // 2026
+                const month = parts[2];   // 03
+
+                // Supabase Storageにアップロード
+                const storagePath = `gian/${folderName}`;
+                let uploadedCount = 0;
+
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
+                    const relativePath = file.webkitRelativePath.substring(folderName.length + 1);
+                    const fullPath = `${storagePath}/${relativePath}`;
+
+                    // Supabase Storage にアップロード
+                    const { error: uploadError } = await portalAuth.client.storage
+                        .from("gian")
+                        .upload(fullPath, file, { upsert: true });
+
+                    if (uploadError) {
+                        throw new Error(`${relativePath}: ${uploadError.message}`);
+                    }
+
+                    uploadedCount++;
+                    const progress = Math.round((uploadedCount / selectedFiles.length) * 100);
+                    document.getElementById("progress-bar").style.width = `${progress}%`;
+                    document.getElementById("progress-text").textContent = `${uploadedCount} / ${selectedFiles.length}`;
+                }
+
+                // DB に登録情報を保存
+                const docList = selectedFiles.map(file => {
+                    const relativePath = file.webkitRelativePath.substring(folderName.length + 1);
+                    const fileName = relativePath.split("/").pop();
+                    const typeInfo = inferDocumentType(fileName);
+                    return {
+                        label: fileName.replace(".pdf", ""),
+                        fileName: fileName,
+                        type: typeInfo.type,
+                        relativePath: relativePath,
+                        subFolder: typeInfo.subFolder
+                    };
+                });
+
+                const { error: dbError } = await portalAuth.client
+                    .from("meeting_settings")
+                    .upsert({
+                        setting_key: `uploaded_documents_${session}_${folderName}`,
+                        setting_payload: {
+                            folderName: folderName,
+                            session: session,
+                            year: year,
+                            month: month,
+                            documents: docList,
+                            uploadedAt: new Date().toISOString()
+                        }
+                    }, { onConflict: "setting_key" });
+
+                if (dbError) throw dbError;
+
+                progressSection.classList.add("hidden");
+                showUploadMessage(
+                    `✓ ${uploadedCount}ファイルをアップロードしました！\nフォルダー: ${folderName}`,
+                    "success"
+                );
+                resetUploadForm();
+            } catch (err) {
+                console.error("Upload error:", err);
+                progressSection.classList.add("hidden");
+                showUploadMessage(`エラーが発生しました: ${err.message}`, "error");
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        }
 
         function inferDocumentType(fileName) {
             const name = fileName.toLowerCase();
@@ -198,133 +396,7 @@
             if (name.includes("提案理由")) return { type: "reason" };
             if (name.includes("施政方針")) return { type: "policy" };
             if (name.includes("議案") || name.match(/^議案第/)) return { type: "bill" };
-            return { type: "bill" }; // デフォルト
-        }
-
-        function handleFileSelect(event) {
-            selectedFiles = Array.from(event.target.files).filter(f => f.type === "application/pdf");
-            const fileList = document.getElementById("file-list");
-            fileList.innerHTML = "";
-
-            if (selectedFiles.length === 0) {
-                fileList.innerHTML = '<p class="text-sm text-gray-500">PDFファイルが選択されていません</p>';
-                document.getElementById("upload-btn").disabled = true;
-                return;
-            }
-
-            selectedFiles.forEach((file, index) => {
-                const typeInfo = inferDocumentType(file.name);
-                const typeLabel = {
-                    "bill": "議案",
-                    "report": "報告",
-                    "reason": "提案理由",
-                    "policy": "施政方針",
-                    "summary": "一覧表",
-                    "study": "勉強会資料"
-                }[typeInfo.type] || "その他";
-
-                const item = document.createElement("div");
-                item.className = "flex items-center justify-between bg-gray-50 border border-gray-200 rounded p-3";
-                item.innerHTML = `
-                    <div>
-                        <p class="text-sm font-semibold text-gray-700">${file.name}</p>
-                        <p class="text-xs text-gray-500">種類: <span class="text-indigo-600 font-semibold">${typeLabel}</span> | サイズ: ${(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                    </div>
-                    <button type="button" onclick="removeFile(${index})" class="text-red-500 hover:text-red-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                fileList.appendChild(item);
-            });
-
-            document.getElementById("upload-btn").disabled = false;
-        }
-
-        function removeFile(index) {
-            selectedFiles.splice(index, 1);
-            if (selectedFiles.length === 0) {
-                document.getElementById("pdf-file-input").value = "";
-                handleFileSelect({ target: { files: [] } });
-            } else {
-                const dt = new DataTransfer();
-                selectedFiles.forEach(f => dt.items.add(f));
-                document.getElementById("pdf-file-input").files = dt.files;
-                handleFileSelect({ target: { files: dt.files } });
-            }
-        }
-
-        function resetUploadForm() {
-            document.getElementById("pdf-file-input").value = "";
-            selectedFiles = [];
-            document.getElementById("file-list").innerHTML = "";
-            document.getElementById("upload-btn").disabled = true;
-            document.getElementById("upload-message").classList.add("hidden");
-        }
-
-        async function uploadDocuments() {
-            if (selectedFiles.length === 0) {
-                showUploadMessage("ファイルを選択してください", "error");
-                return;
-            }
-
-            const session = document.getElementById("upload-session-select").value;
-            const uploadBtn = document.getElementById("upload-btn");
-            uploadBtn.disabled = true;
-
-            try {
-                // アップロード用のドキュメントデータを生成
-                const newDocuments = selectedFiles.map(file => {
-                    const typeInfo = inferDocumentType(file.name);
-                    const doc = {
-                        label: file.name.replace(".pdf", ""),
-                        fileName: file.name,
-                        type: typeInfo.type
-                    };
-                    if (typeInfo.subFolder) {
-                        doc.subFolder = typeInfo.subFolder;
-                    }
-                    return doc;
-                });
-
-                // SupabaseのmeetingSettingsから既存データを取得
-                const { data, error } = await portalAuth.client
-                    .from("meeting_settings")
-                    .select("setting_payload")
-                    .eq("setting_key", `uploaded_documents_${session}`)
-                    .single();
-
-                let existingDocuments = [];
-                if (data) {
-                    existingDocuments = data.setting_payload.documents || [];
-                }
-
-                // 新しいドキュメントを追加（重複排除）
-                const existingNames = new Set(existingDocuments.map(d => d.fileName));
-                const uniqueNewDocs = newDocuments.filter(d => !existingNames.has(d.fileName));
-
-                const allDocuments = [...existingDocuments, ...uniqueNewDocs];
-
-                // Supabaseに保存
-                const { error: upsertError } = await portalAuth.client
-                    .from("meeting_settings")
-                    .upsert({
-                        setting_key: `uploaded_documents_${session}`,
-                        setting_payload: { documents: allDocuments }
-                    }, { onConflict: "setting_key" });
-
-                if (upsertError) throw upsertError;
-
-                showUploadMessage(
-                    `✓ ${uniqueNewDocs.length}件のファイルを登録しました！${existingNames.size > 0 ? `（${existingNames.size}件は既に登録済み）` : ""}`,
-                    "success"
-                );
-                resetUploadForm();
-            } catch (err) {
-                console.error("Upload error:", err);
-                showUploadMessage(`エラーが発生しました: ${err.message}`, "error");
-            } finally {
-                uploadBtn.disabled = false;
-            }
+            return { type: "bill" };
         }
 
         function showUploadMessage(message, type) {

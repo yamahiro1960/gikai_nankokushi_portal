@@ -1,3 +1,15 @@
+-- Supabase Storage バケット設定
+-- ⚠️ 以下は手動でSupabaseダッシュボード上で実施してください:
+-- 
+-- 1. Storage > Buckets で「gian」という名前でバケットを作成
+-- 2. Buckets > gian > Policies で以下のポリシーを追加:
+--    - "Public Access" (anonロール向け)
+--      SELECT: (bucketName = 'gian'::text) = true
+--
+-- 3. バケット設定で "Make bucket public" を有効化
+-- 
+-- これにより、アップロードされたファイルが公開URLでアクセス可能になります。
+
 create table if not exists public.profiles (
     user_id uuid primary key,
     email text not null unique,

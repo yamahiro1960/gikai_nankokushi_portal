@@ -178,12 +178,26 @@
         }
 
         function buildPdfPath(session, documentInfo) {
+            // Supabase Storageからのファイル（storageFolderNameを持つ）
+            if (documentInfo.storageFolderName) {
+                const segments = [documentInfo.storageFolderName];
+                if (documentInfo.relativePath) {
+                    segments.push(documentInfo.relativePath);
+                } else if (documentInfo.subFolder) {
+                    segments.push(documentInfo.subFolder, documentInfo.fileName);
+                } else {
+                    segments.push(documentInfo.fileName);
+                }
+                const path = segments.map((s) => encodeURIComponent(s)).join("/");
+                // Supabase Storage の public URL
+                return `${window.AUTH_CONFIG.supabaseUrl}/storage/v1/object/public/gian/${path}`;
+            }
+            
+            // 従来のGitHub Pagesから取得（gian/XXX形式）
             const segments = ["gian", session];
-
             if (documentInfo.subFolder) {
                 segments.push(documentInfo.subFolder);
             }
-
             segments.push(documentInfo.fileName);
             return segments.map((segment) => encodeURIComponent(segment)).join("/");
         }
@@ -327,22 +341,33 @@
         async function initAssemblyPageWithUploadedDocs() {
             const session = getSessionNumber();
 
-            // Supabaseからアップロード済みドキュメントを取得して SESSION_DOCUMENTS にマージ
+            // Supabaseからアップロード済みドキュメントメタデータを取得
             try {
                 const { data, error } = await portalAuth.client
                     .from("meeting_settings")
                     .select("setting_payload")
-                    .eq("setting_key", `uploaded_documents_${session}`)
-                    .single();
+                    .like("setting_key", `uploaded_documents_${session}_%`);
 
-                if (data && data.setting_payload && data.setting_payload.documents) {
-                    const existingFileNames = new Set(
-                        (SESSION_DOCUMENTS[session] || []).map(d => d.fileName)
-                    );
-                    const newDocs = data.setting_payload.documents.filter(
-                        d => !existingFileNames.has(d.fileName)
-                    );
-                    SESSION_DOCUMENTS[session] = [...(SESSION_DOCUMENTS[session] || []), ...newDocs];
+                if (data && data.length > 0) {
+                    for (const record of data) {
+                        const payload = record.setting_payload;
+                        if (payload && payload.documents && payload.folderName) {
+                            const folderName = payload.folderName; // e.g., "446_2026_03"
+                            const newDocs = payload.documents.map(doc => ({
+                                ...doc,
+                                storageFolderName: folderName,
+                                label: doc.label || doc.fileName.replace(".pdf", "")
+                            }));
+                            
+                            const existingFileNames = new Set(
+                                (SESSION_DOCUMENTS[session] || []).map(d => d.fileName)
+                            );
+                            const uniqueNewDocs = newDocs.filter(
+                                d => !existingFileNames.has(d.fileName)
+                            );
+                            SESSION_DOCUMENTS[session] = [...(SESSION_DOCUMENTS[session] || []), ...uniqueNewDocs];
+                        }
+                    }
                 }
             } catch (err) {
                 console.warn("Could not load uploaded documents:", err);
