@@ -13,8 +13,36 @@ create table if not exists public.meeting_settings (
     updated_by uuid
 );
 
+create table if not exists public.member_positions_master (
+    position_name text primary key,
+    sort_order int not null default 100,
+    is_active boolean not null default true,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists public.member_directory (
+    member_id text primary key,
+    full_name text not null,
+    postal_code text,
+    address text,
+    phone text,
+    mobile text,
+    category text not null check (category in ('議員', '職員')),
+    position_name text,
+    email text,
+    committee text check (committee in ('産業建設', '教育民生', '総務')),
+    committee_role text check (committee_role in ('委員長', '副委員長', '委員')),
+    is_giun boolean not null default false,
+    is_editorial_committee boolean not null default false,
+    notes text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
 alter table public.profiles enable row level security;
 alter table public.meeting_settings enable row level security;
+alter table public.member_positions_master enable row level security;
+alter table public.member_directory enable row level security;
 
 create policy profiles_select_own_or_admin on public.profiles
 for select using (
@@ -69,6 +97,30 @@ for insert to anon with check (true);
 create policy meeting_settings_update_anon_temp on public.meeting_settings
 for update to anon using (true);
 
+create policy member_positions_master_select_anon_temp on public.member_positions_master
+for select to anon using (true);
+
+create policy member_positions_master_insert_anon_temp on public.member_positions_master
+for insert to anon with check (true);
+
+create policy member_positions_master_update_anon_temp on public.member_positions_master
+for update to anon using (true);
+
+create policy member_positions_master_delete_anon_temp on public.member_positions_master
+for delete to anon using (true);
+
+create policy member_directory_select_anon_temp on public.member_directory
+for select to anon using (true);
+
+create policy member_directory_insert_anon_temp on public.member_directory
+for insert to anon with check (true);
+
+create policy member_directory_update_anon_temp on public.member_directory
+for update to anon using (true);
+
+create policy member_directory_delete_anon_temp on public.member_directory
+for delete to anon using (true);
+
 insert into public.meeting_settings (setting_key, setting_payload)
 values (
     'current',
@@ -84,6 +136,18 @@ values (
     )
 )
 on conflict (setting_key) do nothing;
+
+insert into public.member_positions_master (position_name, sort_order)
+values
+    ('議長', 10),
+    ('副議長', 20),
+    ('事務局長', 30),
+    ('副事務局長', 40),
+    ('委員長', 50),
+    ('副委員長', 60),
+    ('委員', 70),
+    ('その他', 999)
+on conflict (position_name) do nothing;
 
 -- 初回管理者を作る場合（auth.usersの対象ユーザーIDを指定）
 -- update public.profiles set role = 'admin' where email = 'admin@example.com';

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>議員・職員登録 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="system-settings.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <div class="text-right">
+                <span class="text-sm">議員・職員登録</span>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="system-settings.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>システム設定へ戻る
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-sky-600 to-indigo-700 text-white shadow-lg mb-8">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">議員・職員登録</h1>
+                    <p class="text-sky-100">議員および事務局スタッフの基本情報をDBへ登録・更新します。</p>
+                </div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: マスタ管理</div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-cyan-500 mb-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-700">役職マスター</h2>
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 mb-4">
+                <input id="position-name" type="text" placeholder="例: 監査委員" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <button id="add-position" class="bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 rounded-lg text-sm font-semibold">役職を追加</button>
+            </div>
+            <div id="position-list" class="flex flex-wrap gap-2"></div>
+            <p class="text-xs text-gray-500 mt-3">不要な役職は「×」で削除できます。</p>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mb-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-700">登録フォーム</h2>
+            <form id="member-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">ID（ユニーク）</label>
+                    <input id="member_id" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: G001">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">氏名</label>
+                    <input id="full_name" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 南国 太郎">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">〒</label>
+                    <input id="postal_code" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 783-8501">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">住所</label>
+                    <input id="address" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="住所を入力">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">電話</label>
+                    <input id="phone" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 088-000-0000">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">携帯</label>
+                    <input id="mobile" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 090-0000-0000">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">区分</label>
+                    <select id="category" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="議員">議員</option>
+                        <option value="職員">職員</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">役職</label>
+                    <select id="position_name" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">メールアドレス</label>
+                    <input id="email" type="email" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="example@city.lg.jp">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">委員会</label>
+                    <select id="committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">未設定</option>
+                        <option value="産業建設">産業建設</option>
+                        <option value="教育民生">教育民生</option>
+                        <option value="総務">総務</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">委員会役職</label>
+                    <select id="committee_role" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">未設定</option>
+                        <option value="委員長">委員長</option>
+                        <option value="副委員長">副委員長</option>
+                        <option value="委員">委員</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">議運</label>
+                    <select id="is_giun" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="true">YES</option>
+                        <option value="false" selected>NO</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">編集委員</label>
+                    <select id="is_editorial_committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="true">YES</option>
+                        <option value="false" selected>NO</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">備考</label>
+                    <textarea id="notes" rows="3" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="メモを入力"></textarea>
+                </div>
+                <div class="md:col-span-2 flex gap-3">
+                    <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white px-5 py-2 rounded-lg text-sm font-semibold">保存</button>
+                    <button type="button" id="clear-form" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold">クリア</button>
+                </div>
+            </form>
+            <p id="form-message" class="mt-3 text-sm text-gray-600"></p>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-slate-500">
+            <h2 class="text-xl font-bold mb-4 text-gray-700">登録一覧</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-2 border">ID</th>
+                            <th class="text-left p-2 border">氏名</th>
+                            <th class="text-left p-2 border">区分</th>
+                            <th class="text-left p-2 border">役職</th>
+                            <th class="text-left p-2 border">委員会</th>
+                            <th class="text-left p-2 border">議運</th>
+                            <th class="text-left p-2 border">編集委員</th>
+                            <th class="text-left p-2 border">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="member-list"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        let dbClient = null;
+        let positions = [];
+
+        function toYesNo(flag) {
+            return flag ? "YES" : "NO";
+        }
+
+        function clearForm() {
+            document.getElementById("member-form").reset();
+            document.getElementById("member_id").readOnly = false;
+        }
+
+        function fillPositionSelect() {
+            const select = document.getElementById("position_name");
+            const current = select.value;
+            select.innerHTML = '<option value="">未設定</option>';
+            positions.forEach((p) => {
+                const opt = document.createElement("option");
+                opt.value = p.position_name;
+                opt.textContent = p.position_name;
+                select.appendChild(opt);
+            });
+            select.value = current || "";
+        }
+
+        async function loadPositions() {
+            const { data, error } = await dbClient
+                .from("member_positions_master")
+                .select("position_name,sort_order,is_active")
+                .eq("is_active", true)
+                .order("sort_order", { ascending: true })
+                .order("position_name", { ascending: true });
+
+            if (error) {
+                document.getElementById("form-message").textContent = "役職マスター読込失敗: " + error.message;
+                return;
+            }
+
+            positions = data || [];
+            fillPositionSelect();
+            renderPositionChips();
+        }
+
+        function renderPositionChips() {
+            const area = document.getElementById("position-list");
+            area.innerHTML = "";
+            positions.forEach((p) => {
+                const chip = document.createElement("span");
+                chip.className = "inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 text-cyan-800 border border-cyan-200 text-xs";
+                chip.innerHTML = `${p.position_name} <button class="text-cyan-700 hover:text-cyan-900" data-pos="${p.position_name}">×</button>`;
+                area.appendChild(chip);
+            });
+
+            area.querySelectorAll("button[data-pos]").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    const posName = btn.getAttribute("data-pos");
+                    const { error } = await dbClient
+                        .from("member_positions_master")
+                        .delete()
+                        .eq("position_name", posName);
+                    if (error) {
+                        document.getElementById("form-message").textContent = "役職削除失敗: " + error.message;
+                        return;
+                    }
+                    await loadPositions();
+                    document.getElementById("form-message").textContent = "役職を削除しました。";
+                });
+            });
+        }
+
+        async function addPosition() {
+            const input = document.getElementById("position-name");
+            const value = (input.value || "").trim();
+            if (!value) {
+                return;
+            }
+
+            const { error } = await dbClient
+                .from("member_positions_master")
+                .upsert({ position_name: value, is_active: true }, { onConflict: "position_name" });
+
+            if (error) {
+                document.getElementById("form-message").textContent = "役職追加失敗: " + error.message;
+                return;
+            }
+
+            input.value = "";
+            await loadPositions();
+            document.getElementById("form-message").textContent = "役職を追加しました。";
+        }
+
+        function setFormValues(item) {
+            document.getElementById("member_id").value = item.member_id || "";
+            document.getElementById("full_name").value = item.full_name || "";
+            document.getElementById("postal_code").value = item.postal_code || "";
+            document.getElementById("address").value = item.address || "";
+            document.getElementById("phone").value = item.phone || "";
+            document.getElementById("mobile").value = item.mobile || "";
+            document.getElementById("category").value = item.category || "議員";
+            document.getElementById("position_name").value = item.position_name || "";
+            document.getElementById("email").value = item.email || "";
+            document.getElementById("committee").value = item.committee || "";
+            document.getElementById("committee_role").value = item.committee_role || "";
+            document.getElementById("is_giun").value = item.is_giun ? "true" : "false";
+            document.getElementById("is_editorial_committee").value = item.is_editorial_committee ? "true" : "false";
+            document.getElementById("notes").value = item.notes || "";
+            document.getElementById("member_id").readOnly = true;
+        }
+
+        async function loadMembers() {
+            const { data, error } = await dbClient
+                .from("member_directory")
+                .select("member_id,full_name,category,position_name,committee,is_giun,is_editorial_committee")
+                .order("member_id", { ascending: true });
+
+            const tbody = document.getElementById("member-list");
+            tbody.innerHTML = "";
+
+            if (error) {
+                document.getElementById("form-message").textContent = "一覧読込失敗: " + error.message;
+                return;
+            }
+
+            (data || []).forEach((item) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="p-2 border">${item.member_id || ""}</td>
+                    <td class="p-2 border">${item.full_name || ""}</td>
+                    <td class="p-2 border">${item.category || ""}</td>
+                    <td class="p-2 border">${item.position_name || ""}</td>
+                    <td class="p-2 border">${item.committee || ""}</td>
+                    <td class="p-2 border">${toYesNo(item.is_giun)}</td>
+                    <td class="p-2 border">${toYesNo(item.is_editorial_committee)}</td>
+                    <td class="p-2 border">
+                        <button class="text-indigo-700 hover:text-indigo-900 mr-3" data-edit="${item.member_id}">編集</button>
+                        <button class="text-rose-700 hover:text-rose-900" data-delete="${item.member_id}">削除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            tbody.querySelectorAll("button[data-edit]").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    const id = btn.getAttribute("data-edit");
+                    const { data: detail, error: detailError } = await dbClient
+                        .from("member_directory")
+                        .select("*")
+                        .eq("member_id", id)
+                        .single();
+
+                    if (detailError) {
+                        document.getElementById("form-message").textContent = "詳細読込失敗: " + detailError.message;
+                        return;
+                    }
+
+                    setFormValues(detail);
+                    document.getElementById("form-message").textContent = "編集モードで読み込みました。";
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+            });
+
+            tbody.querySelectorAll("button[data-delete]").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    const id = btn.getAttribute("data-delete");
+                    const ok = confirm(`${id} を削除しますか？`);
+                    if (!ok) {
+                        return;
+                    }
+
+                    const { error: deleteError } = await dbClient
+                        .from("member_directory")
+                        .delete()
+                        .eq("member_id", id);
+
+                    if (deleteError) {
+                        document.getElementById("form-message").textContent = "削除失敗: " + deleteError.message;
+                        return;
+                    }
+
+                    document.getElementById("form-message").textContent = "削除しました。";
+                    await loadMembers();
+                });
+            });
+        }
+
+        async function saveMember(event) {
+            event.preventDefault();
+
+            const payload = {
+                member_id: document.getElementById("member_id").value.trim(),
+                full_name: document.getElementById("full_name").value.trim(),
+                postal_code: document.getElementById("postal_code").value.trim() || null,
+                address: document.getElementById("address").value.trim() || null,
+                phone: document.getElementById("phone").value.trim() || null,
+                mobile: document.getElementById("mobile").value.trim() || null,
+                category: document.getElementById("category").value,
+                position_name: document.getElementById("position_name").value || null,
+                email: document.getElementById("email").value.trim() || null,
+                committee: document.getElementById("committee").value || null,
+                committee_role: document.getElementById("committee_role").value || null,
+                is_giun: document.getElementById("is_giun").value === "true",
+                is_editorial_committee: document.getElementById("is_editorial_committee").value === "true",
+                notes: document.getElementById("notes").value.trim() || null,
+                updated_at: new Date().toISOString()
+            };
+
+            const { error } = await dbClient
+                .from("member_directory")
+                .upsert(payload, { onConflict: "member_id" });
+
+            if (error) {
+                document.getElementById("form-message").textContent = "保存失敗: " + error.message;
+                return;
+            }
+
+            document.getElementById("form-message").textContent = "保存しました。";
+            clearForm();
+            await loadMembers();
+        }
+
+        document.getElementById("member-form").addEventListener("submit", saveMember);
+        document.getElementById("clear-form").addEventListener("click", clearForm);
+        document.getElementById("add-position").addEventListener("click", addPosition);
+
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "admin",
+            authTargetId: "authArea",
+            returnTo: "member-directory-settings.html",
+            onReady: async ({ client }) => {
+                dbClient = client;
+                await loadPositions();
+                await loadMembers();
+            }
+        });
+    </script>
+</body>
+</html>
