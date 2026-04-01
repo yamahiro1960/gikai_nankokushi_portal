@@ -38,8 +38,8 @@
         </section>
 
         <section class="bg-white p-6 rounded-xl shadow-sm mb-8">
-            <h2 class="text-lg font-bold mb-4">議案書を選択</h2>
-            <div id="bill-buttons" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"></div>
+            <h2 class="text-lg font-bold mb-4">資料を選択</h2>
+            <div id="bill-buttons" class="space-y-5"></div>
         </section>
 
         <section class="bg-white p-6 rounded-xl shadow-sm">
@@ -93,9 +93,22 @@
                 { label: "報告第1号：一般会計補正予算", fileName: "報告第１号：一般会計補正予算.pdf", type: "report" },
                 { label: "報告第2号：損害賠償専決（財政・建設・物損）", fileName: "報告第２号：損害賠償専決（財政・建設・物損）.pdf", type: "report" },
                 { label: "提案理由（446回）", fileName: "提案理由（446回）.pdf", type: "reason" },
-                { label: "施政方針（446回）", fileName: "施政方針（446回）.pdf", type: "policy" }
+                { label: "施政方針（446回）", fileName: "施政方針（446回）.pdf", type: "policy" },
+                { label: "勉強会資料：R8.2.24議員勉強会資料（当初予算）", fileName: "R8.2.24議員勉強会資料（当初予算）.pdf", type: "study", subFolder: "benkyoukai" },
+                { label: "勉強会資料：R8.2.24議員勉強会資料（３月補正）", fileName: "R8.2.24議員勉強会資料（３月補正）.pdf", type: "study", subFolder: "benkyoukai" }
             ]
         };
+
+        const DOCUMENT_TYPE_META = {
+            summary: { title: "一覧表", buttonClass: "bg-slate-700 hover:bg-slate-800" },
+            bill: { title: "議案", buttonClass: "bg-indigo-700 hover:bg-indigo-800" },
+            report: { title: "報告", buttonClass: "bg-emerald-700 hover:bg-emerald-800" },
+            reason: { title: "提案理由", buttonClass: "bg-amber-600 hover:bg-amber-700" },
+            policy: { title: "施政方針", buttonClass: "bg-rose-700 hover:bg-rose-800" },
+            study: { title: "勉強会資料", buttonClass: "bg-cyan-700 hover:bg-cyan-800" }
+        };
+
+        const DOCUMENT_TYPE_ORDER = ["summary", "bill", "report", "reason", "policy", "study"];
 
         function getSessionNumber() {
             const params = new URLSearchParams(window.location.search);
@@ -108,24 +121,23 @@
             return SESSION_DOCUMENTS[session] || [];
         }
 
-        function buildPdfPath(session, fileName) {
-            return `gian/${session}/${encodeURIComponent(fileName)}`;
+        function buildPdfPath(session, documentInfo) {
+            const segments = ["gian", session];
+
+            if (documentInfo.subFolder) {
+                segments.push(documentInfo.subFolder);
+            }
+
+            segments.push(documentInfo.fileName);
+            return segments.map((segment) => encodeURIComponent(segment)).join("/");
         }
 
         function getButtonClass(type) {
-            const styles = {
-                summary: "bg-slate-700 hover:bg-slate-800",
-                bill: "bg-indigo-700 hover:bg-indigo-800",
-                report: "bg-emerald-700 hover:bg-emerald-800",
-                reason: "bg-amber-600 hover:bg-amber-700",
-                policy: "bg-rose-700 hover:bg-rose-800"
-            };
-
-            return styles[type] || styles.bill;
+            return (DOCUMENT_TYPE_META[type] || DOCUMENT_TYPE_META.bill).buttonClass;
         }
 
         function showPdf(session, documentInfo) {
-            const pdfPath = buildPdfPath(session, documentInfo.fileName);
+            const pdfPath = buildPdfPath(session, documentInfo);
             const viewer = document.getElementById("pdf-viewer");
             const title = document.getElementById("viewer-title");
             const link = document.getElementById("pdf-open-link");
@@ -145,19 +157,40 @@
 
             if (documents.length === 0) {
                 const message = document.createElement("p");
-                message.className = "col-span-full text-sm text-gray-600";
+                message.className = "text-sm text-gray-600";
                 message.textContent = "この回次のPDFはまだ登録されていません。";
                 container.appendChild(message);
                 return;
             }
 
-            for (const documentInfo of documents) {
-                const button = document.createElement("button");
-                button.type = "button";
-                button.className = `${getButtonClass(documentInfo.type)} text-white px-3 py-2 rounded-lg text-sm font-semibold transition`;
-                button.textContent = documentInfo.label;
-                button.addEventListener("click", () => showPdf(session, documentInfo));
-                container.appendChild(button);
+            for (const type of DOCUMENT_TYPE_ORDER) {
+                const groupedDocuments = documents.filter((documentInfo) => documentInfo.type === type);
+
+                if (groupedDocuments.length === 0) {
+                    continue;
+                }
+
+                const section = document.createElement("section");
+                const heading = document.createElement("h3");
+                const grid = document.createElement("div");
+
+                section.className = "border border-gray-200 rounded-xl p-4 bg-gray-50";
+                heading.className = "text-sm font-bold text-gray-700 mb-3";
+                heading.textContent = DOCUMENT_TYPE_META[type].title;
+                grid.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3";
+
+                for (const documentInfo of groupedDocuments) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = `${getButtonClass(documentInfo.type)} text-white px-3 py-2 rounded-lg text-sm font-semibold transition text-left`;
+                    button.textContent = documentInfo.label;
+                    button.addEventListener("click", () => showPdf(session, documentInfo));
+                    grid.appendChild(button);
+                }
+
+                section.appendChild(heading);
+                section.appendChild(grid);
+                container.appendChild(section);
             }
         }
 

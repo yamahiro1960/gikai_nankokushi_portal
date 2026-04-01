@@ -31,7 +31,7 @@
             <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-bold mb-2">議案PDF登録</h1>
-                    <p class="text-emerald-50">議案・報告・提案理由・施政方針のPDFを、ローカル作業フォルダー内へ正しく配置するための確認画面です。</p>
+                    <p class="text-emerald-50">議案・報告・提案理由・施政方針・勉強会資料のPDFを、ローカル作業フォルダー内へ正しく配置するための確認画面です。</p>
                 </div>
                 <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: ローカル配置案内</div>
             </div>
@@ -39,10 +39,11 @@
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-emerald-500 mb-6">
             <h2 class="text-xl font-bold text-gray-700 mb-3">保存先フォルダー</h2>
-            <p class="text-sm text-gray-600 mb-4">議案PDFは、ポータルの作業フォルダー直下に作成した gian フォルダー配下へ、回次ごとのサブフォルダーに入れます。</p>
+            <p class="text-sm text-gray-600 mb-4">議案PDFは、ポータルの作業フォルダー直下に作成した gian フォルダー配下へ、回次ごとのサブフォルダーに入れます。勉強会資料はさらに benkyoukai サブフォルダーへ入れます。</p>
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 space-y-2">
                 <p><span class="font-semibold">ローカル作業フォルダー:</span> C:\Users\nanko\OneDrive\デスクトップ\My_Developments\giin\gikai_nankokushi_portal</p>
                 <p><span class="font-semibold">配置先の基本形:</span> gian\回次\PDFファイル名.pdf</p>
+                <p><span class="font-semibold">勉強会資料の配置先:</span> gian\回次\benkyoukai\PDFファイル名.pdf</p>
                 <p id="folder-path-preview"><span class="font-semibold">現在の配置先:</span> gian\446</p>
             </div>
         </section>
@@ -64,13 +65,15 @@
             </div>
             <div class="mt-4 bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-sm text-emerald-900 space-y-2">
                 <p id="session-folder-label"><span class="font-semibold">保存先フォルダー:</span> gian\446</p>
+                <p id="study-folder-label"><span class="font-semibold">勉強会資料の保存先:</span> gian\446\benkyoukai</p>
                 <p id="session-url-label"><span class="font-semibold">公開URL例:</span> https://yamahiro1960.github.io/gikai_nankokushi_portal/gian/446/議案第１号：令和７年度一般会計補正予算.pdf</p>
+                <p id="study-url-label"><span class="font-semibold">勉強会資料の公開URL例:</span> https://yamahiro1960.github.io/gikai_nankokushi_portal/gian/446/benkyoukai/R8.2.24議員勉強会資料（当初予算）.pdf</p>
             </div>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
             <h2 class="text-xl font-bold text-gray-700 mb-3">入れるファイルの種類</h2>
-            <p class="text-sm text-gray-600 mb-4">現在の画面では、次の4種類のPDFを想定しています。既定のファイル名は変えずにそのまま配置してください。</p>
+            <p class="text-sm text-gray-600 mb-4">現在の画面では、次の5種類のPDFを想定しています。既定のファイル名は変えずにそのまま配置してください。</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <p class="font-semibold text-gray-800 mb-1">議案</p>
@@ -88,6 +91,10 @@
                     <p class="font-semibold text-gray-800 mb-1">施政方針</p>
                     <p>例: 施政方針（446回）.pdf</p>
                 </div>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 md:col-span-2">
+                    <p class="font-semibold text-gray-800 mb-1">勉強会資料</p>
+                    <p>例: gian\446\benkyoukai\R8.2.24議員勉強会資料（当初予算）.pdf</p>
+                </div>
             </div>
         </section>
 
@@ -97,6 +104,7 @@
                 <li>ローカル作業フォルダー内に gian フォルダーを作成する</li>
                 <li>その中に回次フォルダー（例: 446）を作成する</li>
                 <li>議案・報告・提案理由・施政方針のPDFを、既定ファイル名のまま入れる</li>
+                <li>勉強会資料は benkyoukai サブフォルダーを作成して、その中へ入れる</li>
                 <li>必要に応じて GitHub へコミット・プッシュして GitHub Pages へ反映する</li>
             </ol>
         </section>
@@ -113,14 +121,21 @@
         function updateSessionPreview() {
             const session = document.getElementById("session-select").value;
             const folderText = `gian\\${session}`;
+            const studyFolderText = `gian\\${session}\\benkyoukai`;
             const exampleFile = session === "446"
                 ? "議案第１号：令和７年度一般会計補正予算.pdf"
                 : `議案第１号：第${session}回議会のPDFファイル.pdf`;
+            const studyExampleFile = session === "446"
+                ? "R8.2.24議員勉強会資料（当初予算）.pdf"
+                : `第${session}回議会勉強会資料.pdf`;
             const encodedFile = encodeURIComponent(exampleFile);
+            const encodedStudyFile = encodeURIComponent(studyExampleFile);
 
             document.getElementById("folder-path-preview").innerHTML = `<span class="font-semibold">現在の配置先:</span> ${folderText}`;
             document.getElementById("session-folder-label").innerHTML = `<span class="font-semibold">保存先フォルダー:</span> ${folderText}`;
+            document.getElementById("study-folder-label").innerHTML = `<span class="font-semibold">勉強会資料の保存先:</span> ${studyFolderText}`;
             document.getElementById("session-url-label").innerHTML = `<span class="font-semibold">公開URL例:</span> https://yamahiro1960.github.io/gikai_nankokushi_portal/gian/${session}/${encodedFile}`;
+            document.getElementById("study-url-label").innerHTML = `<span class="font-semibold">勉強会資料の公開URL例:</span> https://yamahiro1960.github.io/gikai_nankokushi_portal/gian/${session}/benkyoukai/${encodedStudyFile}`;
         }
 
         document.getElementById("session-select").addEventListener("change", updateSessionPreview);
