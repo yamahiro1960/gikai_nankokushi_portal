@@ -324,11 +324,38 @@
             updateNavBar();
         }
 
+        async function initAssemblyPageWithUploadedDocs() {
+            const session = getSessionNumber();
+
+            // Supabaseからアップロード済みドキュメントを取得して SESSION_DOCUMENTS にマージ
+            try {
+                const { data, error } = await portalAuth.client
+                    .from("meeting_settings")
+                    .select("setting_payload")
+                    .eq("setting_key", `uploaded_documents_${session}`)
+                    .single();
+
+                if (data && data.setting_payload && data.setting_payload.documents) {
+                    const existingFileNames = new Set(
+                        (SESSION_DOCUMENTS[session] || []).map(d => d.fileName)
+                    );
+                    const newDocs = data.setting_payload.documents.filter(
+                        d => !existingFileNames.has(d.fileName)
+                    );
+                    SESSION_DOCUMENTS[session] = [...(SESSION_DOCUMENTS[session] || []), ...newDocs];
+                }
+            } catch (err) {
+                console.warn("Could not load uploaded documents:", err);
+            }
+
+            initAssemblyPage();
+        }
+
         portalAuth.init({
             requireAuth: true,
             minRole: "viewer",
             returnTo: "assembly-documents.html",
-            onReady: initAssemblyPage
+            onReady: initAssemblyPageWithUploadedDocs
         });
     </script>
 </body>
