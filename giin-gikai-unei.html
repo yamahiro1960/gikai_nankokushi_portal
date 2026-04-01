@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>議員・議会運営 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <header class="bg-cyan-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <span class="text-sm">議員・議会運営</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="index.html" class="text-cyan-700 hover:text-cyan-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>ポータルトップに戻る
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg mb-8">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">議員・議会運営</h1>
+                    <p class="text-cyan-50">議会運営で使う主要ページを、ここからまとめて開けます。</p>
+                </div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: グループメニュー</div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-400 hover:shadow-md transition">
+                <div class="text-blue-400 text-3xl mb-4"><i class="fas fa-file-pdf"></i></div>
+                <h3 class="text-lg font-bold mb-2">議案や資料のアーカイブ</h3>
+                <p class="text-sm text-gray-500 mb-4">回次ごとの議案・報告・勉強会資料を閲覧します。</p>
+                <a href="archive.html" class="inline-block bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100">開く</a>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-pink-500 hover:shadow-md transition">
+                <div class="text-pink-500 text-3xl mb-4"><i class="fas fa-calendar-alt"></i></div>
+                <h3 class="text-lg font-bold mb-2">今議会の資料</h3>
+                <p class="text-sm text-gray-500 mb-4">開催中の議会資料を確認します。</p>
+                <a href="session.html" class="inline-block bg-pink-50 text-pink-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-pink-100">開く</a>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-slate-500 hover:shadow-md transition">
+                <div class="text-slate-500 text-3xl mb-4"><i class="fas fa-users-cog"></i></div>
+                <h3 class="text-lg font-bold mb-2">システム設定</h3>
+                <p class="text-sm text-gray-500 mb-4">議案PDF配置ルールや運用設定を管理します。</p>
+                <a href="system-settings.html" class="inline-block bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-200">開く</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        portalAuth.init({
+            requireAuth: false,
+            minRole: "viewer",
+            returnTo: "giin-gikai-unei.html"
+        });
+    </script>
+</body>
+</html>
