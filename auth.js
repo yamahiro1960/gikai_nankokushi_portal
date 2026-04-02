@@ -215,6 +215,7 @@ window.portalAuth = (() => {
     async function getCurrentLoginMembers() {
         const supabase = ensureClient();
 
+        // is_current / access_role カラムを含む完全クエリを試みる
         const { data, error } = await supabase
             .from("member_directory")
             .select("member_id,full_name,category,position_name,access_role,is_current,email")
@@ -222,18 +223,37 @@ window.portalAuth = (() => {
             .order("category", { ascending: true })
             .order("member_id", { ascending: true });
 
-        if (error) {
-            throw error;
+        if (!error) {
+            return data || [];
         }
 
-        return data || [];
+        // カラムが未追加の場合(DB未マイグレーション)は基本カラムのみでフォールバック
+        console.warn("getCurrentLoginMembers: フォールバッククエリを使用します。DBマイグレーションが必要です。", error);
+
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from("member_directory")
+            .select("member_id,full_name,category,position_name,email")
+            .order("category", { ascending: true })
+            .order("member_id", { ascending: true });
+
+        if (fallbackError) {
+            throw fallbackError;
+        }
+
+        return (fallbackData || []).map((m) => ({
+            ...m,
+            is_current: true,
+            access_role: "使用者",
+        }));
     }
 
     async function memberSelectLogin(memberId) {
         const supabase = ensureClient();
 
         try {
-            const { data: member, error: memberError } = await supabase
+            // is_current/access_role カラムを含む完全クエリを試みる
+            let member = null;
+            const { data: memberFull, error: memberFullError } = await supabase
                 .from("member_directory")
                 .select("member_id,full_name,email,category,access_role,is_current")
                 .eq("member_id", memberId)
@@ -241,8 +261,21 @@ window.portalAuth = (() => {
                 .limit(1)
                 .maybeSingle();
 
-            if (memberError && memberError.code !== "PGRST116") {
-                throw memberError;
+            if (!memberFullError) {
+                member = memberFull;
+            } else {
+                // DBマイグレーション未実施の場合は基本カラムのみでフォールバック
+                console.warn("memberSelectLogin: フォールバッククエリを使用します。", memberFullError);
+                const { data: memberBasic, error: memberBasicError } = await supabase
+                    .from("member_directory")
+                    .select("member_id,full_name,email,category")
+                    .eq("member_id", memberId)
+                    .limit(1)
+                    .maybeSingle();
+                if (memberBasicError && memberBasicError.code !== "PGRST116") {
+                    throw memberBasicError;
+                }
+                member = memberBasic ? { ...memberBasic, is_current: true, access_role: "使用者" } : null;
             }
 
             if (!member) {
