@@ -179,6 +179,27 @@
         let selectedFiles = [];
         let folderName = "";
 
+        function getUploadClient() {
+            if (window.portalAuth && typeof window.portalAuth.ensureClient === "function") {
+                return window.portalAuth.ensureClient();
+            }
+
+            if (
+                window.AUTH_CONFIG &&
+                window.AUTH_CONFIG.supabaseUrl &&
+                window.AUTH_CONFIG.supabaseAnonKey &&
+                window.supabase &&
+                typeof window.supabase.createClient === "function"
+            ) {
+                return window.supabase.createClient(
+                    window.AUTH_CONFIG.supabaseUrl,
+                    window.AUTH_CONFIG.supabaseAnonKey
+                );
+            }
+
+            throw new Error("Supabaseクライアントを初期化できません。ページを再読み込みしてください。");
+        }
+
         function selectFolder() {
             document.getElementById("directory-input").click();
         }
@@ -262,14 +283,18 @@
                 return;
             }
 
-            const supabase = portalAuth.ensureClient();
-
             const uploadBtn = document.getElementById("execute-upload-btn");
             const progressSection = document.getElementById("upload-progress");
             uploadBtn.disabled = true;
             progressSection.classList.remove("hidden");
 
             try {
+                const supabase = getUploadClient();
+
+                if (!supabase || !supabase.storage) {
+                    throw new Error("Supabase Storageが初期化されていません。再読み込み後に再実行してください。");
+                }
+
                 // フォルダー名から回次、年月を抽出
                 const parts = folderName.split("_");
                 const session = parts[0]; // 446
