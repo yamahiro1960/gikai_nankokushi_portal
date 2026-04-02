@@ -123,8 +123,12 @@
 
         <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <h2 class="text-xl font-bold mb-2">Gemini設定（利用者ごと）</h2>
-            <p class="text-sm text-gray-600 mb-4">この画面では、利用者ご自身のGoogle AI Studioアカウントで発行したGemini APIキーを使います。キーはこのブラウザにのみ保存されます。</p>
+            <p class="text-sm text-gray-600 mb-4">この画面では、利用者ご自身のGoogle AI Studioアカウントで発行したGemini APIキーを使います。利用者を選択し、その利用者データにAPIキーを保存します。</p>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-3">
+                    <label for="aiUserSelect" class="text-sm font-semibold text-gray-700">利用者を選択</label>
+                    <select id="aiUserSelect" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"></select>
+                </div>
                 <div class="lg:col-span-2">
                     <label for="geminiApiKey" class="text-sm font-semibold text-gray-700">Gemini APIキー</label>
                     <input id="geminiApiKey" type="password" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="AIza...">
@@ -187,9 +191,14 @@
         const geminiStatus = document.getElementById("geminiStatus");
         const geminiApiKeyInput = document.getElementById("geminiApiKey");
         const geminiModelSelect = document.getElementById("geminiModel");
+        const aiUserSelect = document.getElementById("aiUserSelect");
 
-        const GEMINI_STORAGE_KEY = "nankokuGeminiApiKey";
-        const GEMINI_MODEL_KEY = "nankokuGeminiModel";
+        let dbClient = null;
+        let aiUsers = [];
+
+        function getGeminiSettingKey(memberId) {
+            return `user_gemini_${memberId}`;
+        }
 
         const ordinanceCatalog = [
             { name: "南国市議会基本条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000454.html", tags: ["議会", "議員", "説明責任", "政策立案"] },
@@ -217,10 +226,8 @@
             });
         }
 
-        function getGeminiSettings() {
-            const apiKey = localStorage.getItem(GEMINI_STORAGE_KEY) || "";
-            const model = localStorage.getItem(GEMINI_MODEL_KEY) || "gemini-2.0-flash";
-            return { apiKey, model };
+        function getSelectedUserId() {
+            return (aiUserSelect.value || "").trim();
         }
 
         function maskKey(key) {
@@ -230,8 +237,7 @@
             return `${key.slice(0, 4)}...${key.slice(-4)}`;
         }
 
-        function syncGeminiSettingsView() {
-            const { apiKey, model } = getGeminiSettings();
+        function syncGeminiSettingsView(apiKey, model) {
             geminiApiKeyInput.value = apiKey;
             geminiModelSelect.value = model;
             geminiStatus.textContent = apiKey
@@ -239,8 +245,64 @@
                 : "Gemini APIキーが未設定です。";
         }
 
-        async function callGemini(promptText) {
-            const { apiKey, model } = getGeminiSettings();
+        async function loadAiUsers() {
+            const { data, error } = await dbClient
+                .from("member_directory")
+                .select("member_id,full_name,email,category")
+                .order("category", { ascending: true })
+                .order("full_name", { ascending: true });
+
+            if (error) {
+                geminiStatus.textContent = `利用者一覧の読込に失敗しました: ${error.message}`;
+                return;
+            }
+
+            aiUsers = data || [];
+            aiUserSelect.innerHTML = "";
+
+            if (!aiUsers.length) {
+                const option = document.createElement("option");
+                option.value = "";
+                option.textContent = "利用者データがありません（先に議員・職員登録を実施してください）";
+                aiUserSelect.appendChild(option);
+                return;
+            }
+
+            aiUsers.forEach((user) => {
+                const option = document.createElement("option");
+                option.value = user.member_id;
+                const email = user.email ? ` / ${user.email}` : "";
+                option.textContent = `${user.member_id} | ${user.full_name} (${user.category})${email}`;
+                aiUserSelect.appendChild(option);
+            });
+        }
+
+        async function loadGeminiSettingsForUser(memberId) {
+            if (!memberId) {
+                syncGeminiSettingsView("", "gemini-2.0-flash");
+                return;
+            }
+
+            const settingKey = getGeminiSettingKey(memberId);
+            const { data, error } = await dbClient
+                .from("meeting_settings")
+                .select("setting_payload")
+                .eq("setting_key", settingKey)
+                .maybeSingle();
+
+            if (error) {
+                geminiStatus.textContent = `設定読込に失敗しました: ${error.message}`;
+                syncGeminiSettingsView("", "gemini-2.0-flash");
+                return;
+            }
+
+            const payload = data && data.setting_payload ? data.setting_payload : null;
+            const apiKey = payload && payload.apiKey ? payload.apiKey : "";
+            const model = payload && payload.model ? payload.model : "gemini-2.0-flash";
+            syncGeminiSettingsView(apiKey, model);
+        }
+
+        async function callGemini(promptText, apiKey, model) {
             if (!apiKey) {
                 throw new Error("Gemini APIキーが未設定です。先に設定を保存してください。");
             }
@@ -336,31 +398,84 @@
         });
 
         document.getElementById("saveGeminiSettings").addEventListener("click", () => {
+            if (!dbClient) {
+                geminiStatus.textContent = "DB接続を初期化中です。少し待ってから再実行してください。";
+                return;
+            }
+
+            const memberId = getSelectedUserId();
             const apiKey = geminiApiKeyInput.value.trim();
             const model = geminiModelSelect.value;
+
+            if (!memberId) {
+                geminiStatus.textContent = "利用者を選択してください。";
+                return;
+            }
 
             if (!apiKey) {
                 geminiStatus.textContent = "APIキーを入力してください。";
                 return;
             }
 
-            localStorage.setItem(GEMINI_STORAGE_KEY, apiKey);
-            localStorage.setItem(GEMINI_MODEL_KEY, model);
-            syncGeminiSettingsView();
-            geminiStatus.textContent = `保存しました: ${maskKey(apiKey)} / モデル: ${model}`;
+            const selectedUser = aiUsers.find((item) => item.member_id === memberId);
+            const settingKey = getGeminiSettingKey(memberId);
+
+            dbClient
+                .from("meeting_settings")
+                .upsert({
+                    setting_key: settingKey,
+                    setting_payload: {
+                        memberId,
+                        fullName: selectedUser ? selectedUser.full_name : null,
+                        email: selectedUser ? selectedUser.email : null,
+                        model,
+                        apiKey,
+                        updatedAt: new Date().toISOString()
+                    }
+                }, { onConflict: "setting_key" })
+                .then(({ error }) => {
+                    if (error) {
+                        geminiStatus.textContent = `保存に失敗しました: ${error.message}`;
+                        return;
+                    }
+                    syncGeminiSettingsView(apiKey, model);
+                    geminiStatus.textContent = `保存しました（${memberId}）: ${maskKey(apiKey)} / モデル: ${model}`;
+                });
         });
 
         document.getElementById("clearGeminiSettings").addEventListener("click", () => {
-            localStorage.removeItem(GEMINI_STORAGE_KEY);
-            localStorage.removeItem(GEMINI_MODEL_KEY);
-            syncGeminiSettingsView();
-            geminiStatus.textContent = "Gemini設定を削除しました。";
+            if (!dbClient) {
+                geminiStatus.textContent = "DB接続を初期化中です。少し待ってから再実行してください。";
+                return;
+            }
+
+            const memberId = getSelectedUserId();
+            if (!memberId) {
+                geminiStatus.textContent = "利用者を選択してください。";
+                return;
+            }
+
+            const settingKey = getGeminiSettingKey(memberId);
+            dbClient
+                .from("meeting_settings")
+                .delete()
+                .eq("setting_key", settingKey)
+                .then(({ error }) => {
+                    if (error) {
+                        geminiStatus.textContent = `削除に失敗しました: ${error.message}`;
+                        return;
+                    }
+                    syncGeminiSettingsView("", "gemini-2.0-flash");
+                    geminiStatus.textContent = `Gemini設定を削除しました（${memberId}）。`;
+                });
         });
 
         document.getElementById("testGeminiConnection").addEventListener("click", async () => {
             geminiStatus.textContent = "接続テスト中...";
             try {
-                await callGemini("あなたは接続確認用です。OKとだけ返答してください。");
+                const apiKey = geminiApiKeyInput.value.trim();
+                const model = geminiModelSelect.value;
+                await callGemini("あなたは接続確認用です。OKとだけ返答してください。", apiKey, model);
                 geminiStatus.textContent = "接続テスト成功: Gemini APIに接続できました。";
             } catch (error) {
                 geminiStatus.textContent = `接続テスト失敗: ${error.message}`;
@@ -382,15 +497,21 @@
 
             try {
                 const promptText = buildOrdinancePrompt(selected, question, excerpt);
-                const resultText = await callGemini(promptText);
+                const apiKey = geminiApiKeyInput.value.trim();
+                const model = geminiModelSelect.value;
+                const resultText = await callGemini(promptText, apiKey, model);
                 ordinanceOutput.textContent = resultText;
             } catch (error) {
                 ordinanceOutput.textContent = `Gemini分析に失敗しました: ${error.message}`;
             }
         });
 
+        aiUserSelect.addEventListener("change", async () => {
+            await loadGeminiSettingsForUser(getSelectedUserId());
+        });
+
         populateOrdinanceOptions();
-        syncGeminiSettingsView();
+        syncGeminiSettingsView("", "gemini-2.0-flash");
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
@@ -399,7 +520,12 @@
         portalAuth.init({
             requireAuth: true,
             minRole: "viewer",
-            returnTo: "ai-assistant.html"
+            returnTo: "ai-assistant.html",
+            onReady: async ({ client }) => {
+                dbClient = client;
+                await loadAiUsers();
+                await loadGeminiSettingsForUser(getSelectedUserId());
+            }
         });
     </script>
 </body>
