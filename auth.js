@@ -367,7 +367,7 @@ window.portalAuth = (() => {
                 }
             });
 
-            tokenClient.requestAccessToken({ prompt: "consent" });
+            tokenClient.requestAccessToken({ prompt: "" });
         });
 
         const accessToken = tokenResponse.access_token;
