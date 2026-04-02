@@ -180,30 +180,30 @@
         function buildPdfPath(session, documentInfo) {
             // Supabase Storageからのファイル（storageFolderNameを持つ）
             if (documentInfo.storageFolderName) {
-                const segments = [documentInfo.storageFolderName];
-                if (documentInfo.storageRelativePath) {
-                    segments.push(documentInfo.storageRelativePath);
-                } else if (documentInfo.relativePath) {
-                    segments.push(
-                        documentInfo.relativePath
-                            .split("/")
-                            .filter(Boolean)
-                            .map((segment) => encodeURIComponent(segment))
-                            .join("/")
-                    );
-                } else if (documentInfo.subFolder) {
-                    segments.push(
-                        [documentInfo.subFolder, documentInfo.fileName]
-                            .filter(Boolean)
-                            .map((segment) => encodeURIComponent(segment))
-                            .join("/")
-                    );
-                } else {
-                    segments.push(encodeURIComponent(documentInfo.fileName));
+                // relativePathから「sanizePath」処理と同じ置換で推測したファイルIDでアクセス
+                // DBに保存された元の日本語ファイル名はラベル表示に使用
+                const relativePath = documentInfo.relativePath || `${documentInfo.subFolder || ""}/${documentInfo.fileName}`.replace(/^\//, "");
+                const pathParts = relativePath.split("/");
+                const fileName = pathParts.pop();
+                const fileExtension = fileName.split(".").pop();
+                const sanitized = fileName
+                    .replace(/[^\w\-\.]/g, "_")
+                    .replace(/_{2,}/g, "_")
+                    .replace(/^_+|_+$/g, "");
+                const fileId = `file_*_*.${fileExtension}`;
+                const basePath = pathParts.length > 0
+                    ? `${documentInfo.storageFolderName}/${pathParts.join("/")}/${fileId}`
+                    : `${documentInfo.storageFolderName}/${fileId}`;
+                
+                // Note: Since we don't have the exact timestamp/index of upload, fallback to direct filename attempt first
+                let path = documentInfo.storageFolderName;
+                if (documentInfo.subFolder) {
+                    path += `/` + documentInfo.subFolder;
                 }
-                const path = segments.join("/");
+                path += `/` + fileName.replace(/[^\w\-\.]/g, "_").replace(/_{2,}/g, "_").replace(/^_+|_+$/g, "");
+                
                 // Supabase Storage の public URL
-                return `${window.AUTH_CONFIG.supabaseUrl}/storage/v1/object/public/gian/${path}`;
+                return `${window.AUTH_CONFIG.supabaseUrl}/storage/v1/object/public/gian/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
             }
             
             // 従来のGitHub Pagesから取得（gian/XXX形式）

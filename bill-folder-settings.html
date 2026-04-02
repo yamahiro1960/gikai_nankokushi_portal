@@ -208,6 +208,13 @@
                 .join("/");
         }
 
+        function sanitizePath(path) {
+            return path
+                .replace(/[^\w\-\.\/]/g, "_")
+                .replace(/_{2,}/g, "_")
+                .replace(/^_+|_+$/g, "");
+        }
+
         function selectFolder() {
             document.getElementById("directory-input").click();
         }
@@ -316,8 +323,14 @@
                 for (let i = 0; i < selectedFiles.length; i++) {
                     const file = selectedFiles[i];
                     const relativePath = file.webkitRelativePath.substring(folderName.length + 1);
-                    const storageRelativePath = toStorageRelativePath(relativePath);
-                    const fullPath = `${storageBasePath}/${storageRelativePath}`;
+                    const pathParts = relativePath.split("/");
+                    const fileName = pathParts.pop();
+                    const fileExtension = fileName.split(".").pop();
+                    const fileId = `file_${Date.now()}_${i}.${fileExtension}`;
+                    const storagePath = pathParts.length > 0
+                        ? `${storageBasePath}/${pathParts.join("/")}/${fileId}`
+                        : `${storageBasePath}/${fileId}`;
+                    const fullPath = sanitizePath(storagePath);
 
                     // Supabase Storage にアップロード
                     const { error: uploadError } = await supabase.storage
@@ -325,7 +338,7 @@
                         .upload(fullPath, file, { upsert: true });
 
                     if (uploadError) {
-                        throw new Error(`${relativePath}: ${uploadError.message}`);
+                        throw new Error(`${fileName}: ${uploadError.message}`);
                     }
 
                     uploadedCount++;
@@ -337,7 +350,6 @@
                 // DB に登録情報を保存
                 const docList = selectedFiles.map(file => {
                     const relativePath = file.webkitRelativePath.substring(folderName.length + 1);
-                    const storageRelativePath = toStorageRelativePath(relativePath);
                     const fileName = relativePath.split("/").pop();
                     const typeInfo = inferDocumentType(fileName);
                     return {
@@ -345,7 +357,6 @@
                         fileName: fileName,
                         type: typeInfo.type,
                         relativePath: relativePath,
-                        storageRelativePath: storageRelativePath,
                         subFolder: typeInfo.subFolder
                     };
                 });
