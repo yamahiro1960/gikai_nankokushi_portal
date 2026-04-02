@@ -59,8 +59,10 @@ window.portalAuth = (() => {
             return;
         }
 
+        // ローカルセッションの場合、userはsessionデータ、profileはプロフィールオブジェクト
         const role = profile && profile.role ? profile.role : "viewer";
-        const name = (profile && profile.display_name) || user.email || "ユーザー";
+        const email = (profile && profile.email) || (user && user.email) || "ユーザー";
+        const name = (profile && profile.display_name) || email;
 
         target.innerHTML = `
             <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
@@ -73,8 +75,8 @@ window.portalAuth = (() => {
         const logoutButton = document.getElementById("logoutButton");
         if (logoutButton) {
             logoutButton.addEventListener("click", async () => {
-                const supabase = ensureClient();
-                await supabase.auth.signOut();
+                // ローカルセッションをクリア
+                logout();
                 toLogin(options.returnTo || window.DEFAULT_RETURN_PATH);
             });
         }
@@ -88,6 +90,21 @@ window.portalAuth = (() => {
             returnTo,
             onReady
         } = options;
+
+        // ローカルストレージからセッション情報を取得（パスワードなしログイン用）
+        const localSession = getSession();
+        if (localSession) {
+            const role = localSession.role || "viewer";
+            if (getRoleScore(role) < getMinRoleScore(minRole)) {
+                window.location.href = "access-denied.html";
+                return;
+            }
+
+            if (typeof onReady === "function") {
+                onReady({ session: localSession, profile: { role, email: localSession.email, display_name: localSession.displayName }, role, client: supabase });
+            }
+            return;
+        }
 
         if (isAuthPaused()) {
             // 無認証運用中は profiles テーブルを一切読まない（RLS無限再帰を防止）
@@ -124,8 +141,66 @@ window.portalAuth = (() => {
         }
     }
 
+    async function emailOnlyLogin(email) {
+        const supabase = ensureClient();
+        
+        // メールアドレスの妥当性チェック
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new Error("正しいメールアドレスを入力してください。");
+        }
+
+        try {
+            // profilesテーブルでメールアドレスをチェック
+            const { data: profile, error: profileError } = await supabase
+                .from("profiles")
+                .select("user_id,email,display_name,role")
+                .eq("email", email.toLowerCase())
+                .maybeSingle();
+
+            if (profileError && profileError.code !== "PGRST116") {
+                throw profileError;
+            }
+
+            if (!profile) {
+                throw new Error("このメールアドレスはシステムに登録されていません。");
+            }
+
+            // メールアドレスのみでセッション作成（パスワードなし）
+            // localStorageにセッション情報を保存
+            const sessionData = {
+                email: profile.email,
+                userId: profile.user_id,
+                displayName: profile.display_name,
+                role: profile.role || "viewer",
+                loginTime: new Date().toISOString()
+            };
+
+            localStorage.setItem("portalSession", JSON.stringify(sessionData));
+            return sessionData;
+        } catch (error) {
+            console.error("ログインエラー:", error);
+            throw error;
+        }
+    }
+
+    function getSession() {
+        const sessionStr = localStorage.getItem("portalSession");
+        if (!sessionStr) {
+            return null;
+        }
+        return JSON.parse(sessionStr);
+    }
+
+    function logout() {
+        localStorage.removeItem("portalSession");
+    }
+
     return {
         init,
-        ensureClient
+        ensureClient,
+        emailOnlyLogin,
+        getSession,
+        logout
     };
 })();
