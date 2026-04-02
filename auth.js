@@ -90,6 +90,7 @@ window.portalAuth = (() => {
         } = options;
 
         if (isAuthPaused()) {
+            // 無認証運用中は profiles テーブルを一切読まない（RLS無限再帰を防止）
             if (typeof onReady === "function") {
                 onReady({ session: null, profile: null, role: "viewer", client: supabase });
             }
@@ -107,6 +108,7 @@ window.portalAuth = (() => {
             return;
         }
 
+        // fetchProfile() は認証ユーザーのみ呼び出し
         const profile = await fetchProfile(session.user.id);
         const role = profile && profile.role ? profile.role : "viewer";
 
