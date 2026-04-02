@@ -35,12 +35,14 @@ create table if not exists public.member_positions_master (
 create table if not exists public.member_directory (
     member_id text primary key,
     full_name text not null,
+    is_current boolean not null default true,
     postal_code text,
     address text,
     phone text,
     mobile text,
     category text not null check (category in ('議員', '職員')),
     position_name text,
+    access_role text not null default '使用者' check (access_role in ('管理者', '使用者')),
     email text,
     committee text check (committee in ('産業建設', '教育民生', '総務')),
     committee_role text check (committee_role in ('委員長', '副委員長', '委員')),
@@ -50,6 +52,9 @@ create table if not exists public.member_directory (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+alter table public.member_directory add column if not exists is_current boolean not null default true;
+alter table public.member_directory add column if not exists access_role text not null default '使用者';
 
 alter table public.profiles enable row level security;
 alter table public.meeting_settings enable row level security;
@@ -173,17 +178,77 @@ create unique index if not exists member_directory_email_lower_uniq
 on public.member_directory ((lower(email)))
 where email is not null;
 
--- 区分を profiles.role にマップ
-create or replace function public.map_member_category_to_role(category_value text)
+-- 権限を profiles.role にマップ
+create or replace function public.map_member_access_role_to_profile_role(access_role_value text)
 returns text
 language sql
 immutable
 as $$
     select case
-        when category_value = '議員' then 'editor'
+        when access_role_value = '管理者' then 'admin'
         else 'viewer'
     end;
 $$;
+
+create sequence if not exists public.member_directory_seq start 1;
+
+create or replace function public.normalize_member_position(category_value text, position_value text)
+returns text
+language sql
+immutable
+as $$
+    select case
+        when category_value = '議員' and position_value in ('議長', '副議長', '未') then position_value
+        when category_value = '職員' and position_value in ('局長', '副局長', '未') then position_value
+        when category_value in ('議員', '職員') then '未'
+        else coalesce(position_value, '未')
+    end;
+$$;
+
+create or replace function public.apply_member_directory_rules()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    admin_count integer;
+begin
+    if new.member_id is null or btrim(new.member_id) = '' then
+        new.member_id := 'M' || lpad(nextval('public.member_directory_seq')::text, 4, '0');
+    end if;
+
+    if new.email is not null then
+        new.email := nullif(lower(trim(new.email)), '');
+    end if;
+
+    new.full_name := btrim(new.full_name);
+    new.access_role := coalesce(nullif(new.access_role, ''), '使用者');
+    new.category := coalesce(nullif(new.category, ''), '議員');
+    new.position_name := public.normalize_member_position(new.category, coalesce(nullif(new.position_name, ''), '未'));
+    new.updated_at := now();
+
+    if new.access_role = '管理者' then
+        select count(*)
+          into admin_count
+          from public.member_directory
+         where access_role = '管理者'
+           and member_id <> coalesce(new.member_id, '');
+
+        if admin_count >= 4 then
+            raise exception '管理者は4人までしか登録できません。';
+        end if;
+    end if;
+
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_apply_member_directory_rules on public.member_directory;
+create trigger trg_apply_member_directory_rules
+before insert or update on public.member_directory
+for each row
+execute function public.apply_member_directory_rules();
 
 -- member_directory 変更時に profiles を更新
 create or replace function public.sync_member_directory_to_profiles()
@@ -205,7 +270,7 @@ begin
     set
         email = normalized_email,
         display_name = coalesce(nullif(new.full_name, ''), display_name),
-        role = public.map_member_category_to_role(new.category)
+        role = public.map_member_access_role_to_profile_role(new.access_role)
     where lower(email) = normalized_email;
 
     return new;
@@ -223,17 +288,18 @@ execute function public.sync_member_directory_to_profiles();
 update public.profiles p
 set
     display_name = coalesce(nullif(m.full_name, ''), p.display_name),
-    role = public.map_member_category_to_role(m.category)
+    role = public.map_member_access_role_to_profile_role(m.access_role)
 from public.member_directory m
 where m.email is not null
   and lower(trim(m.email)) = lower(trim(p.email));
 
 insert into public.member_positions_master (position_name, sort_order)
 values
+    ('未', 0),
     ('議長', 10),
     ('副議長', 20),
-    ('事務局長', 30),
-    ('副事務局長', 40),
+    ('局長', 30),
+    ('副局長', 40),
     ('委員長', 50),
     ('副委員長', 60),
     ('委員', 70),

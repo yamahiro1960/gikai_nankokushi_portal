@@ -19,8 +19,11 @@ window.portalAuth = (() => {
     }
 
     function getRoleScore(role) {
-        if (role === "議員" || role === "職員") {
+        if (role === "議員" || role === "職員" || role === "使用者") {
             return window.ROLE_ORDER.viewer || 1;
+        }
+        if (role === "管理者") {
+            return window.ROLE_ORDER.admin || 3;
         }
         return window.ROLE_ORDER[role] || 0;
     }
@@ -56,6 +59,48 @@ window.portalAuth = (() => {
         return data;
     }
 
+    async function hasConfiguredAdmins() {
+        const supabase = ensureClient();
+        const { count, error } = await supabase
+            .from("member_directory")
+            .select("member_id", { count: "exact", head: true })
+            .eq("is_current", true)
+            .eq("access_role", "管理者");
+
+        if (error) {
+            return true;
+        }
+
+        return (count || 0) > 0;
+    }
+
+    async function canAccessWithBootstrap(minRole, role) {
+        if (getRoleScore(role) >= getMinRoleScore(minRole)) {
+            return true;
+        }
+
+        if (minRole !== "admin") {
+            return false;
+        }
+
+        const adminsExist = await hasConfiguredAdmins();
+        return !adminsExist;
+    }
+
+    function createLocalSessionFromMember(member) {
+        return {
+            email: member.email || "",
+            userId: member.member_id,
+            memberId: member.member_id,
+            displayName: member.full_name || member.email || "ユーザー",
+            role: member.access_role === "管理者" ? "admin" : "viewer",
+            accessRole: member.access_role || "使用者",
+            category: member.category || null,
+            isCurrent: !!member.is_current,
+            loginTime: new Date().toISOString()
+        };
+    }
+
     function renderAuthBadge(profile, user, options) {
         const target = document.getElementById(options.authTargetId || "authArea");
         if (!target) {
@@ -64,12 +109,13 @@ window.portalAuth = (() => {
 
         // ローカルセッションの場合、userはsessionデータ、profileはプロフィールオブジェクト
         const role = profile && profile.role ? profile.role : "viewer";
+        const accessRole = (profile && profile.access_role) || (user && user.accessRole) || (role === "admin" ? "管理者" : "使用者");
         const email = (profile && profile.email) || (user && user.email) || "ユーザー";
         const name = (profile && profile.display_name) || email;
 
         target.innerHTML = `
             <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
-                <span style="font-size:12px;background:#eef2ff;color:#4338ca;padding:4px 8px;border-radius:999px;">${role}</span>
+                <span style="font-size:12px;background:#eef2ff;color:#4338ca;padding:4px 8px;border-radius:999px;">${accessRole}</span>
                 <span style="font-size:12px;color:#374151;">${name}</span>
                 <button id="logoutButton" style="font-size:12px;background:#111827;color:#fff;border:0;padding:6px 10px;border-radius:8px;cursor:pointer;">ログアウト</button>
             </div>
@@ -98,7 +144,7 @@ window.portalAuth = (() => {
         const localSession = getSession();
         if (localSession) {
             const role = localSession.role || "viewer";
-            if (getRoleScore(role) < getMinRoleScore(minRole)) {
+            if (!(await canAccessWithBootstrap(minRole, role))) {
                 window.location.href = "access-denied.html";
                 return;
             }
@@ -107,9 +153,10 @@ window.portalAuth = (() => {
                 {
                     role,
                     email: localSession.email,
-                    display_name: localSession.displayName
+                    display_name: localSession.displayName,
+                    access_role: localSession.accessRole || null
                 },
-                { email: localSession.email },
+                { email: localSession.email, accessRole: localSession.accessRole || null },
                 options
             );
 
@@ -120,7 +167,8 @@ window.portalAuth = (() => {
                         role,
                         email: localSession.email,
                         display_name: localSession.displayName,
-                        category: localSession.category || null
+                        category: localSession.category || null,
+                        access_role: localSession.accessRole || null
                     },
                     role,
                     client: supabase
@@ -152,7 +200,7 @@ window.portalAuth = (() => {
         const profile = await fetchProfile(session.user.id);
         const role = profile && profile.role ? profile.role : "viewer";
 
-        if (getRoleScore(role) < getMinRoleScore(minRole)) {
+        if (!(await canAccessWithBootstrap(minRole, role))) {
             window.location.href = "access-denied.html";
             return;
         }
@@ -164,23 +212,32 @@ window.portalAuth = (() => {
         }
     }
 
-    async function emailOnlyLogin(email) {
+    async function getCurrentLoginMembers() {
         const supabase = ensureClient();
-        
-        // メールアドレスの妥当性チェック
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            throw new Error("正しいメールアドレスを入力してください。");
+
+        const { data, error } = await supabase
+            .from("member_directory")
+            .select("member_id,full_name,category,position_name,access_role,is_current,email")
+            .eq("is_current", true)
+            .order("category", { ascending: true })
+            .order("member_id", { ascending: true });
+
+        if (error) {
+            throw error;
         }
 
-        try {
-            const normalizedEmail = email.trim().toLowerCase();
+        return data || [];
+    }
 
-            // まず member_directory を確認（現在の運用データ）
+    async function memberSelectLogin(memberId) {
+        const supabase = ensureClient();
+
+        try {
             const { data: member, error: memberError } = await supabase
                 .from("member_directory")
-                .select("member_id,full_name,email,category")
-                .ilike("email", normalizedEmail)
+                .select("member_id,full_name,email,category,access_role,is_current")
+                .eq("member_id", memberId)
+                .eq("is_current", true)
                 .limit(1)
                 .maybeSingle();
 
@@ -188,44 +245,11 @@ window.portalAuth = (() => {
                 throw memberError;
             }
 
-            // 互換性のため profiles もフォールバック参照
-            let profile = null;
             if (!member) {
-                const { data: profileData, error: profileError } = await supabase
-                    .from("profiles")
-                    .select("user_id,email,display_name,role")
-                    .eq("email", normalizedEmail)
-                    .limit(1)
-                    .maybeSingle();
-
-                if (profileError && profileError.code !== "PGRST116") {
-                    throw profileError;
-                }
-                profile = profileData;
+                throw new Error("選択した利用者でログインできません。");
             }
 
-            if (!member && !profile) {
-                throw new Error("このメールアドレスはシステムに登録されていません。");
-            }
-
-            // パスワードなしログイン用セッションを保存
-            const sessionData = member
-                ? {
-                    email: member.email || normalizedEmail,
-                    userId: member.member_id,
-                    displayName: member.full_name || member.email || normalizedEmail,
-                    role: "viewer",
-                    category: member.category || null,
-                    loginTime: new Date().toISOString()
-                }
-                : {
-                    email: profile.email,
-                    userId: profile.user_id,
-                    displayName: profile.display_name || profile.email,
-                    role: profile.role || "viewer",
-                    category: null,
-                    loginTime: new Date().toISOString()
-                };
+            const sessionData = createLocalSessionFromMember(member);
 
             localStorage.setItem("portalSession", JSON.stringify(sessionData));
             return sessionData;
@@ -262,7 +286,8 @@ window.portalAuth = (() => {
     return {
         init,
         ensureClient,
-        emailOnlyLogin,
+        getCurrentLoginMembers,
+        memberSelectLogin,
         getSession,
         logout,
         generateGreeting

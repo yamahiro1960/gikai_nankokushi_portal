@@ -39,19 +39,29 @@
 
         <section class="bg-indigo-50 border border-indigo-200 rounded-xl shadow-sm p-5 mb-6">
             <h2 class="text-base font-bold text-indigo-900 mb-2">AI画面との連携</h2>
-            <p class="text-sm text-indigo-900">この画面で登録したデータは、AI政策アシスタントの「利用者を選択」一覧に表示されます。Gemini APIキーもこの画面で利用者ごとに設定できます。</p>
+            <p class="text-sm text-indigo-900">この画面で登録した現職のデータは、ログイン画面の利用者一覧に表示されます。Gemini APIキーもこの画面で利用者ごとに設定できます。</p>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mb-6">
             <h2 class="text-xl font-bold mb-4 text-gray-700">登録フォーム</h2>
             <form id="member-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="text-sm font-semibold text-gray-700">ID（ユニーク）</label>
-                    <input id="member_id" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: G001">
+                <input id="member_id" type="hidden">
+                <div class="md:col-span-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3">
+                    <input id="is_current" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    <label for="is_current" class="text-sm font-semibold text-gray-700">現職</label>
+                    <span class="text-xs text-gray-500">チェックが入っている利用者だけログイン画面の一覧に表示されます。</span>
                 </div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">氏名</label>
                     <input id="full_name" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 南国 太郎">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">権限</label>
+                    <select id="access_role" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="使用者" selected>使用者</option>
+                        <option value="管理者">管理者</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">管理者は最大4人までです。</p>
                 </div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">〒</label>
@@ -79,10 +89,11 @@
                 <div>
                     <label class="text-sm font-semibold text-gray-700">役職</label>
                     <select id="position_name" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                        <option value="">未設定</option>
+                        <option value="未">未</option>
                         <option value="議長">議長</option>
                         <option value="副議長">副議長</option>
                     </select>
+                    <p class="text-xs text-gray-500 mt-1">区分に応じて選択肢が切り替わります。</p>
                 </div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">Gmailアドレス（必須）</label>
@@ -147,8 +158,9 @@
                 <table class="w-full text-sm">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="text-left p-2 border">ID</th>
+                            <th class="text-left p-2 border">現職</th>
                             <th class="text-left p-2 border">氏名</th>
+                            <th class="text-left p-2 border">権限</th>
                             <th class="text-left p-2 border">区分</th>
                             <th class="text-left p-2 border">役職</th>
                             <th class="text-left p-2 border">委員会</th>
@@ -210,6 +222,14 @@
     <script>
         let dbClient = null;
         const GEMINI_MODEL = "gemini-1.5-flash-latest";
+        const POSITION_OPTIONS = {
+            "議員": ["未", "議長", "副議長"],
+            "職員": ["未", "局長", "副局長"]
+        };
+        const LEGACY_POSITION_MAP = {
+            "事務局長": "局長",
+            "副事務局長": "副局長"
+        };
 
         function getGeminiSettingKey(memberId) {
             return `user_gemini_${memberId}`;
@@ -219,28 +239,81 @@
             return flag ? "YES" : "NO";
         }
 
+        function normalizePosition(category, positionName) {
+            const normalized = LEGACY_POSITION_MAP[positionName] || positionName || "未";
+            const candidates = POSITION_OPTIONS[category] || POSITION_OPTIONS["議員"];
+            return candidates.includes(normalized) ? normalized : "未";
+        }
+
+        function renderPositionOptions(category, selectedValue = "未") {
+            const positionSelect = document.getElementById("position_name");
+            const options = POSITION_OPTIONS[category] || POSITION_OPTIONS["議員"];
+            const normalizedValue = normalizePosition(category, selectedValue);
+
+            positionSelect.innerHTML = options
+                .map((value) => `<option value="${value}" ${value === normalizedValue ? "selected" : ""}>${value}</option>`)
+                .join("");
+        }
+
+        async function getNextMemberId() {
+            const { data, error } = await dbClient
+                .from("member_directory")
+                .select("member_id")
+                .order("member_id", { ascending: false });
+
+            if (error) {
+                throw error;
+            }
+
+            const maxNumber = (data || []).reduce((maxValue, item) => {
+                const match = /(\d+)$/.exec(item.member_id || "");
+                const current = match ? Number(match[1]) : 0;
+                return Math.max(maxValue, current);
+            }, 0);
+
+            return `M${String(maxNumber + 1).padStart(4, "0")}`;
+        }
+
+        async function getAdminCount(excludeMemberId = "") {
+            const { data, error } = await dbClient
+                .from("member_directory")
+                .select("member_id")
+                .eq("access_role", "管理者");
+
+            if (error) {
+                throw error;
+            }
+
+            return (data || []).filter((item) => item.member_id !== excludeMemberId).length;
+        }
+
         function clearForm() {
             document.getElementById("member-form").reset();
-            document.getElementById("member_id").readOnly = false;
+            document.getElementById("member_id").value = "";
+            document.getElementById("is_current").checked = true;
+            document.getElementById("access_role").value = "使用者";
+            document.getElementById("category").value = "議員";
+            renderPositionOptions("議員", "未");
             document.getElementById("gemini_api_key").value = "";
         }
 
         async function setFormValues(item) {
             document.getElementById("member_id").value = item.member_id || "";
+            document.getElementById("is_current").checked = item.is_current !== false;
             document.getElementById("full_name").value = item.full_name || "";
             document.getElementById("postal_code").value = item.postal_code || "";
             document.getElementById("address").value = item.address || "";
             document.getElementById("phone").value = item.phone || "";
             document.getElementById("mobile").value = item.mobile || "";
             document.getElementById("category").value = item.category || "議員";
-            document.getElementById("position_name").value = item.position_name || "";
+            document.getElementById("access_role").value = item.access_role || "使用者";
+            renderPositionOptions(item.category || "議員", item.position_name || "未");
             document.getElementById("email").value = item.email || "";
             document.getElementById("committee").value = item.committee || "";
             document.getElementById("committee_role").value = item.committee_role || "";
             document.getElementById("is_giun").value = item.is_giun ? "true" : "false";
             document.getElementById("is_editorial_committee").value = item.is_editorial_committee ? "true" : "false";
             document.getElementById("notes").value = item.notes || "";
-            document.getElementById("member_id").readOnly = true;
 
             const settingKey = getGeminiSettingKey(item.member_id);
             const { data, error } = await dbClient
@@ -259,7 +332,7 @@
         async function loadMembers() {
             const { data, error } = await dbClient
                 .from("member_directory")
-                .select("member_id,full_name,category,position_name,committee,is_giun,is_editorial_committee")
+                .select("member_id,full_name,is_current,access_role,category,position_name,committee,is_giun,is_editorial_committee")
                 .order("member_id", { ascending: true });
 
             const tbody = document.getElementById("member-list");
@@ -273,8 +346,9 @@
             (data || []).forEach((item) => {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td class="p-2 border">${item.member_id || ""}</td>
+                    <td class="p-2 border">${item.is_current ? "現職" : "退任"}</td>
                     <td class="p-2 border">${item.full_name || ""}</td>
+                    <td class="p-2 border">${item.access_role || "使用者"}</td>
                     <td class="p-2 border">${item.category || ""}</td>
                     <td class="p-2 border">${item.position_name || ""}</td>
                     <td class="p-2 border">${item.committee || ""}</td>
@@ -335,15 +409,22 @@
         async function saveMember(event) {
             event.preventDefault();
 
+            const currentMemberId = document.getElementById("member_id").value.trim();
+            const category = document.getElementById("category").value;
+            const positionName = normalizePosition(category, document.getElementById("position_name").value);
+            const accessRole = document.getElementById("access_role").value;
+
             const payload = {
-                member_id: document.getElementById("member_id").value.trim(),
+                member_id: currentMemberId,
                 full_name: document.getElementById("full_name").value.trim(),
+                is_current: document.getElementById("is_current").checked,
                 postal_code: document.getElementById("postal_code").value.trim() || null,
                 address: document.getElementById("address").value.trim() || null,
                 phone: document.getElementById("phone").value.trim() || null,
                 mobile: document.getElementById("mobile").value.trim() || null,
-                category: document.getElementById("category").value,
-                position_name: document.getElementById("position_name").value || null,
+                category,
+                position_name: positionName,
+                access_role: accessRole,
                 email: document.getElementById("email").value.trim() || null,
                 committee: document.getElementById("committee").value || null,
                 committee_role: document.getElementById("committee_role").value || null,
@@ -354,8 +435,7 @@
             };
 
             if (!payload.member_id) {
-                document.getElementById("form-message").textContent = "IDを入力してください。";
-                return;
+                payload.member_id = await getNextMemberId();
             }
 
             if (!payload.email) {
@@ -366,6 +446,14 @@
             if (!/@gmail\.com$/i.test(payload.email)) {
                 document.getElementById("form-message").textContent = "Gmailアドレス（@gmail.com）を入力してください。";
                 return;
+            }
+
+            if (payload.access_role === "管理者") {
+                const adminCount = await getAdminCount(currentMemberId);
+                if (adminCount >= 4) {
+                    document.getElementById("form-message").textContent = "管理者は4人までしか登録できません。";
+                    return;
+                }
             }
 
             const { error } = await dbClient
@@ -439,14 +527,18 @@
 
         document.getElementById("member-form").addEventListener("submit", saveMember);
         document.getElementById("clear-form").addEventListener("click", clearForm);
+        document.getElementById("category").addEventListener("change", (event) => {
+            renderPositionOptions(event.target.value, "未");
+        });
 
         portalAuth.init({
             requireAuth: true,
-            minRole: "viewer",
+            minRole: "admin",
             authTargetId: "authArea",
             returnTo: "member-directory-settings.html",
             onReady: async ({ client }) => {
                 dbClient = client;
+                clearForm();
                 await loadMembers();
             }
         });
