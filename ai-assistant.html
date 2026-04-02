@@ -165,20 +165,40 @@
         }
 
         async function loadGeminiSettingsFromSession(session) {
-            if (!session || !session.user || !session.user.email) {
+            if (!session) {
                 syncGeminiSettingsView("", "gemini-1.5-flash-latest");
                 return;
             }
-            const email = session.user.email;
-            const { data: member, error: memberError } = await dbClient
-                .from("member_directory")
-                .select("member_id")
-                .eq("email", email)
-                .maybeSingle();
+
+            const memberId = session.memberId || session.userId || "";
+            const email = (session.email || (session.user && session.user.email) || "").trim().toLowerCase();
+
+            let member = null;
+            let memberError = null;
+
+            if (memberId) {
+                const result = await dbClient
+                    .from("member_directory")
+                    .select("member_id")
+                    .eq("member_id", memberId)
+                    .maybeSingle();
+                member = result.data;
+                memberError = result.error;
+            } else if (email) {
+                const result = await dbClient
+                    .from("member_directory")
+                    .select("member_id")
+                    .eq("email", email)
+                    .maybeSingle();
+                member = result.data;
+                memberError = result.error;
+            }
+
             if (memberError || !member) {
                 syncGeminiSettingsView("", "gemini-1.5-flash-latest");
                 return;
             }
+
             const settingKey = getGeminiSettingKey(member.member_id);
             const { data, error } = await dbClient
                 .from("meeting_settings")
