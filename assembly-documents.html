@@ -364,6 +364,12 @@
                     .select("setting_payload")
                     .like("setting_key", `uploaded_documents_${session}_%`);
 
+                if (error) {
+                    console.warn("Could not load uploaded documents (policy error):", error);
+                    initAssemblyPage();
+                    return;
+                }
+
                 if (data && data.length > 0) {
                     for (const record of data) {
                         const payload = record.setting_payload;
@@ -386,7 +392,7 @@
                     }
                 }
             } catch (err) {
-                console.warn("Could not load uploaded documents:", err);
+                console.warn("Could not load uploaded documents (exception):", err);
             }
 
             initAssemblyPage();
