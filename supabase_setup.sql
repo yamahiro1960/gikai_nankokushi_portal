@@ -145,22 +145,6 @@ drop policy if exists member_directory_delete_anon_temp on public.member_directo
 create policy member_directory_delete_anon_temp on public.member_directory
 for delete to anon using (true);
 
-insert into public.meeting_settings (setting_key, setting_payload)
-values (
-    'current',
-    jsonb_build_object(
-        '定例会名', '令和8（2026）年第1回定例会',
-        '開始日', '2026-03-23',
-        '終了日', '2026-03-29',
-        '会場', '南国市議会議場',
-        '議案数', '12',
-        '報告数', '3',
-        '議発数', '1',
-        'ステータス', '進行中'
-    )
-)
-on conflict (setting_key) do nothing;
-
 insert into public.member_positions_master (position_name, sort_order)
 values
     ('議長', 10),
