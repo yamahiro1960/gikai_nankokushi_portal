@@ -239,11 +239,31 @@
 
         document.getElementById("directory-input").addEventListener("change", handleFolderSelect);
 
+        function isPdfFile(file) {
+            const fileName = (file && file.name ? file.name : "").toLowerCase();
+            return fileName.endsWith(".pdf") || file.type === "application/pdf";
+        }
+
         function handleFolderSelect(event) {
-            const files = Array.from(event.target.files).filter(f => f.type === "application/pdf");
+            const allFiles = Array.from(event.target.files || []);
+            const files = allFiles.filter((file) => isPdfFile(file));
+            const nonPdfFiles = allFiles.filter((file) => !isPdfFile(file));
             
-            if (files.length === 0) {
-                showUploadMessage("PDFファイルが見つかりません", "error");
+            if (allFiles.length === 0) {
+                showUploadMessage("ファイルが見つかりません", "error");
+                return;
+            }
+
+            if (nonPdfFiles.length > 0) {
+                const examples = nonPdfFiles
+                    .slice(0, 5)
+                    .map((file) => file.webkitRelativePath || file.name)
+                    .join("\n- ");
+                showUploadMessage(
+                    `PDF以外のファイルが含まれています。\nPDFのみアップロード可能です。\n\n対象ファイル:\n- ${examples}${nonPdfFiles.length > 5 ? "\n- ..." : ""}`,
+                    "error"
+                );
+                resetUploadForm();
                 return;
             }
 
@@ -266,6 +286,7 @@
             selectedFiles = files;
             displayFolderInfo();
             displayFilePreview();
+            showUploadMessage("PDFファイルのみを確認しました。実行でアップロードできます。", "success");
         }
 
         function displayFolderInfo() {
