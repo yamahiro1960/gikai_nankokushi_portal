@@ -296,17 +296,44 @@
             ].join("\n");
         }
 
-        function makePlanText() {
+        function buildPolicyPlanPrompt() {
             const topic = document.getElementById("topic").value.trim() || "政策テーマ";
             const target = document.getElementById("target").value.trim() || "対象住民";
             const budget = document.getElementById("budget").value || "0";
             const period = document.getElementById("period").value;
 
-            return `政策案タイトル: ${topic} 実行プラン\n\n1. 目的\n${target}に対して、実効性の高い支援を${period}で実装する。\n\n2. 施策の骨子\n・データに基づく対象者抽出\n・申請手続きのオンライン化\n・関係課横断での伴走支援\n\n3. 予算計画\n・上限予算: ${budget}万円\n・初期費用と運用費を分離して管理\n\n4. KPI案\n・利用率\n・満足度\n・コスト対効果\n\n5. 議会質問の観点\n・事業効果の測定タイミング\n・既存事業との統合可能性\n・翌年度展開の判断基準`;
+            return [
+                "あなたは自治体政策立案に強い議会向け政策アドバイザーです。",
+                "次の構成で、実務に使える政策案を日本語で作成してください。",
+                "見出しは必ず次の順番で出力してください。",
+                "1. 政策案タイトル",
+                "2. 目的",
+                "3. 施策の骨子（3〜5項目）",
+                "4. 実施ステップ（初期3か月、年度内、次年度）",
+                "5. 予算計画（概算内訳）",
+                "6. KPI案（定量3項目以上）",
+                "7. 議会質問の観点",
+                "8. 想定リスクと対応策",
+                "抽象論ではなく、自治体実務で実施できる具体性を優先してください。",
+                "不確実な点は『要確認』と明記してください。",
+                "",
+                `政策テーマ: ${topic}`,
+                `対象: ${target}`,
+                `予算上限（万円）: ${budget}`,
+                `実施期間: ${period}`
+            ].join("\n");
         }
 
-        document.getElementById("generatePlan").addEventListener("click", () => {
-            output.textContent = makePlanText();
+        document.getElementById("generatePlan").addEventListener("click", async () => {
+            output.textContent = "Geminiで政策案を生成中です...";
+
+            try {
+                const promptText = buildPolicyPlanPrompt();
+                const resultText = await callGemini(promptText, currentApiKey, currentModel);
+                output.textContent = resultText;
+            } catch (error) {
+                output.textContent = `政策案の生成に失敗しました: ${error.message}`;
+            }
         });
 
         document.getElementById("runOrdinanceAnalysis").addEventListener("click", async () => {
