@@ -67,12 +67,15 @@ drop policy if exists profiles_insert_own on public.profiles;
 drop policy if exists profiles_update_admin_only on public.profiles;
 
 -- 認証ユーザー向けシンプルなポリシー（auth.uid()が not null の場合のみ）
+drop policy if exists profiles_select_authenticated on public.profiles;
 create policy profiles_select_authenticated on public.profiles
 for select using (auth.uid() is not null);
 
+drop policy if exists profiles_insert_authenticated on public.profiles;
 create policy profiles_insert_authenticated on public.profiles
 for insert with check (auth.uid() is not null and auth.uid() = user_id);
 
+drop policy if exists profiles_update_authenticated on public.profiles;
 create policy profiles_update_authenticated on public.profiles
 for update using (auth.uid() is not null);
 
