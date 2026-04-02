@@ -145,6 +145,89 @@ drop policy if exists member_directory_delete_anon_temp on public.member_directo
 create policy member_directory_delete_anon_temp on public.member_directory
 for delete to anon using (true);
 
+-- ----------------------------------------------------------------------
+-- member_directory -> profiles 同期
+-- 目的:
+-- 1) member_directory の氏名・区分(議員/職員)を profiles へ反映
+-- 2) メール表記揺れ（大文字・前後空白）を吸収
+--
+-- 注意:
+-- profiles.user_id は auth.users と連動するため、
+-- member_directory から新規 profiles 行は作成せず「既存 profiles のみ更新」する。
+-- ----------------------------------------------------------------------
+
+-- メール正規化（小文字・trim）
+update public.member_directory
+set email = lower(trim(email))
+where email is not null and email <> lower(trim(email));
+
+update public.profiles
+set email = lower(trim(email))
+where email is not null and email <> lower(trim(email));
+
+-- 大文字小文字を無視した一意制約
+create unique index if not exists profiles_email_lower_uniq
+on public.profiles ((lower(email)));
+
+create unique index if not exists member_directory_email_lower_uniq
+on public.member_directory ((lower(email)))
+where email is not null;
+
+-- 区分を profiles.role にマップ
+create or replace function public.map_member_category_to_role(category_value text)
+returns text
+language sql
+immutable
+as $$
+    select case
+        when category_value = '議員' then 'editor'
+        else 'viewer'
+    end;
+$$;
+
+-- member_directory 変更時に profiles を更新
+create or replace function public.sync_member_directory_to_profiles()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    normalized_email text;
+begin
+    normalized_email := nullif(lower(trim(new.email)), '');
+
+    if normalized_email is null then
+        return new;
+    end if;
+
+    update public.profiles
+    set
+        email = normalized_email,
+        display_name = coalesce(nullif(new.full_name, ''), display_name),
+        role = public.map_member_category_to_role(new.category)
+    where lower(email) = normalized_email;
+
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_sync_member_directory_to_profiles on public.member_directory;
+create trigger trg_sync_member_directory_to_profiles
+after insert or update of email, full_name, category
+on public.member_directory
+for each row
+execute function public.sync_member_directory_to_profiles();
+
+-- 初回バックフィル（既存データを一括同期）
+update public.profiles p
+set
+    display_name = coalesce(nullif(m.full_name, ''), p.display_name),
+    role = public.map_member_category_to_role(m.category)
+from public.member_directory m
+where m.email is not null
+  and lower(trim(m.email)) = lower(trim(p.email));
+
 insert into public.member_positions_master (position_name, sort_order)
 values
     ('議長', 10),
