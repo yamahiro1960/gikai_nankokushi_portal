@@ -158,7 +158,10 @@ window.portalAuth = (() => {
                 .eq("email", email.toLowerCase())
                 .maybeSingle();
 
+            console.log("Email query result:", { email: email.toLowerCase(), profile, profileError });
+
             if (profileError && profileError.code !== "PGRST116") {
+                console.error("Profile query error:", profileError);
                 throw profileError;
             }
 
