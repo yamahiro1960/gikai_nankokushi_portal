@@ -313,26 +313,30 @@
             inkStrokes = [];
             currentInkStroke = null;
             redrawInkCanvas();
+            updateInkCanvasVisibility();
+        }
+
+        function updateInkCanvasVisibility() {
+            const canvas = getInkCanvas();
+            const toolbar = document.getElementById("ink-toolbar");
+            const hasActiveDocument = !!currentNoteDocName;
+            const hasInk = inkStrokes.length > 0;
+
+            toolbar.classList.toggle("hidden", !hasActiveDocument);
+            canvas.classList.toggle("hidden", !(hasActiveDocument && (inkEnabled || hasInk)));
+            canvas.style.pointerEvents = inkEnabled ? "auto" : "none";
         }
 
         function setInkEnabled(enabled) {
             inkEnabled = !!enabled;
-            const canvas = getInkCanvas();
-            const toolbar = document.getElementById("ink-toolbar");
             const btn = document.getElementById("ink-toggle-btn");
-            if (currentNoteDocName) {
-                toolbar.classList.remove("hidden");
-            } else {
-                toolbar.classList.add("hidden");
-            }
-            canvas.classList.toggle("hidden", !inkEnabled);
-            canvas.style.pointerEvents = inkEnabled ? "auto" : "none";
             btn.innerHTML = inkEnabled
                 ? '<i class="fas fa-pen mr-1"></i>手書きモード ON'
                 : '<i class="fas fa-pen mr-1"></i>手書きモード OFF';
             btn.className = inkEnabled
                 ? "px-3 py-2 rounded-lg border border-cyan-500 text-white bg-cyan-600 hover:bg-cyan-700 font-semibold"
                 : "px-3 py-2 rounded-lg border border-cyan-300 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 font-semibold";
+            updateInkCanvasVisibility();
             redrawInkCanvas();
         }
 
@@ -395,7 +399,7 @@
         async function loadInkNote(sessionId, documentInfo) {
             resetInkData();
             setInkStatus("手書き読込中...");
-            document.getElementById("ink-toolbar").classList.remove("hidden");
+            updateInkCanvasVisibility();
 
             const memberId = getNoteMemberId();
             if (!memberId) {
@@ -416,6 +420,7 @@
                 if (error) throw error;
 
                 inkStrokes = data && Array.isArray(data.ink_payload) ? data.ink_payload : [];
+                updateInkCanvasVisibility();
                 redrawInkCanvas();
 
                 if (data && data.updated_at) {
@@ -473,6 +478,7 @@
         function undoInkStroke() {
             if (inkStrokes.length === 0) return;
             inkStrokes.pop();
+            updateInkCanvasVisibility();
             redrawInkCanvas();
             setInkStatus("未保存");
         }
@@ -617,6 +623,8 @@
                 releasePdfObjectUrl();
                 document.getElementById("pdf-viewer").src = "about:blank";
                 document.getElementById("pdf-path-label").textContent = "";
+                currentNoteDocName = null;
+                currentNoteSessionId = null;
                 resetInkData();
                 setInkEnabled(false);
                 setInkStatus("");
@@ -642,6 +650,8 @@
             releasePdfObjectUrl();
             document.getElementById("pdf-viewer").src = "about:blank";
             document.getElementById("pdf-path-label").textContent = "";
+            currentNoteDocName = null;
+            currentNoteSessionId = null;
             resetInkData();
             setInkEnabled(false);
             setInkStatus("");
