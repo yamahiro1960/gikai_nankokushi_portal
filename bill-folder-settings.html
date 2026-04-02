@@ -262,6 +262,8 @@
                 return;
             }
 
+            const supabase = portalAuth.ensureClient();
+
             const uploadBtn = document.getElementById("execute-upload-btn");
             const progressSection = document.getElementById("upload-progress");
             uploadBtn.disabled = true;
@@ -284,7 +286,7 @@
                     const fullPath = `${storagePath}/${relativePath}`;
 
                     // Supabase Storage にアップロード
-                    const { error: uploadError } = await portalAuth.client.storage
+                    const { error: uploadError } = await supabase.storage
                         .from("gian")
                         .upload(fullPath, file, { upsert: true });
 
@@ -312,7 +314,7 @@
                     };
                 });
 
-                const { error: dbError } = await portalAuth.client
+                const { error: dbError } = await supabase
                     .from("meeting_settings")
                     .upsert({
                         setting_key: `uploaded_documents_${session}_${folderName}`,
