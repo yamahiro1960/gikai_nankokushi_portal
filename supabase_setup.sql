@@ -56,29 +56,20 @@ alter table public.meeting_settings enable row level security;
 alter table public.member_positions_master enable row level security;
 alter table public.member_directory enable row level security;
 
--- profiles ポリシー
+-- profiles ポリシー: 認証ユーザー向けのみ
 drop policy if exists profiles_select_own_or_admin on public.profiles;
-create policy profiles_select_own_or_admin on public.profiles
-for select using (
-    auth.uid() = user_id
-    or exists (
-        select 1 from public.profiles p
-        where p.user_id = auth.uid() and p.role = 'admin'
-    )
-);
-
 drop policy if exists profiles_insert_own on public.profiles;
-create policy profiles_insert_own on public.profiles
-for insert with check (auth.uid() = user_id);
-
 drop policy if exists profiles_update_admin_only on public.profiles;
-create policy profiles_update_admin_only on public.profiles
-for update using (
-    exists (
-        select 1 from public.profiles p
-        where p.user_id = auth.uid() and p.role = 'admin'
-    )
-);
+
+-- 認証ユーザー向けシンプルなポリシー（auth.uid()が not null の場合のみ）
+create policy profiles_select_authenticated on public.profiles
+for select using (auth.uid() is not null);
+
+create policy profiles_insert_authenticated on public.profiles
+for insert with check (auth.uid() is not null and auth.uid() = user_id);
+
+create policy profiles_update_authenticated on public.profiles
+for update using (auth.uid() is not null);
 
 -- meeting_settings ポリシー（認証ユーザー向け）
 drop policy if exists meeting_settings_select_authenticated on public.meeting_settings;
