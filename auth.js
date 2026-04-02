@@ -35,6 +35,10 @@ window.portalAuth = (() => {
         return getRoleScore(minRole);
     }
 
+    function normalizeEmail(value) {
+        return (value || "").trim().toLowerCase();
+    }
+
     function isAuthPaused() {
         return !!(window.AUTH_CONFIG && window.AUTH_CONFIG.authPaused);
     }
@@ -87,7 +91,7 @@ window.portalAuth = (() => {
         return !adminsExist;
     }
 
-    function createLocalSessionFromMember(member) {
+    function createLocalSessionFromMember(member, googleInfo = null) {
         return {
             email: member.email || "",
             userId: member.member_id,
@@ -97,6 +101,8 @@ window.portalAuth = (() => {
             accessRole: member.access_role || "使用者",
             category: member.category || null,
             isCurrent: !!member.is_current,
+            googleEmail: googleInfo && googleInfo.email ? googleInfo.email : null,
+            googleAccessToken: googleInfo && googleInfo.accessToken ? googleInfo.accessToken : null,
             loginTime: new Date().toISOString()
         };
     }
@@ -292,6 +298,109 @@ window.portalAuth = (() => {
         }
     }
 
+    async function findCurrentMemberByEmail(email) {
+        const supabase = ensureClient();
+        const normalizedEmail = normalizeEmail(email);
+
+        if (!normalizedEmail) {
+            return null;
+        }
+
+        const { data: memberFull, error: memberFullError } = await supabase
+            .from("member_directory")
+            .select("member_id,full_name,email,category,access_role,is_current")
+            .eq("email", normalizedEmail)
+            .eq("is_current", true)
+            .limit(1)
+            .maybeSingle();
+
+        if (!memberFullError) {
+            return memberFull;
+        }
+
+        // DB マイグレーション未実施時フォールバック
+        const { data: memberBasic, error: memberBasicError } = await supabase
+            .from("member_directory")
+            .select("member_id,full_name,email,category")
+            .eq("email", normalizedEmail)
+            .limit(1)
+            .maybeSingle();
+
+        if (memberBasicError && memberBasicError.code !== "PGRST116") {
+            throw memberBasicError;
+        }
+
+        return memberBasic ? { ...memberBasic, is_current: true, access_role: "使用者" } : null;
+    }
+
+    async function googleLogin() {
+        if (!window.AUTH_CONFIG || !window.AUTH_CONFIG.googleEnabled) {
+            throw new Error("Googleログインが無効です。auth-config.js を確認してください。");
+        }
+
+        const clientId = (window.AUTH_CONFIG.googleClientId || "").trim();
+        if (!clientId) {
+            throw new Error("Google Client ID が未設定です。auth-config.js を確認してください。");
+        }
+
+        if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+            throw new Error("Google Identity Services が読み込まれていません。");
+        }
+
+        const scopes = (window.AUTH_CONFIG.googleScopes || [
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/calendar.readonly"
+        ]).join(" ");
+
+        const tokenResponse = await new Promise((resolve, reject) => {
+            const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: scopes,
+                callback: (response) => {
+                    if (!response || response.error) {
+                        reject(new Error("Google認証に失敗しました。"));
+                        return;
+                    }
+                    resolve(response);
+                }
+            });
+
+            tokenClient.requestAccessToken({ prompt: "consent" });
+        });
+
+        const accessToken = tokenResponse.access_token;
+        const profileResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        });
+
+        if (!profileResponse.ok) {
+            throw new Error("Googleプロフィールの取得に失敗しました。");
+        }
+
+        const googleProfile = await profileResponse.json();
+        const email = normalizeEmail(googleProfile.email);
+        if (!email) {
+            throw new Error("Googleアカウントのメールアドレスが取得できませんでした。");
+        }
+
+        const member = await findCurrentMemberByEmail(email);
+        if (!member) {
+            throw new Error("現職利用者として登録されている Google アカウントでログインしてください。");
+        }
+
+        const sessionData = createLocalSessionFromMember(member, {
+            email,
+            accessToken
+        });
+
+        localStorage.setItem("portalSession", JSON.stringify(sessionData));
+        return sessionData;
+    }
+
     function getSession() {
         const sessionStr = localStorage.getItem("portalSession");
         if (!sessionStr) {
@@ -321,6 +430,7 @@ window.portalAuth = (() => {
         ensureClient,
         getCurrentLoginMembers,
         memberSelectLogin,
+        googleLogin,
         getSession,
         logout,
         generateGreeting

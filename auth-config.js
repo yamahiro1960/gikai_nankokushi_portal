@@ -2,7 +2,16 @@ window.AUTH_CONFIG = {
     supabaseUrl: "https://gnnfzimhfizbfhvwuzbf.supabase.co",
     supabaseAnonKey: "sb_publishable__SRHapM6Zzz01tC--VG9YQ_-xN3re0Q",
     googleEnabled: true,
-    authPaused: false
+    authPaused: false,
+    // Google Cloud Console で発行した OAuth 2.0 Client ID を設定
+    googleClientId: "",
+    // 必要最小限の読み取りスコープ（将来 Sheets 連携時に追加）
+    googleScopes: [
+        "openid",
+        "email",
+        "profile",
+        "https://www.googleapis.com/auth/calendar.readonly"
+    ]
 };
 
 window.ROLE_ORDER = {
