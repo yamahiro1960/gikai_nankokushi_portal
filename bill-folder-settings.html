@@ -215,6 +215,14 @@
                 .replace(/^_+|_+$/g, "");
         }
 
+        function getDocumentSubFolder(relativePath, typeInfo) {
+            const normalized = (relativePath || "").replace(/\\/g, "/");
+            if (normalized.startsWith("benkyoukai/")) {
+                return "benkyoukai";
+            }
+            return typeInfo.subFolder || null;
+        }
+
         function selectFolder() {
             document.getElementById("directory-input").click();
         }
@@ -319,6 +327,7 @@
                 // Supabase Storageにアップロード
                 const storageBasePath = folderName;
                 let uploadedCount = 0;
+                const uploadedFileMap = new Map();
 
                 for (let i = 0; i < selectedFiles.length; i++) {
                     const file = selectedFiles[i];
@@ -341,6 +350,8 @@
                         throw new Error(`${fileName}: ${uploadError.message}`);
                     }
 
+                    uploadedFileMap.set(relativePath, fullPath);
+
                     uploadedCount++;
                     const progress = Math.round((uploadedCount / selectedFiles.length) * 100);
                     document.getElementById("progress-bar").style.width = `${progress}%`;
@@ -352,12 +363,14 @@
                     const relativePath = file.webkitRelativePath.substring(folderName.length + 1);
                     const fileName = relativePath.split("/").pop();
                     const typeInfo = inferDocumentType(fileName);
+                    const subFolder = getDocumentSubFolder(relativePath, typeInfo);
                     return {
                         label: fileName.replace(".pdf", ""),
                         fileName: fileName,
                         type: typeInfo.type,
                         relativePath: relativePath,
-                        subFolder: typeInfo.subFolder
+                        subFolder: subFolder,
+                        storagePath: uploadedFileMap.get(relativePath) || null
                     };
                 });
 

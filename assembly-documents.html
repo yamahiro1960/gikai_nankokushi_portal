@@ -168,9 +168,8 @@
 
         function getSessionNumber() {
             const params = new URLSearchParams(window.location.search);
-            const session = params.get("session") || "446";
-            const valid = ["446", "445", "444", "443", "442", "441", "440"];
-            return valid.includes(session) ? session : "446";
+            const session = (params.get("session") || "446").trim();
+            return /^\d+$/.test(session) ? session : "446";
         }
 
         function getDocuments(session) {
@@ -180,30 +179,15 @@
         function buildPdfPath(session, documentInfo) {
             // Supabase Storageからのファイル（storageFolderNameを持つ）
             if (documentInfo.storageFolderName) {
-                // relativePathから「sanizePath」処理と同じ置換で推測したファイルIDでアクセス
-                // DBに保存された元の日本語ファイル名はラベル表示に使用
-                const relativePath = documentInfo.relativePath || `${documentInfo.subFolder || ""}/${documentInfo.fileName}`.replace(/^\//, "");
-                const pathParts = relativePath.split("/");
-                const fileName = pathParts.pop();
-                const fileExtension = fileName.split(".").pop();
-                const sanitized = fileName
-                    .replace(/[^\w\-\.]/g, "_")
-                    .replace(/_{2,}/g, "_")
-                    .replace(/^_+|_+$/g, "");
-                const fileId = `file_*_*.${fileExtension}`;
-                const basePath = pathParts.length > 0
-                    ? `${documentInfo.storageFolderName}/${pathParts.join("/")}/${fileId}`
-                    : `${documentInfo.storageFolderName}/${fileId}`;
-                
-                // Note: Since we don't have the exact timestamp/index of upload, fallback to direct filename attempt first
-                let path = documentInfo.storageFolderName;
-                if (documentInfo.subFolder) {
-                    path += `/` + documentInfo.subFolder;
+                const path = documentInfo.storagePath
+                    || documentInfo.resolvedStoragePath
+                    || documentInfo.relativeStoragePath;
+
+                if (path) {
+                    return `${window.AUTH_CONFIG.supabaseUrl}/storage/v1/object/public/gian/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
                 }
-                path += `/` + fileName.replace(/[^\w\-\.]/g, "_").replace(/_{2,}/g, "_").replace(/^_+|_+$/g, "");
-                
-                // Supabase Storage の public URL
-                return `${window.AUTH_CONFIG.supabaseUrl}/storage/v1/object/public/gian/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+
+                return "about:blank";
             }
             
             // 従来のGitHub Pagesから取得（gian/XXX形式）
@@ -351,6 +335,56 @@
             updateNavBar();
         }
 
+        function extractStorageIndex(path) {
+            const match = /file_\d+_(\d+)\.[^.]+$/.exec(path || "");
+            return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+        }
+
+        async function resolveUploadedStoragePaths(supabase, folderName, documents) {
+            const docs = documents.map((documentInfo) => ({ ...documentInfo }));
+            if (docs.every((documentInfo) => documentInfo.storagePath)) {
+                return docs;
+            }
+
+            const groups = new Map();
+            for (const documentInfo of docs) {
+                const groupKey = documentInfo.subFolder || "";
+                if (!groups.has(groupKey)) {
+                    groups.set(groupKey, []);
+                }
+                groups.get(groupKey).push(documentInfo);
+            }
+
+            for (const [subFolder, groupDocs] of groups.entries()) {
+                const storageFolder = subFolder ? `${folderName}/${subFolder}` : folderName;
+
+                try {
+                    const { data, error } = await supabase.storage
+                        .from("gian")
+                        .list(storageFolder, { limit: 200, sortBy: { column: "name", order: "asc" } });
+
+                    if (error || !data) {
+                        continue;
+                    }
+
+                    const storagePaths = data
+                        .filter((item) => item && item.name)
+                        .map((item) => `${storageFolder}/${item.name}`)
+                        .sort((left, right) => extractStorageIndex(left) - extractStorageIndex(right));
+
+                    groupDocs.forEach((documentInfo, index) => {
+                        if (!documentInfo.storagePath && storagePaths[index]) {
+                            documentInfo.resolvedStoragePath = storagePaths[index];
+                        }
+                    });
+                } catch (error) {
+                    console.warn("Storage path の補完に失敗しました:", error);
+                }
+            }
+
+            return docs;
+        }
+
         async function initAssemblyPageWithUploadedDocs() {
             const session = getSessionNumber();
             const supabase = window.portalAuth && typeof window.portalAuth.ensureClient === "function"
@@ -375,7 +409,8 @@
                         const payload = record.setting_payload;
                         if (payload && payload.documents && payload.folderName) {
                             const folderName = payload.folderName; // e.g., "446_2026_03"
-                            const newDocs = payload.documents.map(doc => ({
+                            const resolvedDocuments = await resolveUploadedStoragePaths(supabase, folderName, payload.documents);
+                            const newDocs = resolvedDocuments.map(doc => ({
                                 ...doc,
                                 storageFolderName: folderName,
                                 label: doc.label || doc.fileName.replace(".pdf", "")

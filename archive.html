@@ -41,14 +41,8 @@
         <section class="bg-white p-6 rounded-xl shadow-sm mb-8">
             <h2 class="text-xl font-bold mb-4">議会回次から選択</h2>
             <p class="text-sm text-gray-600 mb-5">以下のボタンから回次を選ぶと、各回次の議案（第1号〜第30号）ページへ移動します。</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <a href="assembly-documents.html?session=446" class="bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold text-center hover:bg-indigo-800 transition">第446回議会</a>
-                <a href="assembly-documents.html?session=445" class="bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold text-center hover:bg-indigo-800 transition">第445回議会</a>
-                <a href="assembly-documents.html?session=444" class="bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold text-center hover:bg-indigo-800 transition">第444回議会</a>
-                <a href="assembly-documents.html?session=443" class="bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold text-center hover:bg-indigo-800 transition">第443回議会</a>
-                <a href="assembly-documents.html?session=442" class="bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold text-center hover:bg-indigo-800 transition">第442回議会</a>
-                <a href="assembly-documents.html?session=441" class="bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold text-center hover:bg-indigo-800 transition">第441回議会</a>
-                <a href="assembly-documents.html?session=440" class="bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold text-center hover:bg-indigo-800 transition">第440回議会</a>
+            <div id="session-buttons" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <p class="text-sm text-gray-500">回次一覧を読み込んでいます...</p>
             </div>
         </section>
     </main>
@@ -61,10 +55,65 @@
     <script src="auth-config.js"></script>
     <script src="auth.js"></script>
     <script>
+        const DEFAULT_SESSIONS = ["446", "445", "444", "443", "442", "441", "440"];
+
+        function renderSessionButtons(sessions) {
+            const container = document.getElementById("session-buttons");
+            container.innerHTML = "";
+
+            if (!sessions.length) {
+                const message = document.createElement("p");
+                message.className = "text-sm text-gray-500";
+                message.textContent = "表示できる回次がありません。";
+                container.appendChild(message);
+                return;
+            }
+
+            for (const session of sessions) {
+                const link = document.createElement("a");
+                link.href = `assembly-documents.html?session=${encodeURIComponent(session)}`;
+                link.className = "bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold text-center hover:bg-indigo-800 transition";
+                link.textContent = `第${session}回議会`;
+                container.appendChild(link);
+            }
+        }
+
+        async function loadArchiveSessions() {
+            const sessionSet = new Set(DEFAULT_SESSIONS);
+
+            try {
+                const supabase = window.portalAuth && typeof window.portalAuth.ensureClient === "function"
+                    ? window.portalAuth.ensureClient()
+                    : window.supabase.createClient(window.AUTH_CONFIG.supabaseUrl, window.AUTH_CONFIG.supabaseAnonKey);
+
+                const { data, error } = await supabase
+                    .from("meeting_settings")
+                    .select("setting_key, setting_payload")
+                    .like("setting_key", "uploaded_documents_%");
+
+                if (!error && data) {
+                    for (const record of data) {
+                        const payloadSession = record.setting_payload && record.setting_payload.session;
+                        const keyMatch = /^uploaded_documents_(\d+)_/.exec(record.setting_key || "");
+                        const session = String(payloadSession || (keyMatch ? keyMatch[1] : "")).trim();
+                        if (/^\d+$/.test(session)) {
+                            sessionSet.add(session);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn("回次一覧の読込に失敗しました:", error);
+            }
+
+            const sessions = Array.from(sessionSet).sort((left, right) => Number(right) - Number(left));
+            renderSessionButtons(sessions);
+        }
+
         portalAuth.init({
             requireAuth: true,
             minRole: "viewer",
-            returnTo: "archive.html"
+            returnTo: "archive.html",
+            onReady: loadArchiveSessions
         });
     </script>
 </body>
