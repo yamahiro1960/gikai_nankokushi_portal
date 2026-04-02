@@ -122,18 +122,9 @@
         </section>
 
         <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h2 class="text-xl font-bold mb-2">利用者選択</h2>
-            <p class="text-sm text-gray-600 mb-4">分析に使用するAPIキーを登録した利用者を選択してください。APIキーの登録は<a href="member-directory-settings.html" class="text-indigo-600 underline hover:text-indigo-800">議員・職員登録</a>画面で行います。</p>
-            <div>
-                <label for="aiUserSelect" class="text-sm font-semibold text-gray-700">利用者を選択</label>
-                <select id="aiUserSelect" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"></select>
-            </div>
-            <p id="geminiStatus" class="mt-3 text-sm text-gray-600"></p>
-        </section>
-
-        <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <h2 class="text-xl font-bold mb-2">南国市条例分析AI</h2>
             <p class="text-sm text-gray-600 mb-4">条例を選択し、論点や質問を入力すると、Geminiが審査観点・確認質問・関連条例リンクを生成します。</p>
+            <p id="geminiStatus" class="mb-4 text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2"></p>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="space-y-4">
@@ -171,10 +162,8 @@
         const questionOutput = document.getElementById("questionOutput");
         const ordinanceOutput = document.getElementById("ordinanceOutput");
         const geminiStatus = document.getElementById("geminiStatus");
-        const aiUserSelect = document.getElementById("aiUserSelect");
 
         let dbClient = null;
-        let aiUsers = [];
         let currentApiKey = "";
         let currentModel = "gemini-1.5-flash-latest";
 
@@ -208,10 +197,6 @@
             });
         }
 
-        function getSelectedUserId() {
-            return (aiUserSelect.value || "").trim();
-        }
-
         function maskKey(key) {
             if (!key || key.length < 8) {
                 return "未設定";
@@ -227,57 +212,31 @@
                 : "Gemini APIキーが未設定です。議員・職員登録画面で設定してください。";
         }
 
-        async function loadAiUsers() {
-            const { data, error } = await dbClient
-                .from("member_directory")
-                .select("member_id,full_name,email,category")
-                .order("category", { ascending: true })
-                .order("full_name", { ascending: true });
-
-            if (error) {
-                geminiStatus.textContent = `利用者一覧の読込に失敗しました: ${error.message}`;
-                return;
-            }
-
-            aiUsers = data || [];
-            aiUserSelect.innerHTML = "";
-
-            if (!aiUsers.length) {
-                const option = document.createElement("option");
-                option.value = "";
-                option.textContent = "利用者データがありません（先に議員・職員登録を実施してください）";
-                aiUserSelect.appendChild(option);
-                return;
-            }
-
-            aiUsers.forEach((user) => {
-                const option = document.createElement("option");
-                option.value = user.member_id;
-                const email = user.email ? ` / ${user.email}` : "";
-                option.textContent = `${user.member_id} | ${user.full_name} (${user.category})${email}`;
-                aiUserSelect.appendChild(option);
-            });
-        }
-
-        async function loadGeminiSettingsForUser(memberId) {
-            if (!memberId) {
+        async function loadGeminiSettingsFromSession(session) {
+            if (!session || !session.user || !session.user.email) {
                 syncGeminiSettingsView("", "gemini-1.5-flash-latest");
                 return;
             }
-
-            const settingKey = getGeminiSettingKey(memberId);
+            const email = session.user.email;
+            const { data: member, error: memberError } = await dbClient
+                .from("member_directory")
+                .select("member_id")
+                .eq("email", email)
+                .maybeSingle();
+            if (memberError || !member) {
+                syncGeminiSettingsView("", "gemini-1.5-flash-latest");
+                return;
+            }
+            const settingKey = getGeminiSettingKey(member.member_id);
             const { data, error } = await dbClient
                 .from("meeting_settings")
                 .select("setting_payload")
                 .eq("setting_key", settingKey)
                 .maybeSingle();
-
             if (error) {
-                geminiStatus.textContent = `設定読込に失敗しました: ${error.message}`;
                 syncGeminiSettingsView("", "gemini-1.5-flash-latest");
                 return;
             }
-
             const payload = data && data.setting_payload ? data.setting_payload : null;
             const apiKey = payload && payload.apiKey ? payload.apiKey : "";
             const model = payload && payload.model ? payload.model : "gemini-1.5-flash-latest";
@@ -401,10 +360,6 @@
             }
         });
 
-        aiUserSelect.addEventListener("change", async () => {
-            await loadGeminiSettingsForUser(getSelectedUserId());
-        });
-
         populateOrdinanceOptions();
         syncGeminiSettingsView("", "gemini-1.5-flash-latest");
     </script>
@@ -416,10 +371,9 @@
             requireAuth: true,
             minRole: "viewer",
             returnTo: "ai-assistant.html",
-            onReady: async ({ client }) => {
+            onReady: async ({ session, client }) => {
                 dbClient = client;
-                await loadAiUsers();
-                await loadGeminiSettingsForUser(getSelectedUserId());
+                await loadGeminiSettingsFromSession(session);
             }
         });
     </script>
