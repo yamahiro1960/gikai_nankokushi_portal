@@ -311,3 +311,37 @@ on conflict (position_name) do nothing;
 
 -- 初回管理者を作る場合（auth.usersの対象ユーザーIDを指定）
 -- update public.profiles set role = 'admin' where email = 'admin@example.com';
+
+-- ----------------------------------------------------------------------
+-- document_notes テーブル（議案メモ：個人専用）
+-- 議案PDFを閲覧中に書いたメモを1資料1レコードで保存する。
+-- member_id でフィルタリングして本人のみ参照する運用（自己責任フィルタ）。
+-- ----------------------------------------------------------------------
+create table if not exists public.document_notes (
+    id bigserial primary key,
+    member_id text not null,
+    session_id text not null,
+    document_name text not null,
+    note_text text not null default '',
+    updated_at timestamptz not null default now(),
+    created_at timestamptz not null default now(),
+    unique (member_id, session_id, document_name)
+);
+
+alter table public.document_notes enable row level security;
+
+drop policy if exists document_notes_select_anon_temp on public.document_notes;
+create policy document_notes_select_anon_temp on public.document_notes
+for select to anon using (true);
+
+drop policy if exists document_notes_insert_anon_temp on public.document_notes;
+create policy document_notes_insert_anon_temp on public.document_notes
+for insert to anon with check (true);
+
+drop policy if exists document_notes_update_anon_temp on public.document_notes;
+create policy document_notes_update_anon_temp on public.document_notes
+for update to anon using (true);
+
+drop policy if exists document_notes_delete_anon_temp on public.document_notes;
+create policy document_notes_delete_anon_temp on public.document_notes
+for delete to anon using (true);
