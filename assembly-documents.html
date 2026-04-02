@@ -235,7 +235,8 @@
                 heading.textContent = DOCUMENT_TYPE_META[type].title;
                 grid.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3";
 
-                for (const documentInfo of groupedDocuments) {
+                const sortedDocuments = sortDocumentsByNumber(groupedDocuments);
+                for (const documentInfo of sortedDocuments) {
                     if (!isPreviewableDocument(documentInfo)) {
                         const a = document.createElement("a");
                         a.href = buildPdfPath(session, documentInfo);
@@ -296,6 +297,19 @@
         function extractStorageIndex(path) {
             const match = /file_\d+_(\d+)\.[^.]+$/.exec(path || "");
             return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+        }
+
+        function extractNumberFromLabel(label) {
+            const match = /(\d+)/.exec(label || "");
+            return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+        }
+
+        function sortDocumentsByNumber(documents) {
+            return documents.slice().sort((a, b) => {
+                const numA = extractNumberFromLabel(a.label);
+                const numB = extractNumberFromLabel(b.label);
+                return numA - numB;
+            });
         }
 
         async function resolveUploadedStoragePaths(supabase, folderName, documents) {
