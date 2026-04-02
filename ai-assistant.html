@@ -136,8 +136,8 @@
                 <div>
                     <label for="geminiModel" class="text-sm font-semibold text-gray-700">モデル</label>
                     <select id="geminiModel" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
-                        <option value="gemini-1.5-flash" selected>gemini-1.5-flash</option>
-                        <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+                        <option value="gemini-1.5-flash-latest" selected>gemini-1.5-flash-latest</option>
+                        <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
                     </select>
                 </div>
             </div>
@@ -279,7 +279,7 @@
 
         async function loadGeminiSettingsForUser(memberId) {
             if (!memberId) {
-                syncGeminiSettingsView("", "gemini-1.5-flash");
+                syncGeminiSettingsView("", "gemini-1.5-flash-latest");
                 return;
             }
 
@@ -292,13 +292,13 @@
 
             if (error) {
                 geminiStatus.textContent = `設定読込に失敗しました: ${error.message}`;
-                syncGeminiSettingsView("", "gemini-1.5-flash");
+                syncGeminiSettingsView("", "gemini-1.5-flash-latest");
                 return;
             }
 
             const payload = data && data.setting_payload ? data.setting_payload : null;
             const apiKey = payload && payload.apiKey ? payload.apiKey : "";
-            const model = payload && payload.model ? payload.model : "gemini-1.5-flash";
+            const model = payload && payload.model ? payload.model : "gemini-1.5-flash-latest";
             syncGeminiSettingsView(apiKey, model);
         }
 
@@ -307,7 +307,7 @@
                 throw new Error("Gemini APIキーが未設定です。先に設定を保存してください。");
             }
 
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
@@ -465,7 +465,7 @@
                         geminiStatus.textContent = `削除に失敗しました: ${error.message}`;
                         return;
                     }
-                    syncGeminiSettingsView("", "gemini-1.5-flash");
+                    syncGeminiSettingsView("", "gemini-1.5-flash-latest");
                     geminiStatus.textContent = `Gemini設定を削除しました（${memberId}）。`;
                 });
         });
@@ -511,7 +511,7 @@
         });
 
         populateOrdinanceOptions();
-        syncGeminiSettingsView("", "gemini-1.5-flash");
+        syncGeminiSettingsView("", "gemini-1.5-flash-latest");
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
