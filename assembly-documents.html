@@ -70,7 +70,7 @@
             </div>
             <div id="ink-toolbar" class="hidden mt-3 flex items-center gap-2 flex-wrap text-xs">
                 <button id="ink-toggle-btn" type="button" class="px-3 py-2 rounded-lg border border-cyan-300 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 font-semibold">
-                    <i class="fas fa-pen mr-1"></i>手書きモード OFF
+                    <i class="fas fa-pen mr-1"></i>手書きモードOFFです
                 </button>
                 <label class="flex items-center gap-1 text-gray-600">
                     色
@@ -331,8 +331,8 @@
             inkEnabled = !!enabled;
             const btn = document.getElementById("ink-toggle-btn");
             btn.innerHTML = inkEnabled
-                ? '<i class="fas fa-pen mr-1"></i>手書きモード ON'
-                : '<i class="fas fa-pen mr-1"></i>手書きモード OFF';
+                ? '<i class="fas fa-pen mr-1"></i>手書きモードONです'
+                : '<i class="fas fa-pen mr-1"></i>手書きモードOFFです';
             btn.className = inkEnabled
                 ? "px-3 py-2 rounded-lg border border-cyan-500 text-white bg-cyan-600 hover:bg-cyan-700 font-semibold"
                 : "px-3 py-2 rounded-lg border border-cyan-300 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 font-semibold";
