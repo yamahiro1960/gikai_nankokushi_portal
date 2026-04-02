@@ -158,13 +158,13 @@
             summary: { title: "一覧表",     buttonClass: "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300" },
             bill:    { title: "議案",       buttonClass: "bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200" },
             report:  { title: "報告",       buttonClass: "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200" },
-            reason:  { title: "提案理由",   buttonClass: "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200" },
+            reason:  { title: "提案理由・施政方針",   buttonClass: "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200" },
             policy:  { title: "施政方針",   buttonClass: "bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200" },
             study:   { title: "勉強会資料", buttonClass: "bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200" },
             doc:     { title: "Word文書（DL）", buttonClass: "bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200" }
         };
 
-        const DOCUMENT_TYPE_ORDER = ["summary", "bill", "report", "reason", "policy", "study", "doc"];
+        const DOCUMENT_TYPE_ORDER = ["summary", "bill", "report", "reason", "study", "doc"];
 
         function getSessionNumber() {
             const params = new URLSearchParams(window.location.search);
@@ -219,6 +219,13 @@
 
         function isPreviewableDocument(documentInfo) {
             return /\.pdf$/i.test(documentInfo.fileName || "");
+        }
+
+        function getDocumentsByType(documents, type) {
+            if (type === "reason") {
+                return documents.filter((documentInfo) => documentInfo.type === "reason" || documentInfo.type === "policy");
+            }
+            return documents.filter((documentInfo) => documentInfo.type === type);
         }
 
         // ナビゲーション用ステート（PDF表示可能な資料のみ対象）
@@ -288,7 +295,7 @@
             }
 
             for (const type of DOCUMENT_TYPE_ORDER) {
-                const groupedDocuments = documents.filter((documentInfo) => documentInfo.type === type);
+                const groupedDocuments = getDocumentsByType(documents, type);
 
                 if (groupedDocuments.length === 0) {
                     continue;
@@ -340,11 +347,6 @@
                 ? "議案・報告・提案理由・施政方針などのPDFを表示できます。"
                 : "この回次のPDFはまだ登録されていません。";
             renderBillButtons(session);
-
-            if (navDocuments.length > 0) {
-                showPdfByIndex(session, 0);
-                return;
-            }
 
             document.getElementById("viewer-title").textContent = "資料を選択してください";
             document.getElementById("pdf-open-link").href = "#";
