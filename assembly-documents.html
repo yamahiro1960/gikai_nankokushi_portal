@@ -176,6 +176,20 @@
             return SESSION_DOCUMENTS[session] || [];
         }
 
+        function mergeDocumentsPreferUploaded(existingDocuments, uploadedDocuments) {
+            const merged = new Map();
+
+            for (const documentInfo of existingDocuments || []) {
+                merged.set(documentInfo.fileName, documentInfo);
+            }
+
+            for (const documentInfo of uploadedDocuments || []) {
+                merged.set(documentInfo.fileName, documentInfo);
+            }
+
+            return Array.from(merged.values());
+        }
+
         function buildPdfPath(session, documentInfo) {
             // Supabase Storageからのファイル（storageFolderNameを持つ）
             if (documentInfo.storageFolderName) {
@@ -201,6 +215,10 @@
 
         function getButtonClass(type) {
             return (DOCUMENT_TYPE_META[type] || DOCUMENT_TYPE_META.bill).buttonClass;
+        }
+
+        function isPreviewableDocument(documentInfo) {
+            return /\.pdf$/i.test(documentInfo.fileName || "");
         }
 
         // ナビゲーション用ステート（PDF表示可能な資料のみ対象）
@@ -286,7 +304,7 @@
                 grid.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3";
 
                 for (const documentInfo of groupedDocuments) {
-                    if (documentInfo.type === "doc") {
+                    if (!isPreviewableDocument(documentInfo)) {
                         const a = document.createElement("a");
                         a.href = buildPdfPath(session, documentInfo);
                         a.download = documentInfo.fileName;
@@ -313,8 +331,8 @@
             const session = getSessionNumber();
             const documents = getDocuments(session);
 
-            // PDF表示可能な資料のみナビゲーション対象にする（doc除外）
-            navDocuments = documents.filter(d => d.type !== "doc");
+            // PDF表示可能な資料のみナビゲーション対象にする
+            navDocuments = documents.filter((documentInfo) => isPreviewableDocument(documentInfo));
             navIndex = -1;
 
             document.getElementById("session-title").textContent = `第${session}回議会`;
@@ -415,14 +433,11 @@
                                 storageFolderName: folderName,
                                 label: doc.label || doc.fileName.replace(".pdf", "")
                             }));
-                            
-                            const existingFileNames = new Set(
-                                (SESSION_DOCUMENTS[session] || []).map(d => d.fileName)
+
+                            SESSION_DOCUMENTS[session] = mergeDocumentsPreferUploaded(
+                                SESSION_DOCUMENTS[session] || [],
+                                newDocs
                             );
-                            const uniqueNewDocs = newDocs.filter(
-                                d => !existingFileNames.has(d.fileName)
-                            );
-                            SESSION_DOCUMENTS[session] = [...(SESSION_DOCUMENTS[session] || []), ...uniqueNewDocs];
                         }
                     }
                 }
