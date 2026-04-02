@@ -120,6 +120,36 @@
             </div>
             <div id="questionOutput" class="mt-4 text-sm text-gray-700 whitespace-pre-line bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[120px]"></div>
         </section>
+
+        <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h2 class="text-xl font-bold mb-2">南国市条例分析AI</h2>
+            <p class="text-sm text-gray-600 mb-4">条例を選択し、論点や質問を入力すると、審査観点・確認質問・関連条例リンクを生成します。</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="ordinanceSelect" class="text-sm font-semibold text-gray-700">対象条例</label>
+                        <select id="ordinanceSelect" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"></select>
+                    </div>
+                    <div>
+                        <label for="analysisQuestion" class="text-sm font-semibold text-gray-700">分析したい論点・質問</label>
+                        <textarea id="analysisQuestion" rows="5" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="例: 条例改正が必要か、運用で対応可能かを判断したい"></textarea>
+                    </div>
+                    <div>
+                        <label for="analysisExcerpt" class="text-sm font-semibold text-gray-700">条文抜粋（任意）</label>
+                        <textarea id="analysisExcerpt" rows="6" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="ここに条文本文を貼り付けると、条文ベースで分析精度を上げられます。"></textarea>
+                    </div>
+                    <button id="runOrdinanceAnalysis" class="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-semibold hover:bg-indigo-700">
+                        <i class="fas fa-scale-balanced mr-2"></i>条例分析を実行
+                    </button>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-2">分析結果</h3>
+                    <div id="ordinanceOutput" class="text-sm text-gray-700 whitespace-pre-line leading-7 bg-slate-50 border border-slate-200 rounded-lg p-4 min-h-[360px]">ここに分析結果が表示されます。</div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
@@ -129,6 +159,88 @@
     <script>
         const output = document.getElementById("aiOutput");
         const questionOutput = document.getElementById("questionOutput");
+        const ordinanceOutput = document.getElementById("ordinanceOutput");
+
+        const ordinanceCatalog = [
+            { name: "南国市議会基本条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000454.html", tags: ["議会", "議員", "説明責任", "政策立案"] },
+            { name: "南国市個人情報保護条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000015.html", tags: ["個人情報", "開示", "利用目的", "安全管理"] },
+            { name: "南国市文書管理条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000412.html", tags: ["文書", "保存", "公文書", "管理"] },
+            { name: "南国市議会委員会条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000003.html", tags: ["委員会", "審査", "議事", "付託"] },
+            { name: "南国市職員給与条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000040.html", tags: ["給与", "手当", "職員", "人件費"] },
+            { name: "南国市都市計画条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000287.html", tags: ["都市計画", "用途", "開発", "土地利用"] },
+            { name: "南国市情報公開条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000014.html", tags: ["公開", "説明責任", "非公開", "請求"] },
+            { name: "南国市行政手続条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000013.html", tags: ["手続", "申請", "処分", "審査基準"] },
+            { name: "南国市財政状況の公表に関する条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000063.html", tags: ["財政", "公表", "透明性", "予算"] },
+            { name: "南国市職員定数条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000030.html", tags: ["定数", "組織", "職員", "効率化"] },
+            { name: "南国市税条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000078.html", tags: ["税", "課税", "減免", "納付"] },
+            { name: "南国市防災会議条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000331.html", tags: ["防災", "災害", "会議", "危機管理"] }
+        ];
+
+        const analysisTemplates = [
+            "1. 論点整理\n・条例の目的と今回の課題が整合しているかを確認\n・条例改正が必要か、運用改善で足りるかを切り分け",
+            "2. 法務チェック\n・適用対象、要件、例外規定の漏れを確認\n・裁量規定が過度に広くないかを確認",
+            "3. 実務チェック\n・担当課の運用フローと条文の整合性\n・住民説明時に必要な開示情報の整理",
+            "4. 議会質問案\n・改正が必要な場合の根拠は何か\n・施行後の評価指標と見直し時期をどう設定するか"
+        ];
+
+        function populateOrdinanceOptions() {
+            const select = document.getElementById("ordinanceSelect");
+            select.innerHTML = "";
+
+            ordinanceCatalog.forEach((item, index) => {
+                const option = document.createElement("option");
+                option.value = String(index);
+                option.textContent = item.name;
+                select.appendChild(option);
+            });
+        }
+
+        function guessRelatedOrdinances(questionText, selectedName) {
+            const text = (questionText || "").toLowerCase();
+            const matched = ordinanceCatalog.filter((item) => {
+                if (item.name === selectedName) {
+                    return false;
+                }
+                return item.tags.some((tag) => text.includes(tag.toLowerCase()));
+            });
+
+            return matched.slice(0, 3);
+        }
+
+        function buildOrdinanceAnalysis() {
+            const selectedIndex = Number(document.getElementById("ordinanceSelect").value || 0);
+            const selected = ordinanceCatalog[selectedIndex];
+            const question = document.getElementById("analysisQuestion").value.trim();
+            const excerpt = document.getElementById("analysisExcerpt").value.trim();
+
+            if (!question) {
+                return "分析したい論点・質問を入力してください。";
+            }
+
+            const related = guessRelatedOrdinances(`${question}\n${excerpt}`, selected.name);
+            const excerptSection = excerpt
+                ? `\n条文抜粋を反映した追加観点\n・文言の曖昧さ（努力義務 / 義務 / 例外）の判別\n・要件該当性の判断基準を運用マニュアルへ落とし込む\n・住民向け説明文の平易化（専門語の置換）`
+                : "\n条文抜粋が未入力のため、次回は該当条文を貼り付けると精度が上がります。";
+
+            const relatedSection = related.length
+                ? related.map((item) => `・${item.name}\n  ${item.url}`).join("\n")
+                : "・関連条例候補は入力内容から判定できませんでした。";
+
+            return [
+                `対象条例: ${selected.name}`,
+                `参照URL: ${selected.url}`,
+                `入力論点: ${question}`,
+                "",
+                ...analysisTemplates,
+                excerptSection,
+                "",
+                "関連条例候補",
+                relatedSection,
+                "",
+                "注意",
+                "・この結果は議会審査のたたき台です。最終判断は原文条文と法務確認で確定してください。"
+            ].join("\n");
+        }
 
         function makePlanText() {
             const topic = document.getElementById("topic").value.trim() || "政策テーマ";
@@ -155,6 +267,12 @@
                 questionOutput.textContent = questionTemplates[key] || "テンプレートを準備中です。";
             });
         });
+
+        document.getElementById("runOrdinanceAnalysis").addEventListener("click", () => {
+            ordinanceOutput.textContent = buildOrdinanceAnalysis();
+        });
+
+        populateOrdinanceOptions();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
