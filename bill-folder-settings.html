@@ -354,7 +354,10 @@
                     // Supabase Storage にアップロード
                     const { error: uploadError } = await supabase.storage
                         .from("gian")
-                        .upload(fullPath, file, { upsert: true });
+                        .upload(fullPath, file, {
+                            upsert: true,
+                            contentType: file.type || "application/octet-stream"
+                        });
 
                     if (uploadError) {
                         throw new Error(`${fileName}: ${uploadError.message}`);

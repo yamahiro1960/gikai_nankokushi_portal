@@ -114,6 +114,7 @@
         let currentNoteSessionId = null;
         let _noteClient = null;
         let _noteMemberId = null;
+        let activePdfObjectUrl = null;
 
         const DOCUMENT_TYPE_META = {
             summary: { title: "一覧表",     buttonClass: "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300" },
@@ -216,28 +217,79 @@
             showPdfByIndex(session, newIndex);
         }
 
-        function showPdfByIndex(session, index) {
+        function releasePdfObjectUrl() {
+            if (!activePdfObjectUrl) {
+                return;
+            }
+            URL.revokeObjectURL(activePdfObjectUrl);
+            activePdfObjectUrl = null;
+        }
+
+        async function loadPdfIntoViewer(documentInfo, pdfPath) {
+            const viewer = document.getElementById("pdf-viewer");
+
+            viewer.src = "about:blank";
+            releasePdfObjectUrl();
+
+            try {
+                let pdfBlob;
+
+                if (documentInfo.storageFolderName && documentInfo.storagePath) {
+                    const supabase = window.portalAuth && typeof window.portalAuth.ensureClient === "function"
+                        ? window.portalAuth.ensureClient()
+                        : window.supabase.createClient(window.AUTH_CONFIG.supabaseUrl, window.AUTH_CONFIG.supabaseAnonKey);
+                    const { data, error } = await supabase.storage
+                        .from("gian")
+                        .download(documentInfo.storagePath);
+
+                    if (error || !data) {
+                        throw error || new Error("Storage download failed");
+                    }
+
+                    pdfBlob = data;
+                } else {
+                    const response = await fetch(pdfPath);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    pdfBlob = await response.blob();
+                }
+
+                activePdfObjectUrl = URL.createObjectURL(new Blob([pdfBlob], { type: "application/pdf" }));
+                viewer.src = activePdfObjectUrl;
+            } catch (error) {
+                console.warn("PDF表示用の読み込みに失敗しました。直接URLを使用します:", error);
+                viewer.src = pdfPath;
+            }
+        }
+
+        async function showPdfByIndex(session, index) {
             navIndex = index;
             const documentInfo = navDocuments[index];
             const pdfPath = buildPdfPath(session, documentInfo);
             document.getElementById("viewer-title").textContent = documentInfo.label;
-            document.getElementById("pdf-viewer").src = pdfPath;
+            document.getElementById("pdf-viewer").src = "about:blank";
             document.getElementById("pdf-open-link").href = pdfPath;
-            document.getElementById("pdf-path-label").textContent = `表示中: ${pdfPath}`;
+            document.getElementById("pdf-path-label").textContent = "PDFを読み込み中...";
             updateNavBar();
+            await loadPdfIntoViewer(documentInfo, pdfPath);
+            document.getElementById("pdf-path-label").textContent = `表示中: ${pdfPath}`;
             loadNote(session, documentInfo);
         }
 
-        function showPdf(session, documentInfo) {
+        async function showPdf(session, documentInfo) {
             const index = navDocuments.indexOf(documentInfo);
             if (index !== -1) {
-                showPdfByIndex(session, index);
+                await showPdfByIndex(session, index);
             } else {
                 // docタイプなどnav対象外の場合はそのまま表示
                 const pdfPath = buildPdfPath(session, documentInfo);
                 document.getElementById("viewer-title").textContent = documentInfo.label;
-                document.getElementById("pdf-viewer").src = pdfPath;
+                document.getElementById("pdf-viewer").src = "about:blank";
                 document.getElementById("pdf-open-link").href = pdfPath;
+                document.getElementById("pdf-path-label").textContent = "PDFを読み込み中...";
+                await loadPdfIntoViewer(documentInfo, pdfPath);
                 document.getElementById("pdf-path-label").textContent = `表示中: ${pdfPath}`;
                 loadNote(session, documentInfo);
             }
@@ -306,6 +358,7 @@
                 document.getElementById("bill-buttons").innerHTML = "<p class=\"text-sm text-gray-600\">回次が指定されていません。</p>";
                 document.getElementById("viewer-title").textContent = "資料を選択してください";
                 document.getElementById("pdf-open-link").href = "#";
+                releasePdfObjectUrl();
                 document.getElementById("pdf-viewer").src = "about:blank";
                 document.getElementById("pdf-path-label").textContent = "";
                 navDocuments = [];
@@ -327,6 +380,7 @@
 
             document.getElementById("viewer-title").textContent = "資料を選択してください";
             document.getElementById("pdf-open-link").href = "#";
+            releasePdfObjectUrl();
             document.getElementById("pdf-viewer").src = "about:blank";
             document.getElementById("pdf-path-label").textContent = "";
             updateNavBar();
