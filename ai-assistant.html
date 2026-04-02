@@ -34,25 +34,30 @@
             </div>
         </section>
 
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-cyan-500">
-                <p class="text-xs text-gray-500">今日の提案</p>
-                <h2 class="font-bold text-lg mt-1 mb-2">人口減少対策の重点化</h2>
-                <p class="text-sm text-gray-600">子育て定住施策の費用対効果を、転入超過と出生数の2指標で比較しましょう。</p>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-emerald-500">
-                <p class="text-xs text-gray-500">質問下書き</p>
-                <h2 class="font-bold text-lg mt-1 mb-2">総務常任委員会向け</h2>
-                <p class="text-sm text-gray-600">DX投資の効果測定指標（時間削減率、住民満足度）を確認する質問が有効です。</p>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-amber-500">
-                <p class="text-xs text-gray-500">比較分析</p>
-                <h2 class="font-bold text-lg mt-1 mb-2">先進自治体2都市</h2>
-                <p class="text-sm text-gray-600">横須賀市と明石市の先行施策を、実施コストと成果指標で比較できます。</p>
+        <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h2 class="text-xl font-bold mb-2">AIサポート調査</h2>
+            <p class="text-sm text-gray-600 mb-4">論点や質問を入力すると、Geminiが調査して結果を表示します。</p>
+            <p id="geminiStatus" class="mb-4 text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2"></p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="analysisQuestion" class="text-sm font-semibold text-gray-700">調査したい論点・質問</label>
+                        <textarea id="analysisQuestion" rows="5" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="例: 条例改正が必要か、運用で対応可能かを判断したい"></textarea>
+                    </div>
+                    <button id="runOrdinanceAnalysis" class="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-semibold hover:bg-indigo-700">
+                        <i class="fas fa-scale-balanced mr-2"></i>調査を実行
+                    </button>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-2">調査結果</h3>
+                    <div id="ordinanceOutput" class="text-sm text-gray-700 whitespace-pre-line leading-7 bg-slate-50 border border-slate-200 rounded-lg p-4 min-h-[360px]">ここに調査結果が表示されます。</div>
+                </div>
             </div>
         </section>
 
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
                 <h2 class="text-xl font-bold mb-4">政策案の自動生成</h2>
                 <div class="space-y-4">
@@ -110,47 +115,6 @@
                 </div>
             </div>
         </section>
-
-        <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h2 class="text-xl font-bold mb-4">質問原稿メーカー</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button class="question-btn bg-indigo-50 text-indigo-700 px-4 py-3 rounded-lg font-semibold hover:bg-indigo-100" data-template="dx">DX推進の質問を作る</button>
-                <button class="question-btn bg-emerald-50 text-emerald-700 px-4 py-3 rounded-lg font-semibold hover:bg-emerald-100" data-template="welfare">福祉施策の質問を作る</button>
-                <button class="question-btn bg-amber-50 text-amber-700 px-4 py-3 rounded-lg font-semibold hover:bg-amber-100" data-template="education">教育施策の質問を作る</button>
-            </div>
-            <div id="questionOutput" class="mt-4 text-sm text-gray-700 whitespace-pre-line bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[120px]"></div>
-        </section>
-
-        <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h2 class="text-xl font-bold mb-2">南国市条例分析AI</h2>
-            <p class="text-sm text-gray-600 mb-4">条例を選択し、論点や質問を入力すると、Geminiが審査観点・確認質問・関連条例リンクを生成します。</p>
-            <p id="geminiStatus" class="mb-4 text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2"></p>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="space-y-4">
-                    <div>
-                        <label for="ordinanceSelect" class="text-sm font-semibold text-gray-700">対象条例</label>
-                        <select id="ordinanceSelect" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"></select>
-                    </div>
-                    <div>
-                        <label for="analysisQuestion" class="text-sm font-semibold text-gray-700">分析したい論点・質問</label>
-                        <textarea id="analysisQuestion" rows="5" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="例: 条例改正が必要か、運用で対応可能かを判断したい"></textarea>
-                    </div>
-                    <div>
-                        <label for="analysisExcerpt" class="text-sm font-semibold text-gray-700">条文抜粋（任意）</label>
-                        <textarea id="analysisExcerpt" rows="6" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="ここに条文本文を貼り付けると、条文ベースで分析精度を上げられます。"></textarea>
-                    </div>
-                    <button id="runOrdinanceAnalysis" class="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-semibold hover:bg-indigo-700">
-                        <i class="fas fa-scale-balanced mr-2"></i>条例分析を実行
-                    </button>
-                </div>
-
-                <div>
-                    <h3 class="font-semibold text-gray-700 mb-2">分析結果</h3>
-                    <div id="ordinanceOutput" class="text-sm text-gray-700 whitespace-pre-line leading-7 bg-slate-50 border border-slate-200 rounded-lg p-4 min-h-[360px]">ここに分析結果が表示されます。</div>
-                </div>
-            </div>
-        </section>
     </main>
 
     <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
@@ -159,7 +123,6 @@
 
     <script>
         const output = document.getElementById("aiOutput");
-        const questionOutput = document.getElementById("questionOutput");
         const ordinanceOutput = document.getElementById("ordinanceOutput");
         const geminiStatus = document.getElementById("geminiStatus");
 
@@ -186,17 +149,6 @@
             { name: "南国市防災会議条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000331.html", tags: ["防災", "災害", "会議", "危機管理"] }
         ];
 
-        function populateOrdinanceOptions() {
-            const select = document.getElementById("ordinanceSelect");
-            select.innerHTML = "";
-            ordinanceCatalog.forEach((item, index) => {
-                const option = document.createElement("option");
-                option.value = String(index);
-                option.textContent = item.name;
-                select.appendChild(option);
-            });
-        }
-
         function maskKey(key) {
             if (!key || key.length < 8) {
                 return "未設定";
@@ -209,7 +161,7 @@
             currentModel = model || "gemini-1.5-flash-latest";
             geminiStatus.textContent = apiKey
                 ? `APIキー読込済み: ${maskKey(apiKey)} / モデル: ${currentModel}`
-                : "Gemini APIキーが未設定です。議員・職員登録画面で設定してください。";
+                : "";
         }
 
         async function loadGeminiSettingsFromSession(session) {
@@ -285,27 +237,23 @@
             return text;
         }
 
-        function buildOrdinancePrompt(selected, question, excerpt) {
+        function buildOrdinancePrompt(question) {
             const relatedCandidates = ordinanceCatalog
-                .filter((item) => item.name !== selected.name)
                 .map((item) => `- ${item.name}: ${item.url} (タグ: ${item.tags.join(", ")})`)
                 .join("\n");
 
             return [
-                "あなたは日本の地方自治体条例を分析する議会向け法務アシスタントです。",
+                "あなたは日本の地方自治体制度や条例を調査する議会向け法務アシスタントです。",
                 "出力は日本語で、次の見出しをこの順番で必ず出してください。",
                 "1. 論点整理",
-                "2. 審査時の確認質問",
+                "2. 確認質問",
                 "3. 関連条例候補（最大3件）",
                 "4. 運用上の注意",
                 "5. 免責",
                 "関連条例候補には必ず条例名とURLを併記してください。",
                 "推測だけで断定せず、不確実ならその旨を明記してください。",
                 "",
-                `対象条例: ${selected.name}`,
-                `対象条例URL: ${selected.url}`,
                 `入力論点: ${question}`,
-                excerpt ? `条文抜粋:\n${excerpt}` : "条文抜粋: なし",
                 "",
                 "関連候補として利用可能な条例一覧:",
                 relatedCandidates
@@ -325,42 +273,25 @@
             output.textContent = makePlanText();
         });
 
-        const questionTemplates = {
-            dx: "質問案（DX推進）\n1. 本市におけるDX投資の成果指標は何か。\n2. 住民手続き時間の削減目標をどのように設定しているか。\n3. 効果検証の結果を来年度予算にどう反映するか。",
-            welfare: "質問案（福祉施策）\n1. 高齢者・子育て世帯への重点支援の優先順位は何か。\n2. 福祉施策の利用率向上に向けた改善策は何か。\n3. 実施後のアウトカム評価をどの指標で行うか。",
-            education: "質問案（教育施策）\n1. 学習環境改善のための投資効果をどう測るか。\n2. 不登校支援の体制強化は十分か。\n3. 教育予算の重点化方針をどのように説明するか。"
-        };
-
-        document.querySelectorAll(".question-btn").forEach((button) => {
-            button.addEventListener("click", () => {
-                const key = button.getAttribute("data-template");
-                questionOutput.textContent = questionTemplates[key] || "テンプレートを準備中です。";
-            });
-        });
-
         document.getElementById("runOrdinanceAnalysis").addEventListener("click", async () => {
-            const selectedIndex = Number(document.getElementById("ordinanceSelect").value || 0);
-            const selected = ordinanceCatalog[selectedIndex];
             const question = document.getElementById("analysisQuestion").value.trim();
-            const excerpt = document.getElementById("analysisExcerpt").value.trim();
 
             if (!question) {
-                ordinanceOutput.textContent = "分析したい論点・質問を入力してください。";
+                ordinanceOutput.textContent = "調査したい論点・質問を入力してください。";
                 return;
             }
 
-            ordinanceOutput.textContent = "Geminiで分析中です...";
+            ordinanceOutput.textContent = "Geminiで調査中です...";
 
             try {
-                const promptText = buildOrdinancePrompt(selected, question, excerpt);
+                const promptText = buildOrdinancePrompt(question);
                 const resultText = await callGemini(promptText, currentApiKey, currentModel);
                 ordinanceOutput.textContent = resultText;
             } catch (error) {
-                ordinanceOutput.textContent = `Gemini分析に失敗しました: ${error.message}`;
+                ordinanceOutput.textContent = `Gemini調査に失敗しました: ${error.message}`;
             }
         });
 
-        populateOrdinanceOptions();
         syncGeminiSettingsView("", "gemini-1.5-flash-latest");
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
