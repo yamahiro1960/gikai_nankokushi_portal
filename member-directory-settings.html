@@ -81,12 +81,12 @@
                     <select id="position_name" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="">未設定</option>
                         <option value="議長">議長</option>
-                        <option value="副機長">副機長</option>
+                        <option value="副議長">副議長</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">メールアドレス</label>
-                    <input id="email" type="email" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="example@city.lg.jp">
+                    <label class="text-sm font-semibold text-gray-700">Gmailアドレス（必須）</label>
+                    <input id="email" type="email" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="example@gmail.com">
                 </div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">委員会</label>
@@ -122,8 +122,12 @@
                 </div>
                 <div class="md:col-span-2">
                     <label class="text-sm font-semibold text-gray-700">Gemini APIキー（利用者ごと）</label>
-                    <input id="gemini_api_key" type="password" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="AIza...">
-                    <p class="text-xs text-gray-500 mt-1">この利用者に紐づくAPIキーを保存します。未入力で保存すると既存キーを削除します。</p>
+                    <div class="mt-1 flex flex-col sm:flex-row gap-2">
+                        <input id="gemini_api_key" type="password" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="AIza...">
+                        <button type="button" id="open-gemini-key-page" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">APIキーを取得</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">取得ボタンを押すとGoogle AI StudioのAPIキー作成画面を開きます。Gmailアドレスの入力が必須です。</p>
+                    <p class="text-xs text-gray-500">この利用者に紐づくAPIキーを保存します。未入力で保存すると既存キーを削除します。</p>
                 </div>
                 <div class="md:col-span-2">
                     <label class="text-sm font-semibold text-gray-700">備考</label>
@@ -317,6 +321,16 @@
                 return;
             }
 
+            if (!payload.email) {
+                document.getElementById("form-message").textContent = "Gmailアドレスを入力してください。";
+                return;
+            }
+
+            if (!/@gmail\.com$/i.test(payload.email)) {
+                document.getElementById("form-message").textContent = "Gmailアドレス（@gmail.com）を入力してください。";
+                return;
+            }
+
             const { error } = await dbClient
                 .from("member_directory")
                 .upsert(payload, { onConflict: "member_id" });
@@ -360,6 +374,17 @@
             clearForm();
             await loadMembers();
         }
+
+        document.getElementById("open-gemini-key-page").addEventListener("click", () => {
+            const email = document.getElementById("email").value.trim();
+            if (!email || !/@gmail\.com$/i.test(email)) {
+                document.getElementById("form-message").textContent = "先にGmailアドレス（@gmail.com）を入力してください。";
+                document.getElementById("email").focus();
+                return;
+            }
+            window.open("https://aistudio.google.com/app/apikey", "_blank", "noopener");
+            document.getElementById("form-message").textContent = "APIキー作成画面を開きました。作成したキーをこの画面に貼り付けて保存してください。";
+        });
 
         document.getElementById("member-form").addEventListener("submit", saveMember);
         document.getElementById("clear-form").addEventListener("click", clearForm);
