@@ -25,7 +25,7 @@
     <main class="container mx-auto py-8 px-4">
         <!-- メインメッセージ -->
         <section class="mb-10">
-            <h2 class="text-2xl font-bold mb-2">こんにちは、議員。</h2>
+            <h2 id="greeting-message" class="text-2xl font-bold mb-2">こんにちは、議員。</h2>
             <p class="text-gray-600">本日の政策立案と議会DXの進捗を確認しましょう。</p>
         </section>
 
@@ -160,7 +160,17 @@
             requireAuth: false,
             minRole: "viewer",
             authTargetId: "authArea",
-            returnTo: "index.html"
+            returnTo: "index.html",
+            onReady: (context) => {
+                // ユーザーがログインしている場合、挨拶メッセージを更新
+                if (context.session || context.profile) {
+                    const greetingElement = document.getElementById("greeting-message");
+                    if (greetingElement) {
+                        const greeting = window.portalAuth.generateGreeting(context.profile, context.session);
+                        greetingElement.textContent = greeting;
+                    }
+                }
+            }
         });
 
         // ============================================================

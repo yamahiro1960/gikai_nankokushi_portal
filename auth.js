@@ -196,11 +196,23 @@ window.portalAuth = (() => {
         localStorage.removeItem("portalSession");
     }
 
+    function generateGreeting(profile, session) {
+        // displayName優先度: profile.display_name > session.displayName > email > "ユーザー"
+        const displayName = (profile && profile.display_name) || (session && session.displayName) || (session && session.email) || "ユーザー";
+        const role = (profile && profile.role) || (session && session.role) || "viewer";
+        
+        // roleが"議員"の場合は"議員"、それ以外は"様"
+        const suffix = role === "議員" ? "議員" : "様";
+        
+        return `こんにちは、${displayName}${suffix}。`;
+    }
+
     return {
         init,
         ensureClient,
         emailOnlyLogin,
         getSession,
-        logout
+        logout,
+        generateGreeting
     };
 })();
