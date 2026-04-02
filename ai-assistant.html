@@ -122,8 +122,32 @@
         </section>
 
         <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h2 class="text-xl font-bold mb-2">Gemini設定（利用者ごと）</h2>
+            <p class="text-sm text-gray-600 mb-4">この画面では、利用者ご自身のGoogle AI Studioアカウントで発行したGemini APIキーを使います。キーはこのブラウザにのみ保存されます。</p>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <label for="geminiApiKey" class="text-sm font-semibold text-gray-700">Gemini APIキー</label>
+                    <input id="geminiApiKey" type="password" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="AIza...">
+                </div>
+                <div>
+                    <label for="geminiModel" class="text-sm font-semibold text-gray-700">モデル</label>
+                    <select id="geminiModel" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                        <option value="gemini-2.0-flash" selected>gemini-2.0-flash</option>
+                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <button id="saveGeminiSettings" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">設定を保存</button>
+                <button id="testGeminiConnection" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">接続テスト</button>
+                <button id="clearGeminiSettings" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg text-sm font-semibold hover:bg-gray-400">設定を削除</button>
+            </div>
+            <p id="geminiStatus" class="mt-3 text-sm text-gray-600"></p>
+        </section>
+
+        <section class="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <h2 class="text-xl font-bold mb-2">南国市条例分析AI</h2>
-            <p class="text-sm text-gray-600 mb-4">条例を選択し、論点や質問を入力すると、審査観点・確認質問・関連条例リンクを生成します。</p>
+            <p class="text-sm text-gray-600 mb-4">条例を選択し、論点や質問を入力すると、Geminiが審査観点・確認質問・関連条例リンクを生成します。</p>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="space-y-4">
@@ -160,6 +184,12 @@
         const output = document.getElementById("aiOutput");
         const questionOutput = document.getElementById("questionOutput");
         const ordinanceOutput = document.getElementById("ordinanceOutput");
+        const geminiStatus = document.getElementById("geminiStatus");
+        const geminiApiKeyInput = document.getElementById("geminiApiKey");
+        const geminiModelSelect = document.getElementById("geminiModel");
+
+        const GEMINI_STORAGE_KEY = "nankokuGeminiApiKey";
+        const GEMINI_MODEL_KEY = "nankokuGeminiModel";
 
         const ordinanceCatalog = [
             { name: "南国市議会基本条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000454.html", tags: ["議会", "議員", "説明責任", "政策立案"] },
@@ -176,17 +206,9 @@
             { name: "南国市防災会議条例", url: "https://www1.g-reiki.net/nankoku/reiki_honbun/r291RG00000331.html", tags: ["防災", "災害", "会議", "危機管理"] }
         ];
 
-        const analysisTemplates = [
-            "1. 論点整理\n・条例の目的と今回の課題が整合しているかを確認\n・条例改正が必要か、運用改善で足りるかを切り分け",
-            "2. 法務チェック\n・適用対象、要件、例外規定の漏れを確認\n・裁量規定が過度に広くないかを確認",
-            "3. 実務チェック\n・担当課の運用フローと条文の整合性\n・住民説明時に必要な開示情報の整理",
-            "4. 議会質問案\n・改正が必要な場合の根拠は何か\n・施行後の評価指標と見直し時期をどう設定するか"
-        ];
-
         function populateOrdinanceOptions() {
             const select = document.getElementById("ordinanceSelect");
             select.innerHTML = "";
-
             ordinanceCatalog.forEach((item, index) => {
                 const option = document.createElement("option");
                 option.value = String(index);
@@ -195,50 +217,95 @@
             });
         }
 
-        function guessRelatedOrdinances(questionText, selectedName) {
-            const text = (questionText || "").toLowerCase();
-            const matched = ordinanceCatalog.filter((item) => {
-                if (item.name === selectedName) {
-                    return false;
-                }
-                return item.tags.some((tag) => text.includes(tag.toLowerCase()));
-            });
-
-            return matched.slice(0, 3);
+        function getGeminiSettings() {
+            const apiKey = localStorage.getItem(GEMINI_STORAGE_KEY) || "";
+            const model = localStorage.getItem(GEMINI_MODEL_KEY) || "gemini-2.0-flash";
+            return { apiKey, model };
         }
 
-        function buildOrdinanceAnalysis() {
-            const selectedIndex = Number(document.getElementById("ordinanceSelect").value || 0);
-            const selected = ordinanceCatalog[selectedIndex];
-            const question = document.getElementById("analysisQuestion").value.trim();
-            const excerpt = document.getElementById("analysisExcerpt").value.trim();
+        function maskKey(key) {
+            if (!key || key.length < 8) {
+                return "未設定";
+            }
+            return `${key.slice(0, 4)}...${key.slice(-4)}`;
+        }
 
-            if (!question) {
-                return "分析したい論点・質問を入力してください。";
+        function syncGeminiSettingsView() {
+            const { apiKey, model } = getGeminiSettings();
+            geminiApiKeyInput.value = apiKey;
+            geminiModelSelect.value = model;
+            geminiStatus.textContent = apiKey
+                ? `保存済み: ${maskKey(apiKey)} / モデル: ${model}`
+                : "Gemini APIキーが未設定です。";
+        }
+
+        async function callGemini(promptText) {
+            const { apiKey, model } = getGeminiSettings();
+            if (!apiKey) {
+                throw new Error("Gemini APIキーが未設定です。先に設定を保存してください。");
             }
 
-            const related = guessRelatedOrdinances(`${question}\n${excerpt}`, selected.name);
-            const excerptSection = excerpt
-                ? `\n条文抜粋を反映した追加観点\n・文言の曖昧さ（努力義務 / 義務 / 例外）の判別\n・要件該当性の判断基準を運用マニュアルへ落とし込む\n・住民向け説明文の平易化（専門語の置換）`
-                : "\n条文抜粋が未入力のため、次回は該当条文を貼り付けると精度が上がります。";
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            parts: [{ text: promptText }]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.2
+                    }
+                })
+            });
 
-            const relatedSection = related.length
-                ? related.map((item) => `・${item.name}\n  ${item.url}`).join("\n")
-                : "・関連条例候補は入力内容から判定できませんでした。";
+            const payload = await response.json();
+            if (!response.ok) {
+                const message = payload && payload.error && payload.error.message
+                    ? payload.error.message
+                    : `HTTP ${response.status}`;
+                throw new Error(message);
+            }
+
+            const text = payload
+                && payload.candidates
+                && payload.candidates[0]
+                && payload.candidates[0].content
+                && payload.candidates[0].content.parts
+                ? payload.candidates[0].content.parts.map((part) => part.text || "").join("\n")
+                : "Geminiから応答がありませんでした。";
+
+            return text;
+        }
+
+        function buildOrdinancePrompt(selected, question, excerpt) {
+            const relatedCandidates = ordinanceCatalog
+                .filter((item) => item.name !== selected.name)
+                .map((item) => `- ${item.name}: ${item.url} (タグ: ${item.tags.join(", ")})`)
+                .join("\n");
 
             return [
+                "あなたは日本の地方自治体条例を分析する議会向け法務アシスタントです。",
+                "出力は日本語で、次の見出しをこの順番で必ず出してください。",
+                "1. 論点整理",
+                "2. 審査時の確認質問",
+                "3. 関連条例候補（最大3件）",
+                "4. 運用上の注意",
+                "5. 免責",
+                "関連条例候補には必ず条例名とURLを併記してください。",
+                "推測だけで断定せず、不確実ならその旨を明記してください。",
+                "",
                 `対象条例: ${selected.name}`,
-                `参照URL: ${selected.url}`,
+                `対象条例URL: ${selected.url}`,
                 `入力論点: ${question}`,
+                excerpt ? `条文抜粋:\n${excerpt}` : "条文抜粋: なし",
                 "",
-                ...analysisTemplates,
-                excerptSection,
-                "",
-                "関連条例候補",
-                relatedSection,
-                "",
-                "注意",
-                "・この結果は議会審査のたたき台です。最終判断は原文条文と法務確認で確定してください。"
+                "関連候補として利用可能な条例一覧:",
+                relatedCandidates
             ].join("\n");
         }
 
@@ -268,11 +335,62 @@
             });
         });
 
-        document.getElementById("runOrdinanceAnalysis").addEventListener("click", () => {
-            ordinanceOutput.textContent = buildOrdinanceAnalysis();
+        document.getElementById("saveGeminiSettings").addEventListener("click", () => {
+            const apiKey = geminiApiKeyInput.value.trim();
+            const model = geminiModelSelect.value;
+
+            if (!apiKey) {
+                geminiStatus.textContent = "APIキーを入力してください。";
+                return;
+            }
+
+            localStorage.setItem(GEMINI_STORAGE_KEY, apiKey);
+            localStorage.setItem(GEMINI_MODEL_KEY, model);
+            syncGeminiSettingsView();
+            geminiStatus.textContent = `保存しました: ${maskKey(apiKey)} / モデル: ${model}`;
+        });
+
+        document.getElementById("clearGeminiSettings").addEventListener("click", () => {
+            localStorage.removeItem(GEMINI_STORAGE_KEY);
+            localStorage.removeItem(GEMINI_MODEL_KEY);
+            syncGeminiSettingsView();
+            geminiStatus.textContent = "Gemini設定を削除しました。";
+        });
+
+        document.getElementById("testGeminiConnection").addEventListener("click", async () => {
+            geminiStatus.textContent = "接続テスト中...";
+            try {
+                await callGemini("あなたは接続確認用です。OKとだけ返答してください。");
+                geminiStatus.textContent = "接続テスト成功: Gemini APIに接続できました。";
+            } catch (error) {
+                geminiStatus.textContent = `接続テスト失敗: ${error.message}`;
+            }
+        });
+
+        document.getElementById("runOrdinanceAnalysis").addEventListener("click", async () => {
+            const selectedIndex = Number(document.getElementById("ordinanceSelect").value || 0);
+            const selected = ordinanceCatalog[selectedIndex];
+            const question = document.getElementById("analysisQuestion").value.trim();
+            const excerpt = document.getElementById("analysisExcerpt").value.trim();
+
+            if (!question) {
+                ordinanceOutput.textContent = "分析したい論点・質問を入力してください。";
+                return;
+            }
+
+            ordinanceOutput.textContent = "Geminiで分析中です...";
+
+            try {
+                const promptText = buildOrdinancePrompt(selected, question, excerpt);
+                const resultText = await callGemini(promptText);
+                ordinanceOutput.textContent = resultText;
+            } catch (error) {
+                ordinanceOutput.textContent = `Gemini分析に失敗しました: ${error.message}`;
+            }
         });
 
         populateOrdinanceOptions();
+        syncGeminiSettingsView();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
