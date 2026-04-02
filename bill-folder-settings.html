@@ -200,6 +200,14 @@
             throw new Error("Supabaseクライアントを初期化できません。ページを再読み込みしてください。");
         }
 
+        function toStorageRelativePath(relativePath) {
+            return relativePath
+                .split("/")
+                .filter(Boolean)
+                .map((segment) => encodeURIComponent(segment))
+                .join("/");
+        }
+
         function selectFolder() {
             document.getElementById("directory-input").click();
         }
@@ -302,13 +310,14 @@
                 const month = parts[2];   // 03
 
                 // Supabase Storageにアップロード
-                const storagePath = `gian/${folderName}`;
+                const storageBasePath = folderName;
                 let uploadedCount = 0;
 
                 for (let i = 0; i < selectedFiles.length; i++) {
                     const file = selectedFiles[i];
                     const relativePath = file.webkitRelativePath.substring(folderName.length + 1);
-                    const fullPath = `${storagePath}/${relativePath}`;
+                    const storageRelativePath = toStorageRelativePath(relativePath);
+                    const fullPath = `${storageBasePath}/${storageRelativePath}`;
 
                     // Supabase Storage にアップロード
                     const { error: uploadError } = await supabase.storage
@@ -328,6 +337,7 @@
                 // DB に登録情報を保存
                 const docList = selectedFiles.map(file => {
                     const relativePath = file.webkitRelativePath.substring(folderName.length + 1);
+                    const storageRelativePath = toStorageRelativePath(relativePath);
                     const fileName = relativePath.split("/").pop();
                     const typeInfo = inferDocumentType(fileName);
                     return {
@@ -335,6 +345,7 @@
                         fileName: fileName,
                         type: typeInfo.type,
                         relativePath: relativePath,
+                        storageRelativePath: storageRelativePath,
                         subFolder: typeInfo.subFolder
                     };
                 });
