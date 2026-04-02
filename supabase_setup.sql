@@ -345,3 +345,37 @@ for update to anon using (true);
 drop policy if exists document_notes_delete_anon_temp on public.document_notes;
 create policy document_notes_delete_anon_temp on public.document_notes
 for delete to anon using (true);
+
+-- ----------------------------------------------------------------------
+-- document_ink_notes テーブル（議案手書きメモ：個人専用）
+-- PDFビューア上に重ねて描いた線データを資料単位で保存する。
+-- member_id でフィルタリングして本人のみ参照する運用（自己責任フィルタ）。
+-- ----------------------------------------------------------------------
+create table if not exists public.document_ink_notes (
+    id bigserial primary key,
+    member_id text not null,
+    session_id text not null,
+    document_name text not null,
+    ink_payload jsonb not null default '[]'::jsonb,
+    updated_at timestamptz not null default now(),
+    created_at timestamptz not null default now(),
+    unique (member_id, session_id, document_name)
+);
+
+alter table public.document_ink_notes enable row level security;
+
+drop policy if exists document_ink_notes_select_anon_temp on public.document_ink_notes;
+create policy document_ink_notes_select_anon_temp on public.document_ink_notes
+for select to anon using (true);
+
+drop policy if exists document_ink_notes_insert_anon_temp on public.document_ink_notes;
+create policy document_ink_notes_insert_anon_temp on public.document_ink_notes
+for insert to anon with check (true);
+
+drop policy if exists document_ink_notes_update_anon_temp on public.document_ink_notes;
+create policy document_ink_notes_update_anon_temp on public.document_ink_notes
+for update to anon using (true);
+
+drop policy if exists document_ink_notes_delete_anon_temp on public.document_ink_notes;
+create policy document_ink_notes_delete_anon_temp on public.document_ink_notes
+for delete to anon using (true);
