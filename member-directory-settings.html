@@ -163,6 +163,43 @@
         </section>
     </main>
 
+    <!-- APIキー取得説明モーダル -->
+    <div id="gemini-guide-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-1"><i class="fas fa-key text-emerald-600 mr-2"></i>Gemini APIキーの取得方法</h2>
+            <p class="text-xs text-gray-500 mb-4">Google AI Studio で無料のAPIキーを発行できます。</p>
+            <ol class="space-y-3 text-sm text-gray-700 mb-6">
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">1</span>
+                    <span>「取得画面を開く」を押してGoogle AI Studioにアクセスします。</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">2</span>
+                    <span>この画面に入力した <strong>Gmailアカウント</strong> でログインしてください。</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">3</span>
+                    <span>「<strong>Create API key</strong>」ボタンをクリックし、プロジェクトを選択してキーを生成します。</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">4</span>
+                    <span>生成された <code class="bg-gray-100 px-1 rounded">AIza...</code> で始まるキーをコピーして、この画面の「Gemini APIキー」欄に貼り付けてください。</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">5</span>
+                    <span>「保存」を押して完了です。</span>
+                </li>
+            </ol>
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-5">
+                <i class="fas fa-exclamation-triangle mr-1"></i>APIキーは他人に見せないよう大切に管理してください。
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 justify-end">
+                <button id="gemini-guide-close" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold">閉じる</button>
+                <button id="gemini-guide-open" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-semibold"><i class="fas fa-external-link-alt mr-1"></i>取得画面を開く</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
         &copy; 2026 議会DX推進プロジェクト - 未来の自治体をつくる
     </footer>
@@ -382,8 +419,22 @@
                 document.getElementById("email").focus();
                 return;
             }
+            document.getElementById("gemini-guide-modal").classList.remove("hidden");
+        });
+
+        document.getElementById("gemini-guide-close").addEventListener("click", () => {
+            document.getElementById("gemini-guide-modal").classList.add("hidden");
+        });
+
+        document.getElementById("gemini-guide-open").addEventListener("click", () => {
             window.open("https://aistudio.google.com/app/apikey", "_blank", "noopener");
             document.getElementById("form-message").textContent = "APIキー作成画面を開きました。作成したキーをこの画面に貼り付けて保存してください。";
+        });
+
+        document.getElementById("gemini-guide-modal").addEventListener("click", (e) => {
+            if (e.target === document.getElementById("gemini-guide-modal")) {
+                document.getElementById("gemini-guide-modal").classList.add("hidden");
+            }
         });
 
         document.getElementById("member-form").addEventListener("submit", saveMember);
