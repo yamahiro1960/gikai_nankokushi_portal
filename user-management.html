@@ -1,35 +1,35 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>繝ｦ繝ｼ繧ｶ繝ｼ邂｡逅・| 蜊怜嵜蟶りｭｰ莨咼X繝昴・繧ｿ繝ｫ</title>
+    <title>ユーザー管理 | 南国市議会DXポータル</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 text-slate-800">
     <header class="bg-indigo-700 text-white p-4 shadow">
         <div class="container mx-auto flex justify-between items-center">
-            <a href="system-settings.html" class="font-bold hover:text-indigo-100">繧ｷ繧ｹ繝・Β險ｭ螳・/a>
+            <a href="system-settings.html" class="font-bold hover:text-indigo-100">システム設定</a>
             <div id="authArea"></div>
         </div>
     </header>
 
     <main class="container mx-auto py-8 px-4">
         <div class="mb-6">
-            <a href="system-settings.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">繧ｷ繧ｹ繝・Β險ｭ螳壹∈謌ｻ繧・/a>
+            <a href="system-settings.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">システム設定へ戻る</a>
         </div>
 
-        <h1 class="text-3xl font-bold mb-2">繝ｭ繧ｰ繧､繝ｳ繝ｦ繝ｼ繧ｶ繝ｼ邂｡逅・/h1>
-        <p class="text-sm text-slate-600 mb-6">逋ｻ骭ｲ貂医∩繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ讓ｩ髯舌ｒ螟画峩縺ｧ縺阪∪縺呻ｼ・dmin縺ｮ縺ｿ・峨・/p>
+        <h1 class="text-3xl font-bold mb-2">ログインユーザー管理</h1>
+        <p class="text-sm text-slate-600 mb-6">登録済みユーザーの権限を変更できます（adminのみ）。</p>
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-100">
                     <tr>
-                        <th class="text-left p-3 border-b">繝｡繝ｼ繝ｫ</th>
-                        <th class="text-left p-3 border-b">陦ｨ遉ｺ蜷・/th>
-                        <th class="text-left p-3 border-b">迴ｾ蝨ｨ縺ｮ讓ｩ髯・/th>
-                        <th class="text-left p-3 border-b">螟画峩</th>
+                        <th class="text-left p-3 border-b">メール</th>
+                        <th class="text-left p-3 border-b">表示名</th>
+                        <th class="text-left p-3 border-b">現在の権限</th>
+                        <th class="text-left p-3 border-b">変更</th>
                     </tr>
                 </thead>
                 <tbody id="userRows"></tbody>
@@ -60,7 +60,7 @@
                             <option value="editor" ${item.role === "editor" ? "selected" : ""}>editor</option>
                             <option value="admin" ${item.role === "admin" ? "selected" : ""}>admin</option>
                         </select>
-                        <button data-id="${item.user_id}" class="saveRole bg-indigo-600 text-white px-3 py-1 rounded">菫晏ｭ・/button>
+                        <button data-id="${item.user_id}" class="saveRole bg-indigo-600 text-white px-3 py-1 rounded">保存</button>
                     </td>
                 `;
                 userRows.appendChild(tr);
@@ -78,11 +78,11 @@
                         .eq("user_id", userId);
 
                     if (error) {
-                        message.textContent = `譖ｴ譁ｰ螟ｱ謨・ ${error.message}`;
+                        message.textContent = `更新失敗: ${error.message}`;
                         return;
                     }
 
-                    message.textContent = "讓ｩ髯舌ｒ譖ｴ譁ｰ縺励∪縺励◆縲・;
+                    message.textContent = "権限を更新しました。";
                     await loadUsers(client);
                 });
             });
@@ -95,7 +95,7 @@
                 .order("email", { ascending: true });
 
             if (error) {
-                message.textContent = `隱ｭ霎ｼ螟ｱ謨・ ${error.message}`;
+                message.textContent = `読込失敗: ${error.message}`;
                 return;
             }
 
@@ -114,4 +114,3 @@
     </script>
 </body>
 </html>
-

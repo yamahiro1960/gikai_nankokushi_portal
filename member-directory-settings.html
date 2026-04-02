@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>隴ｰ蜩｡繝ｻ閨ｷ蜩｡逋ｻ骭ｲ | 蜊怜嵜蟶りｭｰ莨咼X繝昴・繧ｿ繝ｫ</title>
+    <title>議員・職員登録 | 南国市議会DXポータル</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -11,10 +11,10 @@
     <header class="bg-indigo-700 text-white shadow-lg p-4">
         <div class="container mx-auto flex justify-between items-center">
             <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
-                <i class="fas fa-laptop-code mr-2"></i>蜊怜嵜蟶りｭｰ莨咼X繝昴・繧ｿ繝ｫ
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
             </a>
             <div class="text-right">
-                <span class="text-sm">隴ｰ蜩｡繝ｻ閨ｷ蜩｡逋ｻ骭ｲ</span>
+                <span class="text-sm">議員・職員登録</span>
                 <div id="authArea"></div>
             </div>
         </div>
@@ -23,138 +23,138 @@
     <main class="container mx-auto py-8 px-4">
         <div class="mb-6">
             <a href="system-settings.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
-                <i class="fas fa-chevron-left mr-1"></i>繧ｷ繧ｹ繝・Β險ｭ螳壹∈謌ｻ繧・
+                <i class="fas fa-chevron-left mr-1"></i>システム設定へ戻る
             </a>
         </div>
 
         <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-sky-600 to-indigo-700 text-white shadow-lg mb-8">
             <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-bold mb-2">隴ｰ蜩｡繝ｻ閨ｷ蜩｡逋ｻ骭ｲ</h1>
-                    <p class="text-sky-100">隴ｰ蜩｡縺翫ｈ縺ｳ莠句漁螻繧ｹ繧ｿ繝・ヵ縺ｮ蝓ｺ譛ｬ諠・ｱ繧奪B縺ｸ逋ｻ骭ｲ繝ｻ譖ｴ譁ｰ縺励∪縺吶・/p>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">議員・職員登録</h1>
+                    <p class="text-sky-100">議員および事務局スタッフの基本情報をDBへ登録・更新します。</p>
                 </div>
-                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">繝｢繝ｼ繝・ 繝槭せ繧ｿ邂｡逅・/div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: マスタ管理</div>
             </div>
         </section>
 
         <section class="bg-indigo-50 border border-indigo-200 rounded-xl shadow-sm p-5 mb-6">
-            <h2 class="text-base font-bold text-indigo-900 mb-2">AI逕ｻ髱｢縺ｨ縺ｮ騾｣謳ｺ</h2>
-            <p class="text-sm text-indigo-900">縺薙・逕ｻ髱｢縺ｧ逋ｻ骭ｲ縺励◆繝・・繧ｿ縺ｯ縲、I謾ｿ遲悶い繧ｷ繧ｹ繧ｿ繝ｳ繝医・縲悟茜逕ｨ閠・ｒ驕ｸ謚槭堺ｸ隕ｧ縺ｫ陦ｨ遉ｺ縺輔ｌ縺ｾ縺吶・emini API繧ｭ繝ｼ繧ゅ％縺ｮ逕ｻ髱｢縺ｧ蛻ｩ逕ｨ閠・＃縺ｨ縺ｫ險ｭ螳壹〒縺阪∪縺吶・/p>
+            <h2 class="text-base font-bold text-indigo-900 mb-2">AI画面との連携</h2>
+            <p class="text-sm text-indigo-900">この画面で登録したデータは、AI政策アシスタントの「利用者を選択」一覧に表示されます。Gemini APIキーもこの画面で利用者ごとに設定できます。</p>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mb-6">
-            <h2 class="text-xl font-bold mb-4 text-gray-700">逋ｻ骭ｲ繝輔か繝ｼ繝</h2>
+            <h2 class="text-xl font-bold mb-4 text-gray-700">登録フォーム</h2>
             <form id="member-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">ID・医Θ繝九・繧ｯ・・/label>
-                    <input id="member_id" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="萓・ G001">
+                    <label class="text-sm font-semibold text-gray-700">ID（ユニーク）</label>
+                    <input id="member_id" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: G001">
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">豌丞錐</label>
-                    <input id="full_name" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="萓・ 蜊怜嵜 螟ｪ驛・>
+                    <label class="text-sm font-semibold text-gray-700">氏名</label>
+                    <input id="full_name" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 南国 太郎">
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">縲・/label>
-                    <input id="postal_code" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="萓・ 783-8501">
+                    <label class="text-sm font-semibold text-gray-700">〒</label>
+                    <input id="postal_code" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 783-8501">
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">菴乗園</label>
-                    <input id="address" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="菴乗園繧貞・蜉・>
+                    <label class="text-sm font-semibold text-gray-700">住所</label>
+                    <input id="address" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="住所を入力">
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">髮ｻ隧ｱ</label>
-                    <input id="phone" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="萓・ 088-000-0000">
+                    <label class="text-sm font-semibold text-gray-700">電話</label>
+                    <input id="phone" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 088-000-0000">
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">謳ｺ蟶ｯ</label>
-                    <input id="mobile" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="萓・ 090-0000-0000">
+                    <label class="text-sm font-semibold text-gray-700">携帯</label>
+                    <input id="mobile" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 090-0000-0000">
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">蛹ｺ蛻・/label>
+                    <label class="text-sm font-semibold text-gray-700">区分</label>
                     <select id="category" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                        <option value="隴ｰ蜩｡">隴ｰ蜩｡</option>
-                        <option value="閨ｷ蜩｡">閨ｷ蜩｡</option>
+                        <option value="議員">議員</option>
+                        <option value="職員">職員</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">蠖ｹ閨ｷ</label>
+                    <label class="text-sm font-semibold text-gray-700">役職</label>
                     <select id="position_name" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                        <option value="">譛ｪ險ｭ螳・/option>
-                        <option value="隴ｰ髟ｷ">隴ｰ髟ｷ</option>
-                        <option value="蜑ｯ隴ｰ髟ｷ">蜑ｯ隴ｰ髟ｷ</option>
+                        <option value="">未設定</option>
+                        <option value="議長">議長</option>
+                        <option value="副議長">副議長</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">Gmail繧｢繝峨Ξ繧ｹ・亥ｿ・茨ｼ・/label>
+                    <label class="text-sm font-semibold text-gray-700">Gmailアドレス（必須）</label>
                     <input id="email" type="email" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="example@gmail.com">
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">蟋泌藤莨・/label>
+                    <label class="text-sm font-semibold text-gray-700">委員会</label>
                     <select id="committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                        <option value="">譛ｪ險ｭ螳・/option>
-                        <option value="逕｣讌ｭ蟒ｺ險ｭ">逕｣讌ｭ蟒ｺ險ｭ</option>
-                        <option value="謨呵ご豌醍函">謨呵ご豌醍函</option>
-                        <option value="邱丞漁">邱丞漁</option>
+                        <option value="">未設定</option>
+                        <option value="産業建設">産業建設</option>
+                        <option value="教育民生">教育民生</option>
+                        <option value="総務">総務</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">蟋泌藤莨壼ｽｹ閨ｷ</label>
+                    <label class="text-sm font-semibold text-gray-700">委員会役職</label>
                     <select id="committee_role" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                        <option value="">譛ｪ險ｭ螳・/option>
-                        <option value="蟋泌藤髟ｷ">蟋泌藤髟ｷ</option>
-                        <option value="蜑ｯ蟋泌藤髟ｷ">蜑ｯ蟋泌藤髟ｷ</option>
-                        <option value="蟋泌藤">蟋泌藤</option>
+                        <option value="">未設定</option>
+                        <option value="委員長">委員長</option>
+                        <option value="副委員長">副委員長</option>
+                        <option value="委員">委員</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">隴ｰ驕九Γ繝ｳ繝舌・縺ｧ縺吶°・・/label>
+                    <label class="text-sm font-semibold text-gray-700">議運メンバーですか？</label>
                     <select id="is_giun" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="true">YES</option>
                         <option value="false" selected>NO</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">邱ｨ髮・ｧ泌藤縺ｧ縺吶°・・/label>
+                    <label class="text-sm font-semibold text-gray-700">編集委員ですか？</label>
                     <select id="is_editorial_committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="true">YES</option>
                         <option value="false" selected>NO</option>
                     </select>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="text-sm font-semibold text-gray-700">Gemini API繧ｭ繝ｼ・亥茜逕ｨ閠・＃縺ｨ・・/label>
+                    <label class="text-sm font-semibold text-gray-700">Gemini APIキー（利用者ごと）</label>
                     <div class="mt-1 flex flex-col sm:flex-row gap-2">
                         <input id="gemini_api_key" type="password" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="AIza...">
-                        <button type="button" id="open-gemini-key-page" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">API繧ｭ繝ｼ繧貞叙蠕・/button>
+                        <button type="button" id="open-gemini-key-page" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">APIキーを取得</button>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">蜿門ｾ励・繧ｿ繝ｳ繧呈款縺吶→Google AI Studio縺ｮAPI繧ｭ繝ｼ菴懈・逕ｻ髱｢繧帝幕縺阪∪縺吶・mail繧｢繝峨Ξ繧ｹ縺ｮ蜈･蜉帙′蠢・医〒縺吶・/p>
-                    <p class="text-xs text-gray-500">縺薙・蛻ｩ逕ｨ閠・↓邏舌▼縺就PI繧ｭ繝ｼ繧剃ｿ晏ｭ倥＠縺ｾ縺吶よ悴蜈･蜉帙〒菫晏ｭ倥☆繧九→譌｢蟄倥く繝ｼ繧貞炎髯､縺励∪縺吶・/p>
+                    <p class="text-xs text-gray-500 mt-1">取得ボタンを押すとGoogle AI StudioのAPIキー作成画面を開きます。Gmailアドレスの入力が必須です。</p>
+                    <p class="text-xs text-gray-500">この利用者に紐づくAPIキーを保存します。未入力で保存すると既存キーを削除します。</p>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="text-sm font-semibold text-gray-700">蛯呵・/label>
-                    <textarea id="notes" rows="3" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="繝｡繝｢繧貞・蜉・></textarea>
+                    <label class="text-sm font-semibold text-gray-700">備考</label>
+                    <textarea id="notes" rows="3" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="メモを入力"></textarea>
                 </div>
                 <div class="md:col-span-2 flex gap-3">
-                    <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white px-5 py-2 rounded-lg text-sm font-semibold">菫晏ｭ・/button>
-                    <button type="button" id="clear-form" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold">繧ｯ繝ｪ繧｢</button>
+                    <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white px-5 py-2 rounded-lg text-sm font-semibold">保存</button>
+                    <button type="button" id="clear-form" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold">クリア</button>
                 </div>
             </form>
             <p id="form-message" class="mt-3 text-sm text-gray-600"></p>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-slate-500">
-            <h2 class="text-xl font-bold mb-4 text-gray-700">逋ｻ骭ｲ荳隕ｧ</h2>
+            <h2 class="text-xl font-bold mb-4 text-gray-700">登録一覧</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-gray-100">
                         <tr>
                             <th class="text-left p-2 border">ID</th>
-                            <th class="text-left p-2 border">豌丞錐</th>
-                            <th class="text-left p-2 border">蛹ｺ蛻・/th>
-                            <th class="text-left p-2 border">蠖ｹ閨ｷ</th>
-                            <th class="text-left p-2 border">蟋泌藤莨・/th>
-                            <th class="text-left p-2 border">隴ｰ驕九Γ繝ｳ繝舌・縺ｧ縺吶°・・/th>
-                            <th class="text-left p-2 border">邱ｨ髮・ｧ泌藤縺ｧ縺吶°・・/th>
-                            <th class="text-left p-2 border">謫堺ｽ・/th>
+                            <th class="text-left p-2 border">氏名</th>
+                            <th class="text-left p-2 border">区分</th>
+                            <th class="text-left p-2 border">役職</th>
+                            <th class="text-left p-2 border">委員会</th>
+                            <th class="text-left p-2 border">議運メンバーですか？</th>
+                            <th class="text-left p-2 border">編集委員ですか？</th>
+                            <th class="text-left p-2 border">操作</th>
                         </tr>
                     </thead>
                     <tbody id="member-list"></tbody>
@@ -163,45 +163,45 @@
         </section>
     </main>
 
-    <!-- API繧ｭ繝ｼ蜿門ｾ苓ｪｬ譏弱Δ繝ｼ繝繝ｫ -->
+    <!-- APIキー取得説明モーダル -->
     <div id="gemini-guide-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6">
-            <h2 class="text-lg font-bold text-gray-800 mb-1"><i class="fas fa-key text-emerald-600 mr-2"></i>Gemini API繧ｭ繝ｼ縺ｮ蜿門ｾ玲婿豕・/h2>
-            <p class="text-xs text-gray-500 mb-4">Google AI Studio 縺ｧ辟｡譁吶・API繧ｭ繝ｼ繧堤匱陦後〒縺阪∪縺吶・/p>
+            <h2 class="text-lg font-bold text-gray-800 mb-1"><i class="fas fa-key text-emerald-600 mr-2"></i>Gemini APIキーの取得方法</h2>
+            <p class="text-xs text-gray-500 mb-4">Google AI Studio で無料のAPIキーを発行できます。</p>
             <ol class="space-y-3 text-sm text-gray-700 mb-6">
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">1</span>
-                    <span>縲悟叙蠕礼判髱｢繧帝幕縺上阪ｒ謚ｼ縺励※Google AI Studio縺ｫ繧｢繧ｯ繧ｻ繧ｹ縺励∪縺吶・/span>
+                    <span>「取得画面を開く」を押してGoogle AI Studioにアクセスします。</span>
                 </li>
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">2</span>
-                    <span>縺薙・逕ｻ髱｢縺ｫ蜈･蜉帙＠縺・<strong>Gmail繧｢繧ｫ繧ｦ繝ｳ繝・/strong> 縺ｧ繝ｭ繧ｰ繧､繝ｳ縺励※縺上□縺輔＞縲・/span>
+                    <span>この画面に入力した <strong>Gmailアカウント</strong> でログインしてください。</span>
                 </li>
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">3</span>
-                    <span>縲・strong>Create API key</strong>縲阪・繧ｿ繝ｳ繧偵け繝ｪ繝・け縺励√・繝ｭ繧ｸ繧ｧ繧ｯ繝医ｒ驕ｸ謚槭＠縺ｦ繧ｭ繝ｼ繧堤函謌舌＠縺ｾ縺吶・/span>
+                    <span>「<strong>Create API key</strong>」ボタンをクリックし、プロジェクトを選択してキーを生成します。</span>
                 </li>
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">4</span>
-                    <span>逕滓・縺輔ｌ縺・<code class="bg-gray-100 px-1 rounded">AIza...</code> 縺ｧ蟋九∪繧九く繝ｼ繧偵さ繝斐・縺励※縲√％縺ｮ逕ｻ髱｢縺ｮ縲隈emini API繧ｭ繝ｼ縲肴ｬ・↓雋ｼ繧贋ｻ倥￠縺ｦ縺上□縺輔＞縲・/span>
+                    <span>生成された <code class="bg-gray-100 px-1 rounded">AIza...</code> で始まるキーをコピーして、この画面の「Gemini APIキー」欄に貼り付けてください。</span>
                 </li>
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">5</span>
-                    <span>縲御ｿ晏ｭ倥阪ｒ謚ｼ縺励※螳御ｺ・〒縺吶・/span>
+                    <span>「保存」を押して完了です。</span>
                 </li>
             </ol>
             <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-5">
-                <i class="fas fa-exclamation-triangle mr-1"></i>API繧ｭ繝ｼ縺ｯ莉紋ｺｺ縺ｫ隕九○縺ｪ縺・ｈ縺・､ｧ蛻・↓邂｡逅・＠縺ｦ縺上□縺輔＞縲・
+                <i class="fas fa-exclamation-triangle mr-1"></i>APIキーは他人に見せないよう大切に管理してください。
             </div>
             <div class="flex flex-col sm:flex-row gap-3 justify-end">
-                <button id="gemini-guide-close" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold">髢峨§繧・/button>
-                <button id="gemini-guide-open" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-semibold"><i class="fas fa-external-link-alt mr-1"></i>蜿門ｾ礼判髱｢繧帝幕縺・/button>
+                <button id="gemini-guide-close" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold">閉じる</button>
+                <button id="gemini-guide-open" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-semibold"><i class="fas fa-external-link-alt mr-1"></i>取得画面を開く</button>
             </div>
         </div>
     </div>
 
     <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
-        &copy; 2026 蜊怜嵜蟶りｭｰ莨咼X謗ｨ騾ｲ繝励Ο繧ｸ繧ｧ繧ｯ繝・- 譛ｪ譚･縺ｮ閾ｪ豐ｻ菴薙ｒ縺､縺上ｋ
+        &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -232,7 +232,7 @@
             document.getElementById("address").value = item.address || "";
             document.getElementById("phone").value = item.phone || "";
             document.getElementById("mobile").value = item.mobile || "";
-            document.getElementById("category").value = item.category || "隴ｰ蜩｡";
+            document.getElementById("category").value = item.category || "議員";
             document.getElementById("position_name").value = item.position_name || "";
             document.getElementById("email").value = item.email || "";
             document.getElementById("committee").value = item.committee || "";
@@ -266,7 +266,7 @@
             tbody.innerHTML = "";
 
             if (error) {
-                document.getElementById("form-message").textContent = "荳隕ｧ隱ｭ霎ｼ螟ｱ謨・ " + error.message;
+                document.getElementById("form-message").textContent = "一覧読込失敗: " + error.message;
                 return;
             }
 
@@ -281,8 +281,8 @@
                     <td class="p-2 border">${toYesNo(item.is_giun)}</td>
                     <td class="p-2 border">${toYesNo(item.is_editorial_committee)}</td>
                     <td class="p-2 border">
-                        <button class="text-indigo-700 hover:text-indigo-900 mr-3" data-edit="${item.member_id}">邱ｨ髮・/button>
-                        <button class="text-rose-700 hover:text-rose-900" data-delete="${item.member_id}">蜑企勁</button>
+                        <button class="text-indigo-700 hover:text-indigo-900 mr-3" data-edit="${item.member_id}">編集</button>
+                        <button class="text-rose-700 hover:text-rose-900" data-delete="${item.member_id}">削除</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -298,12 +298,12 @@
                         .single();
 
                     if (detailError) {
-                        document.getElementById("form-message").textContent = "隧ｳ邏ｰ隱ｭ霎ｼ螟ｱ謨・ " + detailError.message;
+                        document.getElementById("form-message").textContent = "詳細読込失敗: " + detailError.message;
                         return;
                     }
 
                     await setFormValues(detail);
-                    document.getElementById("form-message").textContent = "邱ｨ髮・Δ繝ｼ繝峨〒隱ｭ縺ｿ霎ｼ縺ｿ縺ｾ縺励◆縲・;
+                    document.getElementById("form-message").textContent = "編集モードで読み込みました。";
                     window.scrollTo({ top: 0, behavior: "smooth" });
                 });
             });
@@ -311,7 +311,7 @@
             tbody.querySelectorAll("button[data-delete]").forEach((btn) => {
                 btn.addEventListener("click", async () => {
                     const id = btn.getAttribute("data-delete");
-                    const ok = confirm(`${id} 繧貞炎髯､縺励∪縺吶°・歔);
+                    const ok = confirm(`${id} を削除しますか？`);
                     if (!ok) {
                         return;
                     }
@@ -322,11 +322,11 @@
                         .eq("member_id", id);
 
                     if (deleteError) {
-                        document.getElementById("form-message").textContent = "蜑企勁螟ｱ謨・ " + deleteError.message;
+                        document.getElementById("form-message").textContent = "削除失敗: " + deleteError.message;
                         return;
                     }
 
-                    document.getElementById("form-message").textContent = "蜑企勁縺励∪縺励◆縲・;
+                    document.getElementById("form-message").textContent = "削除しました。";
                     await loadMembers();
                 });
             });
@@ -354,17 +354,17 @@
             };
 
             if (!payload.member_id) {
-                document.getElementById("form-message").textContent = "ID繧貞・蜉帙＠縺ｦ縺上□縺輔＞縲・;
+                document.getElementById("form-message").textContent = "IDを入力してください。";
                 return;
             }
 
             if (!payload.email) {
-                document.getElementById("form-message").textContent = "Gmail繧｢繝峨Ξ繧ｹ繧貞・蜉帙＠縺ｦ縺上□縺輔＞縲・;
+                document.getElementById("form-message").textContent = "Gmailアドレスを入力してください。";
                 return;
             }
 
             if (!/@gmail\.com$/i.test(payload.email)) {
-                document.getElementById("form-message").textContent = "Gmail繧｢繝峨Ξ繧ｹ・・gmail.com・峨ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞縲・;
+                document.getElementById("form-message").textContent = "Gmailアドレス（@gmail.com）を入力してください。";
                 return;
             }
 
@@ -373,7 +373,7 @@
                 .upsert(payload, { onConflict: "member_id" });
 
             if (error) {
-                document.getElementById("form-message").textContent = "菫晏ｭ伜､ｱ謨・ " + error.message;
+                document.getElementById("form-message").textContent = "保存失敗: " + error.message;
                 return;
             }
 
@@ -396,7 +396,7 @@
                     }, { onConflict: "setting_key" });
 
                 if (keyError) {
-                    document.getElementById("form-message").textContent = "蛻ｩ逕ｨ閠・ュ蝣ｱ縺ｯ菫晏ｭ倥＠縺ｾ縺励◆縺後、PI繧ｭ繝ｼ菫晏ｭ倥↓螟ｱ謨・ " + keyError.message;
+                    document.getElementById("form-message").textContent = "利用者情報は保存しましたが、APIキー保存に失敗: " + keyError.message;
                     await loadMembers();
                     return;
                 }
@@ -407,7 +407,7 @@
                     .eq("setting_key", settingKey);
             }
 
-            document.getElementById("form-message").textContent = "菫晏ｭ倥＠縺ｾ縺励◆縲・;
+            document.getElementById("form-message").textContent = "保存しました。";
             clearForm();
             await loadMembers();
         }
@@ -415,7 +415,7 @@
         document.getElementById("open-gemini-key-page").addEventListener("click", () => {
             const email = document.getElementById("email").value.trim();
             if (!email || !/@gmail\.com$/i.test(email)) {
-                document.getElementById("form-message").textContent = "蜈医↓Gmail繧｢繝峨Ξ繧ｹ・・gmail.com・峨ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞縲・;
+                document.getElementById("form-message").textContent = "先にGmailアドレス（@gmail.com）を入力してください。";
                 document.getElementById("email").focus();
                 return;
             }
@@ -428,7 +428,7 @@
 
         document.getElementById("gemini-guide-open").addEventListener("click", () => {
             window.open("https://aistudio.google.com/app/apikey", "_blank", "noopener");
-            document.getElementById("form-message").textContent = "API繧ｭ繝ｼ菴懈・逕ｻ髱｢繧帝幕縺阪∪縺励◆縲ゆｽ懈・縺励◆繧ｭ繝ｼ繧偵％縺ｮ逕ｻ髱｢縺ｫ雋ｼ繧贋ｻ倥￠縺ｦ菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・;
+            document.getElementById("form-message").textContent = "APIキー作成画面を開きました。作成したキーをこの画面に貼り付けて保存してください。";
         });
 
         document.getElementById("gemini-guide-modal").addEventListener("click", (e) => {
@@ -453,4 +453,3 @@
     </script>
 </body>
 </html>
-

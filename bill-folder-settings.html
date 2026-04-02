@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>隴ｰ譯・DF逋ｻ骭ｲ | 蜊怜嵜蟶りｭｰ莨咼X繝昴・繧ｿ繝ｫ</title>
+    <title>議案PDF登録 | 南国市議会DXポータル</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -11,10 +11,10 @@
     <header class="bg-indigo-700 text-white shadow-lg p-4">
         <div class="container mx-auto flex justify-between items-center">
             <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
-                <i class="fas fa-laptop-code mr-2"></i>蜊怜嵜蟶りｭｰ莨咼X繝昴・繧ｿ繝ｫ
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
             </a>
             <div class="text-right">
-                <span class="text-sm">隴ｰ譯・DF逋ｻ骭ｲ</span>
+                <span class="text-sm">議案PDF登録</span>
                 <div id="authArea"></div>
             </div>
         </div>
@@ -23,147 +23,147 @@
     <main class="container mx-auto py-8 px-4">
         <div class="mb-6">
             <a href="system-settings.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
-                <i class="fas fa-chevron-left mr-1"></i>繧ｷ繧ｹ繝・Β險ｭ螳壹↓謌ｻ繧・
+                <i class="fas fa-chevron-left mr-1"></i>システム設定に戻る
             </a>
         </div>
 
         <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg mb-8">
             <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-bold mb-2">隴ｰ譯・DF逋ｻ骭ｲ</h1>
-                    <p class="text-emerald-50">繝ｭ繝ｼ繧ｫ繝ｫ縺ｫ菫晏ｭ倥＠縺溯ｭｰ譯郁ｳ・侭繧堤｢ｺ隱阪＠縲∝・髢狗畑繧ｳ繝斐・繧・Supabase 縺ｸ繧｢繝・・繝ｭ繝ｼ繝峨☆繧狗判髱｢縺ｧ縺吶ゅΟ繝ｼ繧ｫ繝ｫ縺ｮ蜴滓悽繝輔ぃ繧､繝ｫ縺ｯ縺昴・縺ｾ縺ｾ谿九ｊ縺ｾ縺吶・/p>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">議案PDF登録</h1>
+                    <p class="text-emerald-50">ローカルに保存した議案資料を確認し、公開用コピーを Supabase へアップロードする画面です。ローカルの原本ファイルはそのまま残ります。</p>
                 </div>
-                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">繝｢繝ｼ繝・ 蜴滓悽遒ｺ隱・+ 蜈ｬ髢九い繝・・繝ｭ繝ｼ繝・/div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: 原本確認 + 公開アップロード</div>
             </div>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-emerald-500 mb-6">
-            <h2 class="text-xl font-bold text-gray-700 mb-3">菫晏ｭ伜・繝輔か繝ｫ繝繝ｼ</h2>
-            <p class="text-sm text-gray-600 mb-4">隴ｰ譯・DF縺ｮ蜴滓悽縺ｯ縲√・繝ｼ繧ｿ繝ｫ縺ｮ菴懈･ｭ繝輔か繝ｫ繝繝ｼ逶ｴ荳九↓菴懈・縺励◆ gian 繝輔か繝ｫ繝繝ｼ驟堺ｸ九∈縲√ヵ繧ｩ繝ｫ繝繝ｼ蜷阪Ν繝ｼ繝ｫ縺ｫ豐ｿ縺｣縺ｦ驟咲ｽｮ縺励∪縺吶・/p>
+            <h2 class="text-xl font-bold text-gray-700 mb-3">保存先フォルダー</h2>
+            <p class="text-sm text-gray-600 mb-4">議案PDFの原本は、ポータルの作業フォルダー直下に作成した gian フォルダー配下へ、フォルダー名ルールに沿って配置します。</p>
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 space-y-2">
-                <p><span class="font-semibold">繝ｭ繝ｼ繧ｫ繝ｫ菴懈･ｭ繝輔か繝ｫ繝繝ｼ:</span> C:\Users\nanko\OneDrive\繝・せ繧ｯ繝医ャ繝予My_Developments\giin\gikai_nankokushi_portal</p>
-                <p><span class="font-semibold">繝輔か繝ｫ繝繝ｼ蜷阪Ν繝ｼ繝ｫ:</span> 蝗樊ｬ｡_隘ｿ證ｦ_譛・/p>
-                <p><span class="font-semibold">萓・</span> 425_2022_03</p>
-                <p><span class="font-semibold">諢丞袖:</span> 425=隴ｰ莨壼屓謨ｰ / 2022=隘ｿ證ｦ蟷ｴ / 03=譛・/p>
-                <p><span class="font-semibold">驟咲ｽｮ蜈医・蝓ｺ譛ｬ蠖｢:</span> gian\425_2022_03\PDF繝輔ぃ繧､繝ｫ蜷・pdf</p>
-                <p><span class="font-semibold">蜍牙ｼｷ莨夊ｳ・侭縺ｮ驟咲ｽｮ蜈・</span> gian\425_2022_03\benkyoukai\PDF繝輔ぃ繧､繝ｫ蜷・pdf</p>
-                <p><span class="font-semibold">驕狗畑:</span> 縺薙・繝輔か繝ｫ繝繝ｼ縺ｯ蜴滓悽菫晉ｮ｡逕ｨ縺ｨ縺励※谿九＠縲仝eb 縺九ｉ Supabase 縺ｸ蜈ｬ髢狗畑繧ｳ繝斐・繧偵い繝・・繝ｭ繝ｼ繝峨＠縺ｾ縺吶・/p>
+                <p><span class="font-semibold">ローカル作業フォルダー:</span> C:\Users\nanko\OneDrive\デスクトップ\My_Developments\giin\gikai_nankokushi_portal</p>
+                <p><span class="font-semibold">フォルダー名ルール:</span> 回次_西暦_月</p>
+                <p><span class="font-semibold">例:</span> 425_2022_03</p>
+                <p><span class="font-semibold">意味:</span> 425=議会回数 / 2022=西暦年 / 03=月</p>
+                <p><span class="font-semibold">配置先の基本形:</span> gian\425_2022_03\PDFファイル名.pdf</p>
+                <p><span class="font-semibold">勉強会資料の配置先:</span> gian\425_2022_03\benkyoukai\PDFファイル名.pdf</p>
+                <p><span class="font-semibold">運用:</span> このフォルダーは原本保管用として残し、Web から Supabase へ公開用コピーをアップロードします。</p>
             </div>
         </section>
 
         <section class="bg-amber-50 border border-amber-200 rounded-xl shadow-sm p-6 mb-6">
-            <h2 class="text-xl font-bold text-amber-900 mb-3">縺薙・逕ｻ髱｢縺ｮ蠖ｹ蜑ｲ</h2>
+            <h2 class="text-xl font-bold text-amber-900 mb-3">この画面の役割</h2>
             <div class="space-y-2 text-sm text-amber-900">
-                <p>1. 繝ｭ繝ｼ繧ｫ繝ｫ縺ｮ gian 繝輔か繝ｫ繝繝ｼ縺ｫ鄂ｮ縺・◆蜴滓悽繝輔ぃ繧､繝ｫ繧堤｢ｺ隱阪＠縺ｾ縺吶・/p>
-                <p>2. 繝輔か繝ｫ繝繝ｼ蜊倅ｽ阪〒 Supabase Storage 縺ｫ蜈ｬ髢狗畑繧ｳ繝斐・繧偵い繝・・繝ｭ繝ｼ繝峨＠縺ｾ縺吶・/p>
-                <p>3. 繧｢繝・・繝ｭ繝ｼ繝牙ｾ後ｂ縲√Ο繝ｼ繧ｫ繝ｫ縺ｮ蜴滓悽繝輔ぃ繧､繝ｫ縺ｯ蜑企勁縺輔ｌ縺壹√◎縺ｮ縺ｾ縺ｾ谿九ｊ縺ｾ縺吶・/p>
+                <p>1. ローカルの gian フォルダーに置いた原本ファイルを確認します。</p>
+                <p>2. フォルダー単位で Supabase Storage に公開用コピーをアップロードします。</p>
+                <p>3. アップロード後も、ローカルの原本ファイルは削除されず、そのまま残ります。</p>
             </div>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
-            <h2 class="text-xl font-bold text-gray-700 mb-3">蜈･繧後ｋ繝輔ぃ繧､繝ｫ縺ｮ遞ｮ鬘・/h2>
-            <p class="text-sm text-gray-600 mb-4">迴ｾ蝨ｨ縺ｮ逕ｻ髱｢縺ｧ縺ｯ縲∵ｬ｡縺ｮ5遞ｮ鬘槭・PDF繧呈Φ螳壹＠縺ｦ縺・∪縺吶よ里螳壹・繝輔ぃ繧､繝ｫ蜷阪・螟峨∴縺壹↓縺昴・縺ｾ縺ｾ驟咲ｽｮ縺励※縺上□縺輔＞縲・/p>
+            <h2 class="text-xl font-bold text-gray-700 mb-3">入れるファイルの種類</h2>
+            <p class="text-sm text-gray-600 mb-4">現在の画面では、次の5種類のPDFを想定しています。既定のファイル名は変えずにそのまま配置してください。</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <p class="font-semibold text-gray-800 mb-1">隴ｰ譯・/p>
-                    <p>萓・ 隴ｰ譯育ｬｬ・大捷・壻ｻ､蜥鯉ｼ怜ｹｴ蠎ｦ荳闊ｬ莨夊ｨ郁｣懈ｭ｣莠育ｮ・pdf</p>
+                    <p class="font-semibold text-gray-800 mb-1">議案</p>
+                    <p>例: 議案第１号：令和７年度一般会計補正予算.pdf</p>
                 </div>
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <p class="font-semibold text-gray-800 mb-1">蝣ｱ蜻・/p>
-                    <p>萓・ 蝣ｱ蜻顔ｬｬ・大捷・壻ｸ闊ｬ莨夊ｨ郁｣懈ｭ｣莠育ｮ・pdf</p>
+                    <p class="font-semibold text-gray-800 mb-1">報告</p>
+                    <p>例: 報告第１号：一般会計補正予算.pdf</p>
                 </div>
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <p class="font-semibold text-gray-800 mb-1">謠先｡育炊逕ｱ</p>
-                    <p>萓・ 謠先｡育炊逕ｱ・・46蝗橸ｼ・pdf</p>
+                    <p class="font-semibold text-gray-800 mb-1">提案理由</p>
+                    <p>例: 提案理由（446回）.pdf</p>
                 </div>
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <p class="font-semibold text-gray-800 mb-1">譁ｽ謾ｿ譁ｹ驥・/p>
-                    <p>萓・ 譁ｽ謾ｿ譁ｹ驥晢ｼ・46蝗橸ｼ・pdf</p>
+                    <p class="font-semibold text-gray-800 mb-1">施政方針</p>
+                    <p>例: 施政方針（446回）.pdf</p>
                 </div>
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 md:col-span-2">
-                    <p class="font-semibold text-gray-800 mb-1">蜍牙ｼｷ莨夊ｳ・侭</p>
-                    <p>萓・ gian\425_2022_03\benkyoukai\R8.2.24隴ｰ蜩｡蜍牙ｼｷ莨夊ｳ・侭・亥ｽ灘・莠育ｮ暦ｼ・pdf</p>
+                    <p class="font-semibold text-gray-800 mb-1">勉強会資料</p>
+                    <p>例: gian\425_2022_03\benkyoukai\R8.2.24議員勉強会資料（当初予算）.pdf</p>
                 </div>
             </div>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
-            <h2 class="text-xl font-bold text-gray-700 mb-3">菴懈･ｭ謇矩・/h2>
+            <h2 class="text-xl font-bold text-gray-700 mb-3">作業手順</h2>
             <ol class="space-y-4 text-sm text-gray-700">
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 font-bold text-indigo-600 w-6">1</span>
                     <div>
-                        <p class="font-semibold">繝・せ繧ｯ繝医ャ繝怜・縺ｫ隴ｰ譯医ヵ繧ｩ繝ｫ繝繝ｼ繧剃ｽ懈・</p>
-                        <p class="text-xs text-gray-500 mt-1">萓・ gian</p>
+                        <p class="font-semibold">デスクトップ内に議案フォルダーを作成</p>
+                        <p class="text-xs text-gray-500 mt-1">例: gian</p>
                     </div>
                 </li>
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 font-bold text-indigo-600 w-6">2</span>
                     <div>
-                        <p class="font-semibold">繝輔か繝ｫ繝繝ｼ蜷阪ｒ縲悟屓谺｡_隘ｿ證ｦ_譛医阪・蠖｢蠑上〒菴懈・</p>
-                        <p class="text-xs text-gray-500 mt-1">萓・ 446_2026_03・育ｬｬ446蝗櫁ｭｰ莨壹・026蟷ｴ3譛茨ｼ・/p>
-                        <p class="text-xs text-gray-500 mt-1">蠖｢蠑・ <span class="font-mono bg-gray-100 px-2 py-1 rounded">{蝗樊ｬ｡}_{隘ｿ證ｦ}_{譛・</span></p>
+                        <p class="font-semibold">フォルダー名を「回次_西暦_月」の形式で作成</p>
+                        <p class="text-xs text-gray-500 mt-1">例: 446_2026_03（第446回議会、2026年3月）</p>
+                        <p class="text-xs text-gray-500 mt-1">形式: <span class="font-mono bg-gray-100 px-2 py-1 rounded">{回次}_{西暦}_{月}</span></p>
                     </div>
                 </li>
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 font-bold text-indigo-600 w-6">3</span>
                     <div>
-                        <p class="font-semibold">PDF繝輔ぃ繧､繝ｫ繧偵ヵ繧ｩ繝ｫ繝繝ｼ縺ｫ驟咲ｽｮ</p>
-                        <p class="text-xs text-gray-500 mt-1">蜍牙ｼｷ莨夊ｳ・侭縺ｯ <span class="font-mono bg-gray-100 px-2 py-1 rounded">benkyoukai</span> 繧ｵ繝悶ヵ繧ｩ繝ｫ繝繝ｼ縺ｫ驟咲ｽｮ</p>
+                        <p class="font-semibold">PDFファイルをフォルダーに配置</p>
+                        <p class="text-xs text-gray-500 mt-1">勉強会資料は <span class="font-mono bg-gray-100 px-2 py-1 rounded">benkyoukai</span> サブフォルダーに配置</p>
                     </div>
                 </li>
                 <li class="flex gap-3">
                     <span class="flex-shrink-0 font-bold text-indigo-600 w-6">4</span>
                     <div>
-                        <p class="font-semibold">荳九・縲後ヵ繧ｩ繝ｫ繝繝ｼ驕ｸ謚槭阪・繧ｿ繝ｳ縺ｧ菴懈・縺励◆繝輔か繝ｫ繝繝ｼ繧呈欠螳・/p>
-                        <p class="text-xs text-gray-500 mt-1">蜀・ｮｹ遒ｺ隱榊ｾ後↓縲悟ｮ溯｡後阪ｒ繧ｯ繝ｪ繝・け縺吶ｋ縺ｨ縲ヾupabase 縺ｸ蜈ｬ髢狗畑繧ｳ繝斐・縺ｮ繧｢繝・・繝ｭ繝ｼ繝峨′髢句ｧ九＠縺ｾ縺・/p>
+                        <p class="font-semibold">下の「フォルダー選択」ボタンで作成したフォルダーを指定</p>
+                        <p class="text-xs text-gray-500 mt-1">内容確認後に「実行」をクリックすると、Supabase へ公開用コピーのアップロードが開始します</p>
                     </div>
                 </li>
             </ol>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mb-6">
-            <h2 class="text-xl font-bold text-gray-700 mb-4">隴ｰ譯医ヵ繧ｩ繝ｫ繝繝ｼ繧｢繝・・繝ｭ繝ｼ繝・/h2>
-            <p class="text-sm text-gray-600 mb-6">菴懈・縺励◆繝輔か繝ｫ繝繝ｼ・・46_2026_03縺ｪ縺ｩ・峨ｒ謖・ｮ壹＠縺ｦ縲∝・髢狗畑繝輔ぃ繧､繝ｫ繧・Supabase 縺ｸ繧｢繝・・繝ｭ繝ｼ繝峨＠縺ｾ縺吶ゅΟ繝ｼ繧ｫ繝ｫ縺ｮ蜴滓悽縺ｯ谿九ｊ縺ｾ縺吶・/p>
+            <h2 class="text-xl font-bold text-gray-700 mb-4">議案フォルダーアップロード</h2>
+            <p class="text-sm text-gray-600 mb-6">作成したフォルダー（446_2026_03など）を指定して、公開用ファイルを Supabase へアップロードします。ローカルの原本は残ります。</p>
 
             <div class="space-y-4">
-                <!-- 繝輔か繝ｫ繝繝ｼ諠・ｱ陦ｨ遉ｺ -->
+                <!-- フォルダー情報表示 -->
                 <div id="folder-info-section" class="hidden">
                     <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                        <p class="text-sm font-semibold text-indigo-800 mb-2">驕ｸ謚樊ｸ医∩繝輔か繝ｫ繝繝ｼ</p>
+                        <p class="text-sm font-semibold text-indigo-800 mb-2">選択済みフォルダー</p>
                         <p id="selected-folder-name" class="text-md font-mono text-indigo-700 bg-white px-3 py-2 rounded border border-indigo-300"></p>
                     </div>
                 </div>
 
-                <!-- 繝輔ぃ繧､繝ｫ繝励Ξ繝薙Η繝ｼ -->
+                <!-- ファイルプレビュー -->
                 <div id="file-preview-section" class="hidden">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-3">繧｢繝・・繝ｭ繝ｼ繝我ｺ亥ｮ壹ヵ繧｡繧､繝ｫ・医Ο繝ｼ繧ｫ繝ｫ蜴滓悽縺ｮ遒ｺ隱搾ｼ・/h3>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">アップロード予定ファイル（ローカル原本の確認）</h3>
                     <div id="file-list" class="space-y-2 max-h-64 overflow-y-auto bg-gray-50 border border-gray-200 rounded-lg p-4"></div>
                     <p id="file-count" class="text-xs text-gray-500 mt-2"></p>
                 </div>
 
-                <!-- 繝輔か繝ｫ繝繝ｼ驕ｸ謚・-->
+                <!-- フォルダー選択 -->
                 <div>
                     <input id="directory-input" type="file" webkitdirectory mozdirectory directory multiple accept=".pdf" class="hidden">
                     <button onclick="selectFolder()" class="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2">
-                        <i class="fas fa-folder-open"></i>繝輔か繝ｫ繝繝ｼ繧帝∈謚・
+                        <i class="fas fa-folder-open"></i>フォルダーを選択
                     </button>
                 </div>
 
-                <!-- 繧｢繝・・繝ｭ繝ｼ繝峨・繧ｿ繝ｳ -->
+                <!-- アップロードボタン -->
                 <div id="upload-button-section" class="hidden flex gap-3 justify-end pt-4">
                     <button onclick="resetUploadForm()" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold rounded-lg transition">
-                        繧ｯ繝ｪ繧｢
+                        クリア
                     </button>
                     <button id="execute-upload-btn" onclick="executeUpload()" disabled class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-semibold rounded-lg transition flex items-center gap-2">
-                        <i class="fas fa-upload"></i>螳溯｡・
+                        <i class="fas fa-upload"></i>実行
                     </button>
                 </div>
 
-                <!-- 騾ｲ謐苓｡ｨ遉ｺ -->
+                <!-- 進捗表示 -->
                 <div id="upload-progress" class="hidden">
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <p class="text-sm font-semibold text-blue-800 mb-2">繧｢繝・・繝ｭ繝ｼ繝我ｸｭ...</p>
+                        <p class="text-sm font-semibold text-blue-800 mb-2">アップロード中...</p>
                         <div class="w-full bg-blue-200 rounded-full h-2">
                             <div id="progress-bar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
                         </div>
@@ -171,21 +171,21 @@
                     </div>
                 </div>
 
-                <!-- 邨先棡繝｡繝・そ繝ｼ繧ｸ -->
+                <!-- 結果メッセージ -->
                 <div id="upload-message" class="hidden mt-4 p-4 rounded-lg"></div>
             </div>
         </section>
     </main>
 
     <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
-        &copy; 2026 蜊怜嵜蟶りｭｰ莨咼X謗ｨ騾ｲ繝励Ο繧ｸ繧ｧ繧ｯ繝・- 譛ｪ譚･縺ｮ閾ｪ豐ｻ菴薙ｒ縺､縺上ｋ
+        &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
     <script src="auth.js"></script>
     <script>
-        // ======== 繝輔か繝ｫ繝繝ｼ繧｢繝・・繝ｭ繝ｼ繝画ｩ溯・ ========
+        // ======== フォルダーアップロード機能 ========
         let selectedFiles = [];
         let folderName = "";
 
@@ -207,7 +207,7 @@
                 );
             }
 
-            throw new Error("Supabase繧ｯ繝ｩ繧､繧｢繝ｳ繝医ｒ蛻晄悄蛹悶〒縺阪∪縺帙ｓ縲ゅ・繝ｼ繧ｸ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ縺励※縺上□縺輔＞縲・);
+            throw new Error("Supabaseクライアントを初期化できません。ページを再読み込みしてください。");
         }
 
         function toStorageRelativePath(relativePath) {
@@ -243,20 +243,20 @@
             const files = Array.from(event.target.files).filter(f => f.type === "application/pdf");
             
             if (files.length === 0) {
-                showUploadMessage("PDF繝輔ぃ繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ", "error");
+                showUploadMessage("PDFファイルが見つかりません", "error");
                 return;
             }
 
-            // 繝輔か繝ｫ繝繝ｼ蜷阪ｒ謚ｽ蜃ｺ・域怙蛻昴・繝輔ぃ繧､繝ｫ縺ｮ path 縺九ｉ・・
+            // フォルダー名を抽出（最初のファイルの path から）
             const filePath = files[0].webkitRelativePath;
             const pathParts = filePath.split("/");
             folderName = pathParts[0];
 
-            // 繝輔か繝ｫ繝繝ｼ蜷榊ｽ｢蠑上・讀懆ｨｼ・唸XX_YYYY_MM
+            // フォルダー名形式の検証：XXX_YYYY_MM
             const folderPattern = /^\d{3,}_\d{4}_\d{2}$/;
             if (!folderPattern.test(folderName)) {
                 showUploadMessage(
-                    `繝輔か繝ｫ繝繝ｼ蜷阪・蠖｢蠑上′荳肴ｭ｣縺ｧ縺・ "${folderName}"\n豁｣縺励＞蠖｢蠑・ 446_2026_03・亥屓谺｡_隘ｿ證ｦ_譛茨ｼ荏,
+                    `フォルダー名の形式が不正です: "${folderName}"\n正しい形式: 446_2026_03（回次_西暦_月）`,
                     "error"
                 );
                 document.getElementById("directory-input").value = "";
@@ -292,7 +292,7 @@
                 listEl.appendChild(item);
             });
 
-            countEl.textContent = `蜷郁ｨ・ ${selectedFiles.length}繝輔ぃ繧､繝ｫ (${(selectedFiles.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(2)} MB)`;
+            countEl.textContent = `合計: ${selectedFiles.length}ファイル (${(selectedFiles.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(2)} MB)`;
             section.classList.remove("hidden");
 
             const uploadBtnSection = document.getElementById("upload-button-section");
@@ -312,7 +312,7 @@
 
         async function executeUpload() {
             if (selectedFiles.length === 0 || !folderName) {
-                showUploadMessage("繝輔ぃ繧､繝ｫ縺碁∈謚槭＆繧後※縺・∪縺帙ｓ", "error");
+                showUploadMessage("ファイルが選択されていません", "error");
                 return;
             }
 
@@ -325,16 +325,16 @@
                 const supabase = getUploadClient();
 
                 if (!supabase || !supabase.storage) {
-                    throw new Error("Supabase Storage縺悟・譛溷喧縺輔ｌ縺ｦ縺・∪縺帙ｓ縲ょ・隱ｭ縺ｿ霎ｼ縺ｿ蠕後↓蜀榊ｮ溯｡後＠縺ｦ縺上□縺輔＞縲・);
+                    throw new Error("Supabase Storageが初期化されていません。再読み込み後に再実行してください。");
                 }
 
-                // 繝輔か繝ｫ繝繝ｼ蜷阪°繧牙屓谺｡縲∝ｹｴ譛医ｒ謚ｽ蜃ｺ
+                // フォルダー名から回次、年月を抽出
                 const parts = folderName.split("_");
                 const session = parts[0]; // 446
                 const year = parts[1];    // 2026
                 const month = parts[2];   // 03
 
-                // Supabase Storage縺ｫ繧｢繝・・繝ｭ繝ｼ繝・
+                // Supabase Storageにアップロード
                 const storageBasePath = folderName;
                 let uploadedCount = 0;
                 const uploadedFileMap = new Map();
@@ -351,7 +351,7 @@
                         : `${storageBasePath}/${fileId}`;
                     const fullPath = sanitizePath(storagePath);
 
-                    // Supabase Storage 縺ｫ繧｢繝・・繝ｭ繝ｼ繝・
+                    // Supabase Storage にアップロード
                     const { error: uploadError } = await supabase.storage
                         .from("gian")
                         .upload(fullPath, file, { upsert: true });
@@ -368,7 +368,7 @@
                     document.getElementById("progress-text").textContent = `${uploadedCount} / ${selectedFiles.length}`;
                 }
 
-                // DB 縺ｫ逋ｻ骭ｲ諠・ｱ繧剃ｿ晏ｭ・
+                // DB に登録情報を保存
                 const docList = selectedFiles.map(file => {
                     const relativePath = file.webkitRelativePath.substring(folderName.length + 1);
                     const fileName = relativePath.split("/").pop();
@@ -402,14 +402,14 @@
 
                 progressSection.classList.add("hidden");
                 showUploadMessage(
-                    `笨・${uploadedCount}繝輔ぃ繧､繝ｫ繧偵い繝・・繝ｭ繝ｼ繝峨＠縺ｾ縺励◆・―n繝輔か繝ｫ繝繝ｼ: ${folderName}`,
+                    `✓ ${uploadedCount}ファイルをアップロードしました！\nフォルダー: ${folderName}`,
                     "success"
                 );
                 resetUploadForm();
             } catch (err) {
                 console.error("Upload error:", err);
                 progressSection.classList.add("hidden");
-                showUploadMessage(`繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆: ${err.message}`, "error");
+                showUploadMessage(`エラーが発生しました: ${err.message}`, "error");
             } finally {
                 uploadBtn.disabled = false;
             }
@@ -417,12 +417,12 @@
 
         function inferDocumentType(fileName) {
             const name = fileName.toLowerCase();
-            if (name.includes("蜍牙ｼｷ莨・)) return { type: "study", subFolder: "benkyoukai" };
-            if (name.includes("荳隕ｧ陦ｨ")) return { type: "summary" };
-            if (name.includes("蝣ｱ蜻・)) return { type: "report" };
-            if (name.includes("謠先｡育炊逕ｱ")) return { type: "reason" };
-            if (name.includes("譁ｽ謾ｿ譁ｹ驥・)) return { type: "policy" };
-            if (name.includes("隴ｰ譯・) || name.match(/^隴ｰ譯育ｬｬ/)) return { type: "bill" };
+            if (name.includes("勉強会")) return { type: "study", subFolder: "benkyoukai" };
+            if (name.includes("一覧表")) return { type: "summary" };
+            if (name.includes("報告")) return { type: "report" };
+            if (name.includes("提案理由")) return { type: "reason" };
+            if (name.includes("施政方針")) return { type: "policy" };
+            if (name.includes("議案") || name.match(/^議案第/)) return { type: "bill" };
             return { type: "bill" };
         }
 
