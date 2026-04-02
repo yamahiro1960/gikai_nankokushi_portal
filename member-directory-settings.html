@@ -39,17 +39,7 @@
 
         <section class="bg-indigo-50 border border-indigo-200 rounded-xl shadow-sm p-5 mb-6">
             <h2 class="text-base font-bold text-indigo-900 mb-2">AI画面との連携</h2>
-            <p class="text-sm text-indigo-900">この画面で登録したデータは、AI政策アシスタントの「利用者を選択」一覧に表示されます。APIキーはAI画面で利用者ごとに設定します。</p>
-        </section>
-
-        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-cyan-500 mb-6">
-            <h2 class="text-xl font-bold mb-4 text-gray-700">役職マスター</h2>
-            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 mb-4">
-                <input id="position-name" type="text" placeholder="例: 監査委員" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                <button id="add-position" class="bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 rounded-lg text-sm font-semibold">役職を追加</button>
-            </div>
-            <div id="position-list" class="flex flex-wrap gap-2"></div>
-            <p class="text-xs text-gray-500 mt-3">不要な役職は「×」で削除できます。</p>
+            <p class="text-sm text-indigo-900">この画面で登録したデータは、AI政策アシスタントの「利用者を選択」一覧に表示されます。Gemini APIキーもこの画面で利用者ごとに設定できます。</p>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mb-6">
@@ -88,7 +78,11 @@
                 </div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">役職</label>
-                    <select id="position_name" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+                    <select id="position_name" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">未設定</option>
+                        <option value="議長">議長</option>
+                        <option value="副機長">副機長</option>
+                    </select>
                 </div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">メールアドレス</label>
@@ -113,18 +107,23 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">議運</label>
+                    <label class="text-sm font-semibold text-gray-700">議運メンバーですか？</label>
                     <select id="is_giun" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="true">YES</option>
                         <option value="false" selected>NO</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">編集委員</label>
+                    <label class="text-sm font-semibold text-gray-700">編集委員ですか？</label>
                     <select id="is_editorial_committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="true">YES</option>
                         <option value="false" selected>NO</option>
                     </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">Gemini APIキー（利用者ごと）</label>
+                    <input id="gemini_api_key" type="password" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="AIza...">
+                    <p class="text-xs text-gray-500 mt-1">この利用者に紐づくAPIキーを保存します。未入力で保存すると既存キーを削除します。</p>
                 </div>
                 <div class="md:col-span-2">
                     <label class="text-sm font-semibold text-gray-700">備考</label>
@@ -149,8 +148,8 @@
                             <th class="text-left p-2 border">区分</th>
                             <th class="text-left p-2 border">役職</th>
                             <th class="text-left p-2 border">委員会</th>
-                            <th class="text-left p-2 border">議運</th>
-                            <th class="text-left p-2 border">編集委員</th>
+                            <th class="text-left p-2 border">議運メンバーですか？</th>
+                            <th class="text-left p-2 border">編集委員ですか？</th>
                             <th class="text-left p-2 border">操作</th>
                         </tr>
                     </thead>
@@ -169,7 +168,11 @@
     <script src="auth.js"></script>
     <script>
         let dbClient = null;
-        let positions = [];
+        const GEMINI_MODEL = "gemini-2.0-flash";
+
+        function getGeminiSettingKey(memberId) {
+            return `user_gemini_${memberId}`;
+        }
 
         function toYesNo(flag) {
             return flag ? "YES" : "NO";
@@ -178,88 +181,10 @@
         function clearForm() {
             document.getElementById("member-form").reset();
             document.getElementById("member_id").readOnly = false;
+            document.getElementById("gemini_api_key").value = "";
         }
 
-        function fillPositionSelect() {
-            const select = document.getElementById("position_name");
-            const current = select.value;
-            select.innerHTML = '<option value="">未設定</option>';
-            positions.forEach((p) => {
-                const opt = document.createElement("option");
-                opt.value = p.position_name;
-                opt.textContent = p.position_name;
-                select.appendChild(opt);
-            });
-            select.value = current || "";
-        }
-
-        async function loadPositions() {
-            const { data, error } = await dbClient
-                .from("member_positions_master")
-                .select("position_name,sort_order,is_active")
-                .eq("is_active", true)
-                .order("sort_order", { ascending: true })
-                .order("position_name", { ascending: true });
-
-            if (error) {
-                document.getElementById("form-message").textContent = "役職マスター読込失敗: " + error.message;
-                return;
-            }
-
-            positions = data || [];
-            fillPositionSelect();
-            renderPositionChips();
-        }
-
-        function renderPositionChips() {
-            const area = document.getElementById("position-list");
-            area.innerHTML = "";
-            positions.forEach((p) => {
-                const chip = document.createElement("span");
-                chip.className = "inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 text-cyan-800 border border-cyan-200 text-xs";
-                chip.innerHTML = `${p.position_name} <button class="text-cyan-700 hover:text-cyan-900" data-pos="${p.position_name}">×</button>`;
-                area.appendChild(chip);
-            });
-
-            area.querySelectorAll("button[data-pos]").forEach((btn) => {
-                btn.addEventListener("click", async () => {
-                    const posName = btn.getAttribute("data-pos");
-                    const { error } = await dbClient
-                        .from("member_positions_master")
-                        .delete()
-                        .eq("position_name", posName);
-                    if (error) {
-                        document.getElementById("form-message").textContent = "役職削除失敗: " + error.message;
-                        return;
-                    }
-                    await loadPositions();
-                    document.getElementById("form-message").textContent = "役職を削除しました。";
-                });
-            });
-        }
-
-        async function addPosition() {
-            const input = document.getElementById("position-name");
-            const value = (input.value || "").trim();
-            if (!value) {
-                return;
-            }
-
-            const { error } = await dbClient
-                .from("member_positions_master")
-                .upsert({ position_name: value, is_active: true }, { onConflict: "position_name" });
-
-            if (error) {
-                document.getElementById("form-message").textContent = "役職追加失敗: " + error.message;
-                return;
-            }
-
-            input.value = "";
-            await loadPositions();
-            document.getElementById("form-message").textContent = "役職を追加しました。";
-        }
-
-        function setFormValues(item) {
+        async function setFormValues(item) {
             document.getElementById("member_id").value = item.member_id || "";
             document.getElementById("full_name").value = item.full_name || "";
             document.getElementById("postal_code").value = item.postal_code || "";
@@ -275,6 +200,19 @@
             document.getElementById("is_editorial_committee").value = item.is_editorial_committee ? "true" : "false";
             document.getElementById("notes").value = item.notes || "";
             document.getElementById("member_id").readOnly = true;
+
+            const settingKey = getGeminiSettingKey(item.member_id);
+            const { data, error } = await dbClient
+                .from("meeting_settings")
+                .select("setting_payload")
+                .eq("setting_key", settingKey)
+                .maybeSingle();
+
+            if (!error && data && data.setting_payload && data.setting_payload.apiKey) {
+                document.getElementById("gemini_api_key").value = data.setting_payload.apiKey;
+            } else {
+                document.getElementById("gemini_api_key").value = "";
+            }
         }
 
         async function loadMembers() {
@@ -323,7 +261,7 @@
                         return;
                     }
 
-                    setFormValues(detail);
+                    await setFormValues(detail);
                     document.getElementById("form-message").textContent = "編集モードで読み込みました。";
                     window.scrollTo({ top: 0, behavior: "smooth" });
                 });
@@ -374,6 +312,11 @@
                 updated_at: new Date().toISOString()
             };
 
+            if (!payload.member_id) {
+                document.getElementById("form-message").textContent = "IDを入力してください。";
+                return;
+            }
+
             const { error } = await dbClient
                 .from("member_directory")
                 .upsert(payload, { onConflict: "member_id" });
@@ -383,6 +326,36 @@
                 return;
             }
 
+            const geminiKey = document.getElementById("gemini_api_key").value.trim();
+            const settingKey = getGeminiSettingKey(payload.member_id);
+
+            if (geminiKey) {
+                const { error: keyError } = await dbClient
+                    .from("meeting_settings")
+                    .upsert({
+                        setting_key: settingKey,
+                        setting_payload: {
+                            memberId: payload.member_id,
+                            fullName: payload.full_name,
+                            email: payload.email,
+                            model: GEMINI_MODEL,
+                            apiKey: geminiKey,
+                            updatedAt: new Date().toISOString()
+                        }
+                    }, { onConflict: "setting_key" });
+
+                if (keyError) {
+                    document.getElementById("form-message").textContent = "利用者情報は保存しましたが、APIキー保存に失敗: " + keyError.message;
+                    await loadMembers();
+                    return;
+                }
+            } else {
+                await dbClient
+                    .from("meeting_settings")
+                    .delete()
+                    .eq("setting_key", settingKey);
+            }
+
             document.getElementById("form-message").textContent = "保存しました。";
             clearForm();
             await loadMembers();
@@ -390,7 +363,6 @@
 
         document.getElementById("member-form").addEventListener("submit", saveMember);
         document.getElementById("clear-form").addEventListener("click", clearForm);
-        document.getElementById("add-position").addEventListener("click", addPosition);
 
         portalAuth.init({
             requireAuth: true,
@@ -399,7 +371,6 @@
             returnTo: "member-directory-settings.html",
             onReady: async ({ client }) => {
                 dbClient = client;
-                await loadPositions();
                 await loadMembers();
             }
         });
