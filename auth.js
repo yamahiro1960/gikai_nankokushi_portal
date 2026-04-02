@@ -19,6 +19,9 @@ window.portalAuth = (() => {
     }
 
     function getRoleScore(role) {
+        if (role === "議員" || role === "職員") {
+            return window.ROLE_ORDER.viewer || 1;
+        }
         return window.ROLE_ORDER[role] || 0;
     }
 
@@ -100,8 +103,28 @@ window.portalAuth = (() => {
                 return;
             }
 
+            renderAuthBadge(
+                {
+                    role,
+                    email: localSession.email,
+                    display_name: localSession.displayName
+                },
+                { email: localSession.email },
+                options
+            );
+
             if (typeof onReady === "function") {
-                onReady({ session: localSession, profile: { role, email: localSession.email, display_name: localSession.displayName }, role, client: supabase });
+                onReady({
+                    session: localSession,
+                    profile: {
+                        role,
+                        email: localSession.email,
+                        display_name: localSession.displayName,
+                        category: localSession.category || null
+                    },
+                    role,
+                    client: supabase
+                });
             }
             return;
         }
@@ -151,33 +174,58 @@ window.portalAuth = (() => {
         }
 
         try {
-            // profilesテーブルでメールアドレスをチェック
-            const { data: profile, error: profileError } = await supabase
-                .from("profiles")
-                .select("user_id,email,display_name,role")
-                .eq("email", email.toLowerCase())
+            const normalizedEmail = email.trim().toLowerCase();
+
+            // まず member_directory を確認（現在の運用データ）
+            const { data: member, error: memberError } = await supabase
+                .from("member_directory")
+                .select("member_id,full_name,email,category")
+                .ilike("email", normalizedEmail)
+                .limit(1)
                 .maybeSingle();
 
-            console.log("Email query result:", { email: email.toLowerCase(), profile, profileError });
-
-            if (profileError && profileError.code !== "PGRST116") {
-                console.error("Profile query error:", profileError);
-                throw profileError;
+            if (memberError && memberError.code !== "PGRST116") {
+                throw memberError;
             }
 
-            if (!profile) {
+            // 互換性のため profiles もフォールバック参照
+            let profile = null;
+            if (!member) {
+                const { data: profileData, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("user_id,email,display_name,role")
+                    .eq("email", normalizedEmail)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (profileError && profileError.code !== "PGRST116") {
+                    throw profileError;
+                }
+                profile = profileData;
+            }
+
+            if (!member && !profile) {
                 throw new Error("このメールアドレスはシステムに登録されていません。");
             }
 
-            // メールアドレスのみでセッション作成（パスワードなし）
-            // localStorageにセッション情報を保存
-            const sessionData = {
-                email: profile.email,
-                userId: profile.user_id,
-                displayName: profile.display_name,
-                role: profile.role || "viewer",
-                loginTime: new Date().toISOString()
-            };
+            // パスワードなしログイン用セッションを保存
+            const sessionData = member
+                ? {
+                    email: member.email || normalizedEmail,
+                    userId: member.member_id,
+                    displayName: member.full_name || member.email || normalizedEmail,
+                    role: "viewer",
+                    category: member.category || null,
+                    loginTime: new Date().toISOString()
+                }
+                : {
+                    email: profile.email,
+                    userId: profile.user_id,
+                    displayName: profile.display_name || profile.email,
+                    role: profile.role || "viewer",
+                    category: null,
+                    loginTime: new Date().toISOString()
+                };
 
             localStorage.setItem("portalSession", JSON.stringify(sessionData));
             return sessionData;
@@ -203,9 +251,10 @@ window.portalAuth = (() => {
         // displayName優先度: profile.display_name > session.displayName > email > "ユーザー"
         const displayName = (profile && profile.display_name) || (session && session.displayName) || (session && session.email) || "ユーザー";
         const role = (profile && profile.role) || (session && session.role) || "viewer";
+        const category = (profile && profile.category) || (session && session.category) || "";
         
         // roleが"議員"の場合は"議員"、それ以外は"様"
-        const suffix = role === "議員" ? "議員" : "様";
+        const suffix = role === "議員" || category === "議員" ? "議員" : "様";
         
         return `こんにちは、${displayName}${suffix}。`;
     }
