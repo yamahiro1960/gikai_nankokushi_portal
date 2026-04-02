@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI政策アシスタント | 南国市議会DXポータル</title>
+    <title>AI政策アシスタント（試運転） | 南国市議会DXポータル</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -13,7 +13,7 @@
             <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
                 <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
             </a>
-            <span class="text-sm">AI政策アシスタント</span>
+            <span class="text-sm">AI政策アシスタント（試運転）</span>
         </div>
     </header>
 
@@ -27,7 +27,7 @@
         <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-cyan-600 to-indigo-700 text-white shadow-lg mb-8">
             <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-bold mb-2">AI政策アシスタント</h1>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">AI政策アシスタント（試運転）</h1>
                     <p class="text-cyan-100">論点整理、質問原稿作成、施策比較を1画面で支援します。</p>
                 </div>
                 <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: 議会質問準備</div>
@@ -45,9 +45,14 @@
                         <label for="analysisQuestion" class="text-sm font-semibold text-gray-700">調査したい論点・質問</label>
                         <textarea id="analysisQuestion" rows="5" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="例: 条例改正が必要か、運用で対応可能かを判断したい"></textarea>
                     </div>
-                    <button id="runOrdinanceAnalysis" class="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-semibold hover:bg-indigo-700">
-                        <i class="fas fa-scale-balanced mr-2"></i>調査を実行
-                    </button>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button id="runOrdinanceAnalysis" class="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-semibold hover:bg-indigo-700">
+                            <i class="fas fa-scale-balanced mr-2"></i>調査を実行
+                        </button>
+                        <button id="clearResearch" class="w-full bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold hover:bg-gray-300">
+                            <i class="fas fa-eraser mr-2"></i>クリア
+                        </button>
+                    </div>
                 </div>
 
                 <div>
@@ -77,6 +82,7 @@
                         <div>
                             <label for="period" class="text-sm font-semibold text-gray-700">実施期間</label>
                             <select id="period" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                                <option value="">選択してください</option>
                                 <option value="6か月">6か月</option>
                                 <option value="1年" selected>1年</option>
                                 <option value="2年">2年</option>
@@ -84,9 +90,14 @@
                             </select>
                         </div>
                     </div>
-                    <button id="generatePlan" class="w-full bg-cyan-600 text-white py-2.5 rounded-lg font-semibold hover:bg-cyan-700">
-                        <i class="fas fa-wand-magic-sparkles mr-2"></i>政策案を生成
-                    </button>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button id="generatePlan" class="w-full bg-cyan-600 text-white py-2.5 rounded-lg font-semibold hover:bg-cyan-700">
+                            <i class="fas fa-wand-magic-sparkles mr-2"></i>政策案を生成
+                        </button>
+                        <button id="clearPlan" class="w-full bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold hover:bg-gray-300">
+                            <i class="fas fa-eraser mr-2"></i>クリア
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -353,6 +364,19 @@
             } catch (error) {
                 ordinanceOutput.textContent = `Gemini調査に失敗しました: ${error.message}`;
             }
+        });
+
+        document.getElementById("clearResearch").addEventListener("click", () => {
+            document.getElementById("analysisQuestion").value = "";
+            ordinanceOutput.textContent = "";
+        });
+
+        document.getElementById("clearPlan").addEventListener("click", () => {
+            document.getElementById("topic").value = "";
+            document.getElementById("target").value = "";
+            document.getElementById("budget").value = "";
+            document.getElementById("period").value = "";
+            output.textContent = "";
         });
 
         syncGeminiSettingsView("", DEFAULT_GEMINI_MODEL);
