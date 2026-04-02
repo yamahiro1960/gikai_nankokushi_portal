@@ -109,11 +109,9 @@
             }
         });
 
-        // リダイレクト先を取得
+        // リダイレクト先を取得（ログイン後は常にトップ画面へ）
         function getReturnPage() {
-            const params = new URLSearchParams(window.location.search);
-            const returnTo = params.get("returnTo") || "index.html";
-            return returnTo;
+            return "index.html";
         }
 
         // リダイレクト処理
