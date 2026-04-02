@@ -31,15 +31,15 @@
             <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-bold mb-2">議案PDF登録</h1>
-                    <p class="text-emerald-50">議案・報告・提案理由・施政方針・勉強会資料のPDFを、ローカル作業フォルダー内へ正しく配置するための確認画面です。</p>
+                    <p class="text-emerald-50">ローカルに保存した議案資料を確認し、公開用コピーを Supabase へアップロードする画面です。ローカルの原本ファイルはそのまま残ります。</p>
                 </div>
-                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: ローカル配置案内</div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: 原本確認 + 公開アップロード</div>
             </div>
         </section>
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-emerald-500 mb-6">
             <h2 class="text-xl font-bold text-gray-700 mb-3">保存先フォルダー</h2>
-            <p class="text-sm text-gray-600 mb-4">議案PDFは、ポータルの作業フォルダー直下に作成した gian フォルダー配下へ、フォルダー名ルールに沿って配置します。</p>
+            <p class="text-sm text-gray-600 mb-4">議案PDFの原本は、ポータルの作業フォルダー直下に作成した gian フォルダー配下へ、フォルダー名ルールに沿って配置します。</p>
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 space-y-2">
                 <p><span class="font-semibold">ローカル作業フォルダー:</span> C:\Users\nanko\OneDrive\デスクトップ\My_Developments\giin\gikai_nankokushi_portal</p>
                 <p><span class="font-semibold">フォルダー名ルール:</span> 回次_西暦_月</p>
@@ -47,6 +47,16 @@
                 <p><span class="font-semibold">意味:</span> 425=議会回数 / 2022=西暦年 / 03=月</p>
                 <p><span class="font-semibold">配置先の基本形:</span> gian\425_2022_03\PDFファイル名.pdf</p>
                 <p><span class="font-semibold">勉強会資料の配置先:</span> gian\425_2022_03\benkyoukai\PDFファイル名.pdf</p>
+                <p><span class="font-semibold">運用:</span> このフォルダーは原本保管用として残し、Web から Supabase へ公開用コピーをアップロードします。</p>
+            </div>
+        </section>
+
+        <section class="bg-amber-50 border border-amber-200 rounded-xl shadow-sm p-6 mb-6">
+            <h2 class="text-xl font-bold text-amber-900 mb-3">この画面の役割</h2>
+            <div class="space-y-2 text-sm text-amber-900">
+                <p>1. ローカルの gian フォルダーに置いた原本ファイルを確認します。</p>
+                <p>2. フォルダー単位で Supabase Storage に公開用コピーをアップロードします。</p>
+                <p>3. アップロード後も、ローカルの原本ファイルは削除されず、そのまま残ります。</p>
             </div>
         </section>
 
@@ -106,7 +116,7 @@
                     <span class="flex-shrink-0 font-bold text-indigo-600 w-6">4</span>
                     <div>
                         <p class="font-semibold">下の「フォルダー選択」ボタンで作成したフォルダーを指定</p>
-                        <p class="text-xs text-gray-500 mt-1">その後「実行」をクリックするとアップロードが開始します</p>
+                        <p class="text-xs text-gray-500 mt-1">内容確認後に「実行」をクリックすると、Supabase へ公開用コピーのアップロードが開始します</p>
                     </div>
                 </li>
             </ol>
@@ -114,7 +124,7 @@
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mb-6">
             <h2 class="text-xl font-bold text-gray-700 mb-4">議案フォルダーアップロード</h2>
-            <p class="text-sm text-gray-600 mb-6">作成したフォルダー（446_2026_03など）を指定して、すべてのPDFファイルをアップロードします。</p>
+            <p class="text-sm text-gray-600 mb-6">作成したフォルダー（446_2026_03など）を指定して、公開用ファイルを Supabase へアップロードします。ローカルの原本は残ります。</p>
 
             <div class="space-y-4">
                 <!-- フォルダー情報表示 -->
@@ -127,7 +137,7 @@
 
                 <!-- ファイルプレビュー -->
                 <div id="file-preview-section" class="hidden">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-3">アップロード予定ファイル</h3>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">アップロード予定ファイル（ローカル原本の確認）</h3>
                     <div id="file-list" class="space-y-2 max-h-64 overflow-y-auto bg-gray-50 border border-gray-200 rounded-lg p-4"></div>
                     <p id="file-count" class="text-xs text-gray-500 mt-2"></p>
                 </div>
