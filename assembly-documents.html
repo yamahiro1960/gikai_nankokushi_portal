@@ -65,8 +65,8 @@
                 </a>
             </div>
             <div id="pdf-stage" class="relative">
-                <iframe id="pdf-viewer" title="議案書PDF" class="w-full h-[70vh] border border-gray-200 rounded-lg bg-gray-50" src="about:blank"></iframe>
-                <canvas id="pdf-ink-canvas" class="absolute inset-0 hidden rounded-lg" style="touch-action: none;"></canvas>
+                <iframe id="pdf-viewer" title="議案書PDF" class="relative z-0 w-full h-[70vh] border border-gray-200 rounded-lg bg-gray-50" src="about:blank"></iframe>
+                <canvas id="pdf-ink-canvas" class="absolute inset-0 z-10 hidden rounded-lg" style="touch-action: none;"></canvas>
             </div>
             <div id="ink-toolbar" class="hidden mt-3 flex items-center gap-2 flex-wrap text-xs">
                 <button id="ink-visibility-btn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold">
@@ -265,10 +265,11 @@
 
         function resizeInkCanvas() {
             const stage = document.getElementById("pdf-stage");
+            const viewer = document.getElementById("pdf-viewer");
             const canvas = getInkCanvas();
             const ratio = window.devicePixelRatio || 1;
-            const width = stage.clientWidth;
-            const height = stage.clientHeight;
+            const width = stage.clientWidth || viewer.clientWidth;
+            const height = stage.clientHeight || viewer.clientHeight;
 
             canvas.width = Math.max(1, Math.floor(width * ratio));
             canvas.height = Math.max(1, Math.floor(height * ratio));
@@ -360,6 +361,12 @@
 
         function setupInkCanvasEvents() {
             const canvas = getInkCanvas();
+            const viewer = document.getElementById("pdf-viewer");
+
+            viewer.addEventListener("load", () => {
+                // PDF iframeの再レイアウト後に手書きを再描画
+                requestAnimationFrame(() => requestAnimationFrame(() => resizeInkCanvas()));
+            });
 
             canvas.addEventListener("pointerdown", (event) => {
                 if (!currentNoteDocName || !currentNoteSessionId) {
