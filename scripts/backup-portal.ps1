@@ -50,6 +50,43 @@ function Ensure-Directory {
     }
 }
 
+function Find-PgDumpPath {
+    $cmd = Get-Command pg_dump -ErrorAction SilentlyContinue
+    if ($null -ne $cmd) {
+        return $cmd.Source
+    }
+
+    $candidates = @(
+        "C:\Program Files\PostgreSQL\16\bin\pg_dump.exe",
+        "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe",
+        "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe",
+        "C:\Program Files\PostgreSQL\15\bin\pg_dump.exe"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path -LiteralPath $path) {
+            return $path
+        }
+    }
+
+    return ""
+}
+
+function Infer-PgHostFromSupabaseUrl {
+    param([string]$Url)
+
+    if ([string]::IsNullOrWhiteSpace($Url)) {
+        return ""
+    }
+
+    $m = [regex]::Match($Url, 'https://([a-z0-9]+)\.supabase\.co')
+    if ($m.Success) {
+        return "db.$($m.Groups[1].Value).supabase.co"
+    }
+
+    return ""
+}
+
 $ProjectRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
 Ensure-Directory -Path $BackupRoot
 
@@ -79,6 +116,9 @@ if ([string]::IsNullOrWhiteSpace($SupabaseUrl)) {
 }
 if ([string]::IsNullOrWhiteSpace($SupabaseAnonKey)) {
     $SupabaseAnonKey = Get-AuthConfigValue -AuthConfigPath $authConfigPath -Name "supabaseAnonKey"
+}
+if ([string]::IsNullOrWhiteSpace($PgHost)) {
+    $PgHost = Infer-PgHostFromSupabaseUrl -Url $SupabaseUrl
 }
 
 $dbDir = Join-Path $targetDir "db_csv"
@@ -111,8 +151,8 @@ if (-not $SkipDbExport) {
 }
 
 if (-not $SkipFullDbDump) {
-    $pgDumpCmd = Get-Command pg_dump -ErrorAction SilentlyContinue
-    if ($null -eq $pgDumpCmd) {
+    $pgDumpPath = Find-PgDumpPath
+    if ([string]::IsNullOrWhiteSpace($pgDumpPath)) {
         $fullDumpLog += "SKIPPED: pg_dump not found."
     } else {
         if ([string]::IsNullOrWhiteSpace($PgHost)) {
@@ -137,7 +177,7 @@ if (-not $SkipFullDbDump) {
                         "-f", $fullDumpPath
                     )
 
-                    & $pgDumpCmd.Source @args
+                    & $pgDumpPath @args
                     if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $fullDumpPath)) {
                         $fullDumpLog += "OK: full dump created."
                     } else {
@@ -195,3 +235,6 @@ if ($fullDumpLog.Count -gt 0) {
     Write-Host "Full dump summary:"
     $fullDumpLog | ForEach-Object { Write-Host " - $_" }
 }
+
+# Example (full dump enabled):
+# powershell -ExecutionPolicy Bypass -File .\scripts\backup-portal.ps1 -PgPassword "<SUPABASE_DB_PASSWORD>"
