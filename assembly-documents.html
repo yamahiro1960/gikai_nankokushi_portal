@@ -699,7 +699,9 @@
         }
 
         function extractNumberFromLabel(label) {
-            const match = /(\d+)/.exec(label || "");
+            // 全角数字を半角に変換してから抽出
+            const normalized = (label || "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+            const match = /(\d+)/.exec(normalized);
             return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
         }
 
