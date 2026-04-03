@@ -34,7 +34,10 @@
                     <button id="open-create-btn" type="button" class="px-4 py-2 rounded-lg bg-white text-sky-700 font-semibold hover:bg-sky-50">
                         <i class="fas fa-plus mr-1"></i>案件を登録
                     </button>
-                    <div class="px-4 py-2 rounded-lg bg-white/15 text-sm text-sky-50">AI抽出は次段階。まずは手入力で追跡を開始</div>
+                    <button id="open-bulk-create-btn" type="button" class="px-4 py-2 rounded-lg bg-sky-900/40 text-white font-semibold hover:bg-sky-900/60 border border-white/40">
+                        <i class="fas fa-layer-group mr-1"></i>一括登録
+                    </button>
+                    <div class="px-4 py-2 rounded-lg bg-white/15 text-sm text-sky-50">議事録の一括抽出と複数案件の同時登録に対応</div>
                 </div>
             </div>
         </section>
@@ -185,6 +188,81 @@
         </div>
     </div>
 
+    <div id="bulk-modal" class="hidden fixed inset-0 z-50 bg-black/40 px-4 py-8 overflow-y-auto">
+        <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h2 class="text-xl font-bold">案件の一括登録</h2>
+                    <p class="text-sm text-gray-500">議事録テキストから複数案件を抽出し、表で確認・修正してから一括登録します。</p>
+                </div>
+                <button id="bulk-modal-close" type="button" class="text-gray-400 hover:text-gray-600 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
+                <label class="text-sm text-gray-700">回次（全行共通）
+                    <input id="bulk-session-id" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="446">
+                </label>
+                <label class="text-sm text-gray-700">質問日（全行共通）
+                    <input id="bulk-question-date" type="date" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700 lg:col-span-2">議事録URL（任意・全行共通）
+                    <input id="bulk-hearing-url" type="url" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="https://...">
+                </label>
+            </div>
+
+            <div class="border border-indigo-200 rounded-xl bg-indigo-50 p-4 mb-4">
+                <h3 class="text-sm font-bold text-indigo-800 mb-1"><i class="fas fa-robot mr-1"></i>議事録を一括抽出（Gemini）</h3>
+                <p class="text-xs text-indigo-600 mb-3">議事録全文または質問者の発言ブロックを貼り付けると、複数案件を自動分割して下の表に展開します。</p>
+                <textarea id="bulk-ai-input" rows="7"
+                    class="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-3"
+                    placeholder="議事録テキストを貼り付け（複数課題を含んでOK）"></textarea>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <button id="bulk-ai-run-btn" type="button" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold">
+                        <i class="fas fa-wand-magic-sparkles mr-1"></i>複数案件を抽出
+                    </button>
+                    <button id="bulk-add-row-btn" type="button" class="px-4 py-2 rounded-lg bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold border border-gray-200">
+                        <i class="fas fa-plus mr-1"></i>手動で1行追加
+                    </button>
+                    <span id="bulk-ai-status" class="text-xs"></span>
+                </div>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-[1200px] w-full text-sm">
+                        <thead class="bg-slate-100 text-slate-700">
+                            <tr>
+                                <th class="px-3 py-2 text-left w-10"><input id="bulk-check-all" type="checkbox" checked></th>
+                                <th class="px-3 py-2 text-left w-36">議員名</th>
+                                <th class="px-3 py-2 text-left w-28">委員会</th>
+                                <th class="px-3 py-2 text-left w-32">分野</th>
+                                <th class="px-3 py-2 text-left w-36">担当部局</th>
+                                <th class="px-3 py-2 text-left">要望要旨</th>
+                                <th class="px-3 py-2 text-left">答弁要旨</th>
+                                <th class="px-3 py-2 text-left w-24">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulk-table-body" class="divide-y divide-gray-100 bg-white">
+                            <tr><td colspan="8" class="px-3 py-10 text-center text-gray-400">まだ案件がありません。AI抽出または手動追加を実行してください。</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mt-4 gap-3 flex-wrap">
+                <p id="bulk-summary" class="text-xs text-gray-500">0件 / 選択 0件</p>
+                <div class="flex gap-3 ml-auto">
+                    <button id="bulk-cancel-btn" type="button" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold">キャンセル</button>
+                    <button id="bulk-save-btn" type="button" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold">
+                        <i class="fas fa-upload mr-1"></i>選択案件を一括登録
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="update-modal" class="hidden fixed inset-0 z-50 bg-black/40 px-4 py-8 overflow-y-auto">
         <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-6">
             <div class="flex items-start justify-between gap-4 mb-4">
@@ -254,6 +332,7 @@
         }
         let geminiApiKey = "";
         let geminiModel = DEFAULT_GEMINI_MODEL;
+        let bulkDraftRows = [];
 
         function getClient() {
             if (supabaseClient) return supabaseClient;
@@ -725,6 +804,239 @@ ${inputText}`;
                 runBtn.disabled = false;
             }
         }
+
+        function createEmptyBulkRow() {
+            return {
+                selected: true,
+                member_name: "",
+                committee: "",
+                category: "",
+                department: "",
+                request_summary: "",
+                answer_summary: ""
+            };
+        }
+
+        function updateBulkSummary() {
+            const total = bulkDraftRows.length;
+            const selected = bulkDraftRows.filter((row) => row.selected).length;
+            document.getElementById("bulk-summary").textContent = `${total}件 / 選択 ${selected}件`;
+        }
+
+        function renderBulkTable() {
+            const tbody = document.getElementById("bulk-table-body");
+            if (!bulkDraftRows.length) {
+                tbody.innerHTML = `<tr><td colspan="8" class="px-3 py-10 text-center text-gray-400">まだ案件がありません。AI抽出または手動追加を実行してください。</td></tr>`;
+                updateBulkSummary();
+                return;
+            }
+
+            tbody.innerHTML = bulkDraftRows.map((row, index) => `
+                <tr>
+                    <td class="px-3 py-2 align-top"><input type="checkbox" ${row.selected ? "checked" : ""} onchange="toggleBulkRow(${index}, this.checked)"></td>
+                    <td class="px-3 py-2 align-top"><input type="text" value="${escapeHtml(row.member_name)}" oninput="updateBulkField(${index}, 'member_name', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5"></td>
+                    <td class="px-3 py-2 align-top"><input type="text" value="${escapeHtml(row.committee)}" oninput="updateBulkField(${index}, 'committee', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5"></td>
+                    <td class="px-3 py-2 align-top"><input type="text" value="${escapeHtml(row.category)}" oninput="updateBulkField(${index}, 'category', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5"></td>
+                    <td class="px-3 py-2 align-top"><input type="text" value="${escapeHtml(row.department)}" oninput="updateBulkField(${index}, 'department', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5"></td>
+                    <td class="px-3 py-2 align-top"><textarea oninput="updateBulkField(${index}, 'request_summary', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5 h-20">${escapeHtml(row.request_summary)}</textarea></td>
+                    <td class="px-3 py-2 align-top"><textarea oninput="updateBulkField(${index}, 'answer_summary', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5 h-20">${escapeHtml(row.answer_summary)}</textarea></td>
+                    <td class="px-3 py-2 align-top"><button type="button" class="px-2 py-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold" onclick="removeBulkRow(${index})">削除</button></td>
+                </tr>
+            `).join("");
+
+            const allChecked = bulkDraftRows.every((row) => row.selected);
+            document.getElementById("bulk-check-all").checked = allChecked;
+            updateBulkSummary();
+        }
+
+        function openBulkModal() {
+            document.getElementById("bulk-modal").classList.remove("hidden");
+            document.getElementById("bulk-ai-status").textContent = "";
+            renderBulkTable();
+        }
+
+        function closeBulkModal() {
+            document.getElementById("bulk-modal").classList.add("hidden");
+        }
+
+        function addBulkRow(row = null) {
+            bulkDraftRows.push(row ? {
+                selected: true,
+                member_name: row.member_name || "",
+                committee: row.committee || "",
+                category: row.category || "",
+                department: row.department || "",
+                request_summary: row.request_summary || "",
+                answer_summary: row.answer_summary || ""
+            } : createEmptyBulkRow());
+            renderBulkTable();
+        }
+
+        function updateBulkField(index, key, value) {
+            if (!bulkDraftRows[index]) return;
+            bulkDraftRows[index][key] = value;
+        }
+
+        function toggleBulkRow(index, checked) {
+            if (!bulkDraftRows[index]) return;
+            bulkDraftRows[index].selected = checked;
+            updateBulkSummary();
+        }
+
+        function removeBulkRow(index) {
+            bulkDraftRows.splice(index, 1);
+            renderBulkTable();
+        }
+
+        function toggleBulkAll(checked) {
+            bulkDraftRows = bulkDraftRows.map((row) => ({ ...row, selected: checked }));
+            renderBulkTable();
+        }
+
+        function extractJsonArray(text) {
+            const match = text.match(/\[[\s\S]*\]/);
+            if (!match) {
+                throw new Error("Geminiの応答からJSON配列を取得できませんでした。");
+            }
+            const parsed = JSON.parse(match[0]);
+            if (!Array.isArray(parsed)) {
+                throw new Error("抽出結果が配列形式ではありません。");
+            }
+            return parsed;
+        }
+
+        async function runBulkAiDraft() {
+            const inputText = document.getElementById("bulk-ai-input").value.trim();
+            const statusEl = document.getElementById("bulk-ai-status");
+            const runBtn = document.getElementById("bulk-ai-run-btn");
+
+            if (!inputText) {
+                alert("議事録テキストを貼り付けてください。");
+                return;
+            }
+
+            runBtn.disabled = true;
+            statusEl.className = "text-xs text-indigo-600";
+            statusEl.textContent = "Geminiに問い合わせ中…";
+
+            const prompt = `あなたは地方議会の議事録を分析するアシスタントです。
+以下の議事録テキストから、一般質問の課題を複数の案件に分割してください。
+
+重要:
+- 必ず JSON 配列のみを返す（説明文・コードブロックは禁止）
+- 1課題につき1オブジェクト
+- 抽出できない項目は空文字
+
+各オブジェクトのキー:
+- member_name
+- committee（産業建設 / 教育民生 / 総務 を優先）
+- category（分野）
+- department
+- request_summary（200字以内）
+- answer_summary（200字以内）
+
+返却例:
+[
+  {"member_name":"...","committee":"...","category":"...","department":"...","request_summary":"...","answer_summary":"..."},
+  {"member_name":"...","committee":"...","category":"...","department":"...","request_summary":"...","answer_summary":"..."}
+]
+
+議事録テキスト:
+${inputText}`;
+
+            try {
+                const result = await callGemini(prompt);
+                const rows = extractJsonArray(result);
+                if (!rows.length) {
+                    throw new Error("案件を抽出できませんでした。");
+                }
+                bulkDraftRows = rows.map((row) => ({
+                    selected: true,
+                    member_name: (row.member_name || "").trim(),
+                    committee: (row.committee || "").trim(),
+                    category: (row.category || "").trim(),
+                    department: (row.department || "").trim(),
+                    request_summary: (row.request_summary || "").trim(),
+                    answer_summary: (row.answer_summary || "").trim()
+                }));
+                renderBulkTable();
+                statusEl.className = "text-xs text-emerald-600 font-semibold";
+                statusEl.textContent = `✓ ${bulkDraftRows.length}件を抽出しました。内容を確認して登録してください。`;
+            } catch (e) {
+                console.error(e);
+                statusEl.className = "text-xs text-rose-600";
+                statusEl.textContent = `エラー: ${e.message}`;
+            } finally {
+                runBtn.disabled = false;
+            }
+        }
+
+        function buildBulkPayload(row, common) {
+            return {
+                session_id: common.session_id,
+                question_date: common.question_date || null,
+                member_name: row.member_name.trim(),
+                committee: row.committee.trim() || null,
+                category: row.category.trim() || null,
+                department: row.department.trim() || null,
+                request_summary: row.request_summary.trim(),
+                answer_summary: row.answer_summary.trim(),
+                action_summary: "",
+                status: STATUS_OPTIONS[0],
+                evaluation: EVALUATION_OPTIONS[0],
+                priority: PRIORITY_OPTIONS[1],
+                progress_percent: 0,
+                follow_up_due: null,
+                hearing_url: common.hearing_url || null,
+                source_excerpt: common.source_excerpt,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+        }
+
+        async function saveBulkRows() {
+            const common = {
+                session_id: document.getElementById("bulk-session-id").value.trim(),
+                question_date: document.getElementById("bulk-question-date").value,
+                hearing_url: document.getElementById("bulk-hearing-url").value.trim(),
+                source_excerpt: document.getElementById("bulk-ai-input").value.trim()
+            };
+            if (!common.session_id) {
+                alert("回次（全行共通）を入力してください。");
+                return;
+            }
+
+            const selectedRows = bulkDraftRows.filter((row) => row.selected);
+            if (!selectedRows.length) {
+                alert("登録対象が選択されていません。");
+                return;
+            }
+
+            const invalid = selectedRows.find((row) => !row.member_name.trim() || !row.request_summary.trim());
+            if (invalid) {
+                alert("選択した行に必須項目（議員名 / 要望要旨）が未入力のものがあります。");
+                return;
+            }
+
+            const payloads = selectedRows.map((row) => buildBulkPayload(row, common));
+            const saveBtn = document.getElementById("bulk-save-btn");
+            saveBtn.disabled = true;
+
+            try {
+                const supabase = getClient();
+                const { error } = await supabase.from("general_question_tracker").insert(payloads);
+                if (error) throw error;
+                await loadTrackers();
+                filterTrackers();
+                closeBulkModal();
+                alert(`${payloads.length}件を登録しました。`);
+            } catch (error) {
+                console.error(error);
+                alert("一括登録に失敗しました。");
+            } finally {
+                saveBtn.disabled = false;
+            }
+        }
         // ─────────────────────────────────────────────────────────────
 
         function openUpdateModal(trackerId) {
@@ -800,6 +1112,7 @@ ${inputText}`;
         }
 
         document.getElementById("open-create-btn").addEventListener("click", () => openTrackerModal(null));
+        document.getElementById("open-bulk-create-btn").addEventListener("click", openBulkModal);
         document.getElementById("ai-draft-toggle-btn").addEventListener("click", () => {
             const panel = document.getElementById("ai-draft-panel");
             const isHidden = panel.classList.toggle("hidden");
@@ -809,6 +1122,12 @@ ${inputText}`;
             }
         });
         document.getElementById("ai-draft-run-btn").addEventListener("click", runAiDraft);
+        document.getElementById("bulk-modal-close").addEventListener("click", closeBulkModal);
+        document.getElementById("bulk-cancel-btn").addEventListener("click", closeBulkModal);
+        document.getElementById("bulk-ai-run-btn").addEventListener("click", runBulkAiDraft);
+        document.getElementById("bulk-add-row-btn").addEventListener("click", () => addBulkRow());
+        document.getElementById("bulk-check-all").addEventListener("change", (event) => toggleBulkAll(event.target.checked));
+        document.getElementById("bulk-save-btn").addEventListener("click", saveBulkRows);
         document.getElementById("search-input").addEventListener("input", filterTrackers);
         document.getElementById("status-filter").addEventListener("change", filterTrackers);
         document.getElementById("member-filter").addEventListener("change", filterTrackers);
@@ -824,6 +1143,9 @@ ${inputText}`;
         });
         document.getElementById("update-modal").addEventListener("click", (event) => {
             if (event.target === event.currentTarget) closeUpdateModal();
+        });
+        document.getElementById("bulk-modal").addEventListener("click", (event) => {
+            if (event.target === event.currentTarget) closeBulkModal();
         });
 
         setSelectOptions("form-status", STATUS_OPTIONS);
@@ -844,6 +1166,9 @@ ${inputText}`;
 
         window.openTrackerModal = openTrackerModal;
         window.openUpdateModal = openUpdateModal;
+        window.updateBulkField = updateBulkField;
+        window.toggleBulkRow = toggleBulkRow;
+        window.removeBulkRow = removeBulkRow;
     </script>
 </body>
 </html>
