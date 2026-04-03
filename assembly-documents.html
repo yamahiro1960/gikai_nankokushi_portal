@@ -394,7 +394,7 @@
                 appendInkPointFromPointer(event);
                 currentInkStroke = null;
                 redrawInkCanvas();
-                setInkStatus("未保存");
+                setInkStatus(`未保存（${inkStrokes.length}件）`);
             };
 
             canvas.addEventListener("pointerup", finishStroke);
@@ -453,6 +453,12 @@
                 return;
             }
 
+            const validStrokes = inkStrokes.filter((stroke) => Array.isArray(stroke.points) && stroke.points.length >= 2);
+            if (validStrokes.length === 0) {
+                setInkStatus("保存対象なし（1本以上描いてから保存してください）");
+                return;
+            }
+
             const saveBtn = document.getElementById("ink-save-btn");
             saveBtn.disabled = true;
             setInkStatus("手書き保存中...");
@@ -466,14 +472,15 @@
                         member_id: memberId,
                         session_id: currentNoteSessionId,
                         document_name: currentNoteDocName,
-                        ink_payload: inkStrokes,
+                        ink_payload: validStrokes,
                         updated_at: now
                     }, { onConflict: "member_id,session_id,document_name" });
 
                 if (error) throw error;
 
+                inkStrokes = validStrokes;
                 const dt = new Date(now).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-                setInkStatus(`最終保存: ${dt}`);
+                setInkStatus(`最終保存: ${dt}（${inkStrokes.length}件）`);
             } catch (error) {
                 console.warn("手書きメモ保存エラー:", error);
                 setInkStatus("手書き保存エラー");
