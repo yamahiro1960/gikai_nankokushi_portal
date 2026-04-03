@@ -241,6 +241,17 @@
         let supabaseClient = null;
 
         const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+        const LEGACY_GEMINI_MODEL_MAP = {
+            "gemini-1.5-flash-latest": DEFAULT_GEMINI_MODEL,
+            "gemini-1.5-flash": DEFAULT_GEMINI_MODEL,
+            "gemini-2.0-flash": DEFAULT_GEMINI_MODEL,
+            "gemini-2.0-flash-latest": DEFAULT_GEMINI_MODEL,
+            "gemini-flash-latest": DEFAULT_GEMINI_MODEL
+        };
+        function normalizeGeminiModel(model) {
+            const m = (model || "").trim();
+            return LEGACY_GEMINI_MODEL_MAP[m] || m || DEFAULT_GEMINI_MODEL;
+        }
         let geminiApiKey = "";
         let geminiModel = DEFAULT_GEMINI_MODEL;
 
@@ -630,7 +641,7 @@
                     .maybeSingle();
                 if (data && data.setting_payload) {
                     geminiApiKey = data.setting_payload.apiKey || "";
-                    geminiModel = data.setting_payload.model || DEFAULT_GEMINI_MODEL;
+                    geminiModel = normalizeGeminiModel(data.setting_payload.model);
                 }
             } catch (e) {
                 console.warn("Gemini設定の読み込みに失敗:", e);
