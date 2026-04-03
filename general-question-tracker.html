@@ -200,9 +200,16 @@
                 </button>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 mb-4">
                 <label class="text-sm text-gray-700">回次（全行共通）
                     <input id="bulk-session-id" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="446">
+                </label>
+                <label class="text-sm text-gray-700">会議種別
+                    <select id="bulk-meeting-type" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 bg-white">
+                        <option value="general_question">一般質問</option>
+                        <option value="committee">委員会質疑</option>
+                        <option value="budget">予算・決算質疑</option>
+                    </select>
                 </label>
                 <label class="text-sm text-gray-700">質問日（全行共通）
                     <input id="bulk-question-date" type="date" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2">
@@ -241,11 +248,12 @@
                                 <th class="px-3 py-2 text-left w-36">担当部局</th>
                                 <th class="px-3 py-2 text-left">要望要旨</th>
                                 <th class="px-3 py-2 text-left">答弁要旨</th>
+                                <th class="px-3 py-2 text-left w-28">信頼度</th>
                                 <th class="px-3 py-2 text-left w-24">操作</th>
                             </tr>
                         </thead>
                         <tbody id="bulk-table-body" class="divide-y divide-gray-100 bg-white">
-                            <tr><td colspan="8" class="px-3 py-10 text-center text-gray-400">まだ案件がありません。AI抽出または手動追加を実行してください。</td></tr>
+                            <tr><td colspan="9" class="px-3 py-10 text-center text-gray-400">まだ案件がありません。AI抽出または手動追加を実行してください。</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -333,6 +341,84 @@
         let geminiApiKey = "";
         let geminiModel = DEFAULT_GEMINI_MODEL;
         let bulkDraftRows = [];
+
+        const CATEGORY_NORMALIZE_MAP = {
+            "防災": ["防災", "災害", "避難", "ハザード", "地震", "津波", "豪雨"],
+            "子育て": ["子育て", "保育", "こども", "児童", "学童"],
+            "教育": ["教育", "学校", "学力", "給食", "不登校"],
+            "福祉": ["福祉", "介護", "高齢", "障害", "生活保護"],
+            "医療": ["医療", "病院", "診療", "健康", "検診"],
+            "道路・交通": ["道路", "交通", "バス", "通学路", "渋滞", "橋"],
+            "産業・観光": ["産業", "観光", "商工", "企業", "雇用", "農業"],
+            "環境": ["環境", "ごみ", "脱炭素", "公害", "再エネ"],
+            "行財政": ["財政", "予算", "決算", "行政改革", "DX", "デジタル"]
+        };
+
+        const COMMITTEE_NORMALIZE_MAP = {
+            "総務": ["総務", "総務常任", "総務委員会"],
+            "産業建設": ["産業建設", "産建", "建設", "産業"],
+            "教育民生": ["教育民生", "教民", "民生", "教育"]
+        };
+
+        const DEPARTMENT_NORMALIZE_MAP = {
+            "総務課": ["総務課", "総務部"],
+            "財政課": ["財政課", "財務課"],
+            "企画課": ["企画課", "政策企画"],
+            "市民課": ["市民課"],
+            "福祉事務所": ["福祉事務所", "福祉課"],
+            "健康課": ["健康課", "保健", "保健福祉"],
+            "建設課": ["建設課", "土木"],
+            "都市整備課": ["都市整備", "都市計画"],
+            "教育委員会": ["教育委員会", "学校教育", "生涯学習"]
+        };
+
+        function normalizeByKeywordMap(value, keywordMap) {
+            const raw = (value || "").trim();
+            if (!raw) return "";
+            const lower = raw.toLowerCase();
+            const canonical = Object.keys(keywordMap).find((key) => keywordMap[key].some((word) => lower.includes(word.toLowerCase())));
+            return canonical || raw;
+        }
+
+        function normalizeBulkRow(row) {
+            return {
+                ...row,
+                committee: normalizeByKeywordMap(row.committee, COMMITTEE_NORMALIZE_MAP),
+                category: normalizeByKeywordMap(row.category, CATEGORY_NORMALIZE_MAP),
+                department: normalizeByKeywordMap(row.department, DEPARTMENT_NORMALIZE_MAP)
+            };
+        }
+
+        function evaluateBulkRowConfidence(row) {
+            let score = 100;
+            const notes = [];
+            if (!row.member_name || row.member_name.trim().length < 2) {
+                score -= 35;
+                notes.push("議員名が不十分");
+            }
+            if (!row.request_summary || row.request_summary.trim().length < 20) {
+                score -= 30;
+                notes.push("要望要旨が短い");
+            }
+            if (!row.answer_summary || row.answer_summary.trim().length < 20) {
+                score -= 20;
+                notes.push("答弁要旨が短い");
+            }
+            if (!row.category) {
+                score -= 10;
+                notes.push("分野未設定");
+            }
+            if (!row.department) {
+                score -= 10;
+                notes.push("担当部局未設定");
+            }
+            const safeScore = Math.max(0, Math.min(100, score));
+            return {
+                score: safeScore,
+                warning: safeScore < 70,
+                reason: notes.join(" / ") || "良好"
+            };
+        }
 
         function getClient() {
             if (supabaseClient) return supabaseClient;
@@ -806,6 +892,13 @@ ${inputText}`;
         }
 
         function createEmptyBulkRow() {
+            const confidence = evaluateBulkRowConfidence({
+                member_name: "",
+                category: "",
+                department: "",
+                request_summary: "",
+                answer_summary: ""
+            });
             return {
                 selected: true,
                 member_name: "",
@@ -813,7 +906,10 @@ ${inputText}`;
                 category: "",
                 department: "",
                 request_summary: "",
-                answer_summary: ""
+                answer_summary: "",
+                confidenceScore: confidence.score,
+                confidenceWarning: confidence.warning,
+                confidenceReason: confidence.reason
             };
         }
 
@@ -826,13 +922,13 @@ ${inputText}`;
         function renderBulkTable() {
             const tbody = document.getElementById("bulk-table-body");
             if (!bulkDraftRows.length) {
-                tbody.innerHTML = `<tr><td colspan="8" class="px-3 py-10 text-center text-gray-400">まだ案件がありません。AI抽出または手動追加を実行してください。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="px-3 py-10 text-center text-gray-400">まだ案件がありません。AI抽出または手動追加を実行してください。</td></tr>`;
                 updateBulkSummary();
                 return;
             }
 
             tbody.innerHTML = bulkDraftRows.map((row, index) => `
-                <tr>
+                <tr class="${row.confidenceWarning ? "bg-rose-50/60" : ""}">
                     <td class="px-3 py-2 align-top"><input type="checkbox" ${row.selected ? "checked" : ""} onchange="toggleBulkRow(${index}, this.checked)"></td>
                     <td class="px-3 py-2 align-top"><input type="text" value="${escapeHtml(row.member_name)}" oninput="updateBulkField(${index}, 'member_name', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5"></td>
                     <td class="px-3 py-2 align-top"><input type="text" value="${escapeHtml(row.committee)}" oninput="updateBulkField(${index}, 'committee', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5"></td>
@@ -840,6 +936,10 @@ ${inputText}`;
                     <td class="px-3 py-2 align-top"><input type="text" value="${escapeHtml(row.department)}" oninput="updateBulkField(${index}, 'department', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5"></td>
                     <td class="px-3 py-2 align-top"><textarea oninput="updateBulkField(${index}, 'request_summary', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5 h-20">${escapeHtml(row.request_summary)}</textarea></td>
                     <td class="px-3 py-2 align-top"><textarea oninput="updateBulkField(${index}, 'answer_summary', this.value)" class="w-full border border-gray-200 rounded px-2 py-1.5 h-20">${escapeHtml(row.answer_summary)}</textarea></td>
+                    <td class="px-3 py-2 align-top text-xs">
+                        <span class="inline-flex px-2 py-1 rounded-full font-semibold ${row.confidenceWarning ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}">${row.confidenceScore}%</span>
+                        <p class="mt-1 text-gray-500">${escapeHtml(row.confidenceReason || "")}</p>
+                    </td>
                     <td class="px-3 py-2 align-top"><button type="button" class="px-2 py-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold" onclick="removeBulkRow(${index})">削除</button></td>
                 </tr>
             `).join("");
@@ -860,14 +960,26 @@ ${inputText}`;
         }
 
         function addBulkRow(row = null) {
+            const normalizedRow = row ? normalizeBulkRow(row) : null;
+            const confidence = evaluateBulkRowConfidence(normalizedRow || {
+                member_name: "",
+                category: "",
+                department: "",
+                request_summary: "",
+                answer_summary: ""
+            });
+
             bulkDraftRows.push(row ? {
                 selected: true,
-                member_name: row.member_name || "",
-                committee: row.committee || "",
-                category: row.category || "",
-                department: row.department || "",
-                request_summary: row.request_summary || "",
-                answer_summary: row.answer_summary || ""
+                member_name: normalizedRow.member_name || "",
+                committee: normalizedRow.committee || "",
+                category: normalizedRow.category || "",
+                department: normalizedRow.department || "",
+                request_summary: normalizedRow.request_summary || "",
+                answer_summary: normalizedRow.answer_summary || "",
+                confidenceScore: confidence.score,
+                confidenceWarning: confidence.warning,
+                confidenceReason: confidence.reason
             } : createEmptyBulkRow());
             renderBulkTable();
         }
@@ -875,6 +987,14 @@ ${inputText}`;
         function updateBulkField(index, key, value) {
             if (!bulkDraftRows[index]) return;
             bulkDraftRows[index][key] = value;
+            const normalized = normalizeBulkRow(bulkDraftRows[index]);
+            bulkDraftRows[index].committee = normalized.committee;
+            bulkDraftRows[index].category = normalized.category;
+            bulkDraftRows[index].department = normalized.department;
+            const confidence = evaluateBulkRowConfidence(bulkDraftRows[index]);
+            bulkDraftRows[index].confidenceScore = confidence.score;
+            bulkDraftRows[index].confidenceWarning = confidence.warning;
+            bulkDraftRows[index].confidenceReason = confidence.reason;
         }
 
         function toggleBulkRow(index, checked) {
@@ -907,6 +1027,7 @@ ${inputText}`;
 
         async function runBulkAiDraft() {
             const inputText = document.getElementById("bulk-ai-input").value.trim();
+            const meetingType = document.getElementById("bulk-meeting-type").value;
             const statusEl = document.getElementById("bulk-ai-status");
             const runBtn = document.getElementById("bulk-ai-run-btn");
 
@@ -919,8 +1040,20 @@ ${inputText}`;
             statusEl.className = "text-xs text-indigo-600";
             statusEl.textContent = "Geminiに問い合わせ中…";
 
+            const meetingTypeInstructionMap = {
+                general_question: "一般質問の文脈として、要望と答弁を分けて抽出する。",
+                committee: "委員会質疑の文脈として、質疑事項と執行部回答を抽出する。",
+                budget: "予算・決算質疑の文脈として、予算要求・執行状況・答弁を抽出する。"
+            };
+            const meetingInstruction = meetingTypeInstructionMap[meetingType] || meetingTypeInstructionMap.general_question;
+
             const prompt = `あなたは地方議会の議事録を分析するアシスタントです。
 以下の議事録テキストから、一般質問の課題を複数の案件に分割してください。
+
+会議種別:
+${meetingType}
+追加指示:
+${meetingInstruction}
 
 重要:
 - 必ず JSON 配列のみを返す（説明文・コードブロックは禁止）
@@ -950,15 +1083,17 @@ ${inputText}`;
                 if (!rows.length) {
                     throw new Error("案件を抽出できませんでした。");
                 }
-                bulkDraftRows = rows.map((row) => ({
-                    selected: true,
-                    member_name: (row.member_name || "").trim(),
-                    committee: (row.committee || "").trim(),
-                    category: (row.category || "").trim(),
-                    department: (row.department || "").trim(),
-                    request_summary: (row.request_summary || "").trim(),
-                    answer_summary: (row.answer_summary || "").trim()
-                }));
+                bulkDraftRows = [];
+                rows.forEach((row) => {
+                    addBulkRow({
+                        member_name: (row.member_name || "").trim(),
+                        committee: (row.committee || "").trim(),
+                        category: (row.category || "").trim(),
+                        department: (row.department || "").trim(),
+                        request_summary: (row.request_summary || "").trim(),
+                        answer_summary: (row.answer_summary || "").trim()
+                    });
+                });
                 renderBulkTable();
                 statusEl.className = "text-xs text-emerald-600 font-semibold";
                 statusEl.textContent = `✓ ${bulkDraftRows.length}件を抽出しました。内容を確認して登録してください。`;
@@ -1006,6 +1141,17 @@ ${inputText}`;
                 return;
             }
 
+            bulkDraftRows = bulkDraftRows.map((row) => {
+                const normalized = normalizeBulkRow(row);
+                const confidence = evaluateBulkRowConfidence(normalized);
+                return {
+                    ...normalized,
+                    confidenceScore: confidence.score,
+                    confidenceWarning: confidence.warning,
+                    confidenceReason: confidence.reason
+                };
+            });
+
             const selectedRows = bulkDraftRows.filter((row) => row.selected);
             if (!selectedRows.length) {
                 alert("登録対象が選択されていません。");
@@ -1016,6 +1162,15 @@ ${inputText}`;
             if (invalid) {
                 alert("選択した行に必須項目（議員名 / 要望要旨）が未入力のものがあります。");
                 return;
+            }
+
+            const lowConfidenceCount = selectedRows.filter((row) => row.confidenceWarning).length;
+            if (lowConfidenceCount > 0) {
+                const proceed = confirm(`低信頼の行が ${lowConfidenceCount} 件あります。このまま登録しますか？`);
+                if (!proceed) {
+                    renderBulkTable();
+                    return;
+                }
             }
 
             const payloads = selectedRows.map((row) => buildBulkPayload(row, common));
