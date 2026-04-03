@@ -69,9 +69,6 @@
                 <canvas id="pdf-ink-canvas" class="absolute inset-0 hidden rounded-lg" style="touch-action: none;"></canvas>
             </div>
             <div id="ink-toolbar" class="hidden mt-3 flex items-center gap-2 flex-wrap text-xs">
-                <button id="ink-toggle-btn" type="button" class="px-3 py-2 rounded-lg border border-cyan-300 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 font-semibold">
-                    <i class="fas fa-pen mr-1"></i>手書きを入力する
-                </button>
                 <button id="ink-visibility-btn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold">
                     手書きを隠す
                 </button>
@@ -140,7 +137,6 @@
         let _noteClient = null;
         let _noteMemberId = null;
         let activePdfObjectUrl = null;
-        let inkEnabled = false;
         let inkVisible = true;
         let inkStrokes = [];
         let currentInkStroke = null;
@@ -328,8 +324,8 @@
             const hasInk = inkStrokes.length > 0;
 
             toolbar.classList.toggle("hidden", !hasActiveDocument);
-            canvas.classList.toggle("hidden", !(hasActiveDocument && (inkEnabled || (hasInk && inkVisible))));
-            canvas.style.pointerEvents = inkEnabled ? "auto" : "none";
+            canvas.classList.toggle("hidden", !(hasActiveDocument && inkVisible));
+            canvas.style.pointerEvents = (hasActiveDocument && inkVisible) ? "auto" : "none";
 
             visibilityBtn.disabled = !hasInk;
             visibilityBtn.textContent = inkVisible ? "手書きを隠す" : "手書きを表示する";
@@ -338,34 +334,13 @@
                 : "px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold";
         }
 
-        function setInkEnabled(enabled) {
-            inkEnabled = !!enabled;
-            const btn = document.getElementById("ink-toggle-btn");
-            if (inkEnabled) {
-                inkVisible = true;
-            }
-
-            btn.innerHTML = inkEnabled
-                ? '<i class="fas fa-pen mr-1"></i>手書き入力を終了する'
-                : '<i class="fas fa-pen mr-1"></i>手書きを入力する';
-            btn.className = inkEnabled
-                ? "px-3 py-2 rounded-lg border border-cyan-500 text-white bg-cyan-600 hover:bg-cyan-700 font-semibold"
-                : "px-3 py-2 rounded-lg border border-cyan-300 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 font-semibold";
-            updateInkCanvasVisibility();
-            redrawInkCanvas();
-        }
-
         function toggleInkVisibility() {
             if (inkStrokes.length === 0) {
                 return;
             }
-
-            if (inkVisible) {
-                inkEnabled = false;
-            }
-
             inkVisible = !inkVisible;
-            setInkEnabled(inkEnabled);
+            updateInkCanvasVisibility();
+            redrawInkCanvas();
         }
 
         function appendInkPointFromPointer(event) {
@@ -384,7 +359,7 @@
             const canvas = getInkCanvas();
 
             canvas.addEventListener("pointerdown", (event) => {
-                if (!inkEnabled || !currentNoteDocName || !currentNoteSessionId) {
+                if (!currentNoteDocName || !currentNoteSessionId) {
                     return;
                 }
                 event.preventDefault();
@@ -402,7 +377,7 @@
             });
 
             canvas.addEventListener("pointermove", (event) => {
-                if (!inkEnabled || !currentInkStroke) {
+                if (!currentInkStroke) {
                     return;
                 }
                 event.preventDefault();
@@ -660,7 +635,6 @@
                 currentNoteSessionId = null;
                 inkVisible = true;
                 resetInkData();
-                setInkEnabled(false);
                 setInkStatus("");
                 navDocuments = [];
                 navIndex = -1;
@@ -688,7 +662,6 @@
             currentNoteSessionId = null;
             inkVisible = true;
             resetInkData();
-            setInkEnabled(false);
             setInkStatus("");
             updateNavBar();
         }
