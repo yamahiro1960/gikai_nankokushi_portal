@@ -882,9 +882,6 @@
             document.getElementById("memo-status").textContent = "";
         }
 
-        document.getElementById("ink-toggle-btn").addEventListener("click", () => {
-            setInkEnabled(!inkEnabled);
-        });
         document.getElementById("ink-visibility-btn").addEventListener("click", toggleInkVisibility);
         document.getElementById("ink-save-btn").addEventListener("click", saveInkNote);
         document.getElementById("ink-clear-btn").addEventListener("click", clearInkNote);
@@ -893,7 +890,6 @@
         document.getElementById("memo-save-btn").addEventListener("click", saveNote);
         document.getElementById("memo-clear-btn").addEventListener("click", clearMemoText);
         setupInkCanvasEvents();
-        setInkEnabled(false);
         // ---- メモ機能ここまで ----
 
         portalAuth.init({
