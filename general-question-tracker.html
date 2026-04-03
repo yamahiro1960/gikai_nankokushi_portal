@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一般質問追跡 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <header class="bg-sky-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold tracking-wider hover:text-sky-100">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <span class="text-sm">一般質問追跡</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="index.html" class="text-sky-700 hover:text-sky-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>ポータルトップに戻る
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500 text-white shadow-lg mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">一般質問と答弁の追跡</h1>
+                    <p class="text-sky-100">議員の要望、執行部の答弁、その後の実施状況を案件単位で追跡し、評価と再確認を可視化します。</p>
+                </div>
+                <div class="flex gap-3 flex-wrap">
+                    <button id="open-create-btn" type="button" class="px-4 py-2 rounded-lg bg-white text-sky-700 font-semibold hover:bg-sky-50">
+                        <i class="fas fa-plus mr-1"></i>案件を登録
+                    </button>
+                    <div class="px-4 py-2 rounded-lg bg-white/15 text-sm text-sky-50">AI抽出は次段階。まずは手入力で追跡を開始</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-slate-400">
+                <p class="text-xs text-gray-500">追跡案件数</p>
+                <p id="metric-total" class="text-3xl font-bold mt-2">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-amber-500">
+                <p class="text-xs text-gray-500">進行中・調査中</p>
+                <p id="metric-active" class="text-3xl font-bold mt-2">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-emerald-500">
+                <p class="text-xs text-gray-500">実施済み</p>
+                <p id="metric-done" class="text-3xl font-bold mt-2">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-t-4 border-rose-500">
+                <p class="text-xs text-gray-500">要再確認</p>
+                <p id="metric-review" class="text-3xl font-bold mt-2">0</p>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-5 mb-6 border border-sky-100">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+                <div class="relative xl:col-span-2">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input id="search-input" type="text" placeholder="議員名・要望・答弁・担当部局で検索"
+                        class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300">
+                </div>
+                <select id="status-filter" class="border border-gray-200 rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    <option value="">すべてのステータス</option>
+                </select>
+                <select id="member-filter" class="border border-gray-200 rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    <option value="">すべての議員</option>
+                </select>
+                <select id="category-filter" class="border border-gray-200 rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    <option value="">すべての分野</option>
+                </select>
+            </div>
+            <p id="result-count" class="mt-3 text-xs text-gray-400"></p>
+        </section>
+
+        <section id="tracker-list" class="space-y-4">
+            <p class="text-center text-gray-400 py-10">読み込み中...</p>
+        </section>
+    </main>
+
+    <div id="tracker-modal" class="hidden fixed inset-0 z-50 bg-black/40 px-4 py-8 overflow-y-auto">
+        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h2 id="tracker-modal-title" class="text-xl font-bold">案件を登録</h2>
+                    <p class="text-sm text-gray-500">議事録から拾った要望と答弁を案件化して追跡します。</p>
+                </div>
+                <button id="tracker-modal-close" type="button" class="text-gray-400 hover:text-gray-600 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="tracker-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label class="text-sm text-gray-700">回次
+                    <input id="form-session-id" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="446">
+                </label>
+                <label class="text-sm text-gray-700">質問日
+                    <input id="form-question-date" type="date" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700">議員名
+                    <input id="form-member-name" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="議員名">
+                </label>
+                <label class="text-sm text-gray-700">委員会
+                    <input id="form-committee" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="総務 / 産業建設 / 教育民生">
+                </label>
+                <label class="text-sm text-gray-700">分野
+                    <input id="form-category" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="子育て / 防災 / 交通 など">
+                </label>
+                <label class="text-sm text-gray-700">担当部局
+                    <input id="form-department" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="教育委員会 / 総務課 など">
+                </label>
+                <label class="text-sm text-gray-700 md:col-span-2">要望要旨
+                    <textarea id="form-request-summary" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-24" placeholder="議員が何を求めたかを簡潔に記録"></textarea>
+                </label>
+                <label class="text-sm text-gray-700 md:col-span-2">答弁要旨
+                    <textarea id="form-answer-summary" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-24" placeholder="執行部がどう答弁したかを記録"></textarea>
+                </label>
+                <label class="text-sm text-gray-700 md:col-span-2">追跡メモ
+                    <textarea id="form-action-summary" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-20" placeholder="実施状況、現地確認結果、次回確認観点など"></textarea>
+                </label>
+                <label class="text-sm text-gray-700">ステータス
+                    <select id="form-status" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 bg-white"></select>
+                </label>
+                <label class="text-sm text-gray-700">評価
+                    <select id="form-evaluation" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 bg-white"></select>
+                </label>
+                <label class="text-sm text-gray-700">優先度
+                    <select id="form-priority" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 bg-white"></select>
+                </label>
+                <label class="text-sm text-gray-700">進捗率
+                    <input id="form-progress-percent" type="number" min="0" max="100" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="0-100">
+                </label>
+                <label class="text-sm text-gray-700">次回確認日
+                    <input id="form-follow-up-due" type="date" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700">議事録URL
+                    <input id="form-hearing-url" type="url" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="https://...">
+                </label>
+                <label class="text-sm text-gray-700 md:col-span-2">議事録の原文メモ
+                    <textarea id="form-source-excerpt" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-24" placeholder="重要な原文、引用、抜粋"></textarea>
+                </label>
+            </form>
+
+            <div class="flex justify-between items-center mt-5 gap-3 flex-wrap">
+                <button id="tracker-delete-btn" type="button" class="text-sm text-rose-600 hover:text-rose-700 font-semibold hidden">
+                    <i class="fas fa-trash mr-1"></i>案件を削除
+                </button>
+                <div class="flex gap-3 ml-auto">
+                    <button id="tracker-cancel-btn" type="button" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold">キャンセル</button>
+                    <button id="tracker-save-btn" type="button" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold"><i class="fas fa-save mr-1"></i>保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="update-modal" class="hidden fixed inset-0 z-50 bg-black/40 px-4 py-8 overflow-y-auto">
+        <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h2 id="update-modal-title" class="text-xl font-bold">更新履歴</h2>
+                    <p id="update-modal-subtitle" class="text-sm text-gray-500"></p>
+                </div>
+                <button id="update-modal-close" type="button" class="text-gray-400 hover:text-gray-600 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                <label class="text-sm text-gray-700">更新日
+                    <input id="update-date" type="date" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700">ステータス
+                    <select id="update-status" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 bg-white"></select>
+                </label>
+                <label class="text-sm text-gray-700">評価
+                    <select id="update-evaluation" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 bg-white"></select>
+                </label>
+                <label class="text-sm text-gray-700">進捗率
+                    <input id="update-progress-percent" type="number" min="0" max="100" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="0-100">
+                </label>
+            </div>
+            <label class="text-sm text-gray-700 block mb-4">更新内容
+                <textarea id="update-note" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-24" placeholder="現地確認、担当課ヒアリング、事業の実施状況など"></textarea>
+            </label>
+            <label class="text-sm text-gray-700 block mb-4">根拠URL
+                <input id="update-evidence-url" type="url" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="https://...">
+            </label>
+            <div class="flex justify-end gap-3 mb-5">
+                <button id="update-save-btn" type="button" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"><i class="fas fa-plus mr-1"></i>更新を追加</button>
+            </div>
+
+            <div id="update-history" class="space-y-3">
+                <p class="text-center text-gray-400 py-8">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        const STATUS_OPTIONS = ["未着手", "調査中", "進行中", "一部実施", "実施済み", "要再確認"];
+        const EVALUATION_OPTIONS = ["要確認", "概ね良好", "一部不足", "未実施", "再質問候補"];
+        const PRIORITY_OPTIONS = ["高", "中", "低"];
+
+        let trackerItems = [];
+        let currentTrackerId = null;
+        let currentUpdateTrackerId = null;
+        let supabaseClient = null;
+
+        function getClient() {
+            if (supabaseClient) return supabaseClient;
+            supabaseClient = window.portalAuth && typeof window.portalAuth.ensureClient === "function"
+                ? window.portalAuth.ensureClient()
+                : window.supabase.createClient(window.AUTH_CONFIG.supabaseUrl, window.AUTH_CONFIG.supabaseAnonKey);
+            return supabaseClient;
+        }
+
+        function escapeHtml(str) {
+            return (str || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function formatDate(dateValue) {
+            if (!dateValue) return "-";
+            return new Date(dateValue).toLocaleDateString("ja-JP");
+        }
+
+        function formatDateTime(dateValue) {
+            if (!dateValue) return "-";
+            return new Date(dateValue).toLocaleString("ja-JP", {
+                year: "numeric",
+                month: "numeric",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        function getStatusBadgeClass(status) {
+            return {
+                "未着手": "bg-slate-100 text-slate-700",
+                "調査中": "bg-amber-100 text-amber-700",
+                "進行中": "bg-sky-100 text-sky-700",
+                "一部実施": "bg-cyan-100 text-cyan-700",
+                "実施済み": "bg-emerald-100 text-emerald-700",
+                "要再確認": "bg-rose-100 text-rose-700"
+            }[status] || "bg-gray-100 text-gray-700";
+        }
+
+        function getEvaluationBadgeClass(evaluation) {
+            return {
+                "要確認": "bg-slate-100 text-slate-700",
+                "概ね良好": "bg-emerald-100 text-emerald-700",
+                "一部不足": "bg-amber-100 text-amber-700",
+                "未実施": "bg-rose-100 text-rose-700",
+                "再質問候補": "bg-violet-100 text-violet-700"
+            }[evaluation] || "bg-gray-100 text-gray-700";
+        }
+
+        function getPriorityBadgeClass(priority) {
+            return {
+                "高": "bg-rose-100 text-rose-700",
+                "中": "bg-amber-100 text-amber-700",
+                "低": "bg-slate-100 text-slate-700"
+            }[priority] || "bg-gray-100 text-gray-700";
+        }
+
+        function setSelectOptions(selectId, values, placeholder) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = placeholder ? `<option value="">${placeholder}</option>` : "";
+            values.forEach((value) => {
+                const option = document.createElement("option");
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+        }
+
+        function updateMetrics(items) {
+            document.getElementById("metric-total").textContent = String(items.length);
+            document.getElementById("metric-active").textContent = String(items.filter((item) => ["調査中", "進行中", "一部実施"].includes(item.status)).length);
+            document.getElementById("metric-done").textContent = String(items.filter((item) => item.status === "実施済み").length);
+            document.getElementById("metric-review").textContent = String(items.filter((item) => item.status === "要再確認" || item.evaluation === "再質問候補").length);
+        }
+
+        function populateFilters(items) {
+            const members = [...new Set(items.map((item) => item.member_name).filter(Boolean))].sort();
+            const categories = [...new Set(items.map((item) => item.category).filter(Boolean))].sort();
+            setSelectOptions("status-filter", STATUS_OPTIONS, "すべてのステータス");
+            setSelectOptions("member-filter", members, "すべての議員");
+            setSelectOptions("category-filter", categories, "すべての分野");
+        }
+
+        function renderTrackers(items) {
+            const container = document.getElementById("tracker-list");
+            document.getElementById("result-count").textContent = `${items.length} 件`;
+
+            if (items.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-400 py-10">該当する案件がありません。</p>`;
+                return;
+            }
+
+            container.innerHTML = items.map((item) => `
+                <article class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition">
+                    <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
+                        <div class="space-y-2">
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <span class="px-2 py-1 rounded-full bg-sky-50 text-sky-700 font-semibold">第${escapeHtml(item.session_id)}回議会</span>
+                                <span class="px-2 py-1 rounded-full ${getStatusBadgeClass(item.status)} font-semibold">${escapeHtml(item.status)}</span>
+                                <span class="px-2 py-1 rounded-full ${getEvaluationBadgeClass(item.evaluation)} font-semibold">${escapeHtml(item.evaluation)}</span>
+                                <span class="px-2 py-1 rounded-full ${getPriorityBadgeClass(item.priority)} font-semibold">優先度:${escapeHtml(item.priority)}</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-800">${escapeHtml(item.request_summary)}</h3>
+                            <p class="text-sm text-gray-500">${escapeHtml(item.member_name)} / ${escapeHtml(item.committee || "委員会未設定")} / ${escapeHtml(item.category || "分野未設定")}</p>
+                        </div>
+                        <div class="text-right text-xs text-gray-400">
+                            <div>最終更新</div>
+                            <div>${formatDateTime(item.updated_at)}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                        <div class="xl:col-span-2 space-y-3">
+                            <div>
+                                <p class="text-xs font-semibold text-gray-500 mb-1">答弁要旨</p>
+                                <p class="text-sm text-gray-700 whitespace-pre-wrap">${escapeHtml(item.answer_summary || "未登録")}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-gray-500 mb-1">追跡メモ</p>
+                                <p class="text-sm text-gray-700 whitespace-pre-wrap">${escapeHtml(item.action_summary || "未登録")}</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-200">
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-500 mb-1"><span>進捗率</span><span>${Number(item.progress_percent || 0)}%</span></div>
+                                <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-sky-600 h-2.5 rounded-full" style="width:${Math.max(0, Math.min(100, Number(item.progress_percent || 0)))}%"></div></div>
+                            </div>
+                            <div class="text-sm text-gray-600 space-y-1">
+                                <p><span class="font-semibold text-gray-700">担当部局:</span> ${escapeHtml(item.department || "未設定")}</p>
+                                <p><span class="font-semibold text-gray-700">質問日:</span> ${formatDate(item.question_date)}</p>
+                                <p><span class="font-semibold text-gray-700">次回確認日:</span> ${formatDate(item.follow_up_due)}</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 pt-2">
+                                <button type="button" onclick="openTrackerModal(${item.id})" class="px-3 py-2 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-sm font-semibold">編集</button>
+                                <button type="button" onclick="openUpdateModal(${item.id})" class="px-3 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold">更新履歴</button>
+                                ${item.hearing_url ? `<a href="${escapeHtml(item.hearing_url)}" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-sm font-semibold">議事録</a>` : ""}
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            `).join("");
+        }
+
+        function filterTrackers() {
+            const keyword = document.getElementById("search-input").value.trim().toLowerCase();
+            const status = document.getElementById("status-filter").value;
+            const member = document.getElementById("member-filter").value;
+            const category = document.getElementById("category-filter").value;
+
+            let filtered = trackerItems.slice();
+            if (status) filtered = filtered.filter((item) => item.status === status);
+            if (member) filtered = filtered.filter((item) => item.member_name === member);
+            if (category) filtered = filtered.filter((item) => item.category === category);
+            if (keyword) {
+                filtered = filtered.filter((item) => {
+                    const haystack = [
+                        item.member_name,
+                        item.committee,
+                        item.category,
+                        item.department,
+                        item.request_summary,
+                        item.answer_summary,
+                        item.action_summary,
+                        item.source_excerpt
+                    ].join(" ").toLowerCase();
+                    return haystack.includes(keyword);
+                });
+            }
+            renderTrackers(filtered);
+        }
+
+        async function loadTrackers() {
+            const container = document.getElementById("tracker-list");
+            try {
+                const supabase = getClient();
+                const { data, error } = await supabase
+                    .from("general_question_tracker")
+                    .select("*")
+                    .order("updated_at", { ascending: false });
+
+                if (error) throw error;
+
+                trackerItems = data || [];
+                updateMetrics(trackerItems);
+                populateFilters(trackerItems);
+                renderTrackers(trackerItems);
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = `<p class="text-center text-red-400 py-10">追跡案件の読み込みに失敗しました。</p>`;
+            }
+        }
+
+        function collectTrackerForm() {
+            return {
+                session_id: document.getElementById("form-session-id").value.trim(),
+                question_date: document.getElementById("form-question-date").value || null,
+                member_name: document.getElementById("form-member-name").value.trim(),
+                committee: document.getElementById("form-committee").value.trim() || null,
+                category: document.getElementById("form-category").value.trim() || null,
+                department: document.getElementById("form-department").value.trim() || null,
+                request_summary: document.getElementById("form-request-summary").value.trim(),
+                answer_summary: document.getElementById("form-answer-summary").value.trim(),
+                action_summary: document.getElementById("form-action-summary").value.trim(),
+                status: document.getElementById("form-status").value,
+                evaluation: document.getElementById("form-evaluation").value,
+                priority: document.getElementById("form-priority").value,
+                progress_percent: Number(document.getElementById("form-progress-percent").value || 0),
+                follow_up_due: document.getElementById("form-follow-up-due").value || null,
+                hearing_url: document.getElementById("form-hearing-url").value.trim() || null,
+                source_excerpt: document.getElementById("form-source-excerpt").value.trim(),
+                updated_at: new Date().toISOString()
+            };
+        }
+
+        function validateTrackerPayload(payload) {
+            if (!payload.session_id) {
+                alert("回次を入力してください。");
+                return false;
+            }
+            if (!payload.member_name) {
+                alert("議員名を入力してください。");
+                return false;
+            }
+            if (!payload.request_summary) {
+                alert("要望要旨を入力してください。");
+                return false;
+            }
+            return true;
+        }
+
+        function fillTrackerForm(item) {
+            document.getElementById("form-session-id").value = item ? (item.session_id || "") : "";
+            document.getElementById("form-question-date").value = item ? (item.question_date || "") : "";
+            document.getElementById("form-member-name").value = item ? (item.member_name || "") : "";
+            document.getElementById("form-committee").value = item ? (item.committee || "") : "";
+            document.getElementById("form-category").value = item ? (item.category || "") : "";
+            document.getElementById("form-department").value = item ? (item.department || "") : "";
+            document.getElementById("form-request-summary").value = item ? (item.request_summary || "") : "";
+            document.getElementById("form-answer-summary").value = item ? (item.answer_summary || "") : "";
+            document.getElementById("form-action-summary").value = item ? (item.action_summary || "") : "";
+            document.getElementById("form-status").value = item ? (item.status || STATUS_OPTIONS[0]) : STATUS_OPTIONS[0];
+            document.getElementById("form-evaluation").value = item ? (item.evaluation || EVALUATION_OPTIONS[0]) : EVALUATION_OPTIONS[0];
+            document.getElementById("form-priority").value = item ? (item.priority || PRIORITY_OPTIONS[1]) : PRIORITY_OPTIONS[1];
+            document.getElementById("form-progress-percent").value = item ? Number(item.progress_percent || 0) : 0;
+            document.getElementById("form-follow-up-due").value = item ? (item.follow_up_due || "") : "";
+            document.getElementById("form-hearing-url").value = item ? (item.hearing_url || "") : "";
+            document.getElementById("form-source-excerpt").value = item ? (item.source_excerpt || "") : "";
+        }
+
+        function openTrackerModal(id = null) {
+            currentTrackerId = id;
+            const item = trackerItems.find((tracker) => tracker.id === id) || null;
+            fillTrackerForm(item);
+            document.getElementById("tracker-modal-title").textContent = item ? "案件を編集" : "案件を登録";
+            document.getElementById("tracker-delete-btn").classList.toggle("hidden", !item);
+            document.getElementById("tracker-modal").classList.remove("hidden");
+        }
+
+        function closeTrackerModal() {
+            document.getElementById("tracker-modal").classList.add("hidden");
+            currentTrackerId = null;
+        }
+
+        async function saveTracker() {
+            const payload = collectTrackerForm();
+            if (!validateTrackerPayload(payload)) return;
+
+            const saveBtn = document.getElementById("tracker-save-btn");
+            saveBtn.disabled = true;
+            try {
+                const supabase = getClient();
+                let error;
+                if (currentTrackerId) {
+                    ({ error } = await supabase
+                        .from("general_question_tracker")
+                        .update(payload)
+                        .eq("id", currentTrackerId));
+                } else {
+                    payload.created_at = new Date().toISOString();
+                    ({ error } = await supabase
+                        .from("general_question_tracker")
+                        .insert(payload));
+                }
+                if (error) throw error;
+
+                await loadTrackers();
+                filterTrackers();
+                closeTrackerModal();
+            } catch (error) {
+                console.error(error);
+                alert("保存に失敗しました。");
+            } finally {
+                saveBtn.disabled = false;
+            }
+        }
+
+        async function deleteTracker() {
+            if (!currentTrackerId) return;
+            if (!confirm("この案件を削除しますか？更新履歴も削除されます。")) return;
+            try {
+                const supabase = getClient();
+                const { error } = await supabase
+                    .from("general_question_tracker")
+                    .delete()
+                    .eq("id", currentTrackerId);
+                if (error) throw error;
+                closeTrackerModal();
+                await loadTrackers();
+                filterTrackers();
+            } catch (error) {
+                console.error(error);
+                alert("削除に失敗しました。");
+            }
+        }
+
+        async function renderUpdateHistory(trackerId) {
+            const history = document.getElementById("update-history");
+            history.innerHTML = `<p class="text-center text-gray-400 py-8">読み込み中...</p>`;
+            try {
+                const supabase = getClient();
+                const { data, error } = await supabase
+                    .from("general_question_updates")
+                    .select("*")
+                    .eq("tracker_id", trackerId)
+                    .order("update_date", { ascending: false })
+                    .order("id", { ascending: false });
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    history.innerHTML = `<p class="text-center text-gray-400 py-8">まだ更新履歴はありません。</p>`;
+                    return;
+                }
+
+                history.innerHTML = data.map((entry) => `
+                    <article class="border border-gray-200 rounded-xl p-4 bg-slate-50">
+                        <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+                            <div class="flex items-center gap-2 flex-wrap text-xs">
+                                <span class="px-2 py-1 rounded-full ${getStatusBadgeClass(entry.status)} font-semibold">${escapeHtml(entry.status)}</span>
+                                <span class="px-2 py-1 rounded-full ${getEvaluationBadgeClass(entry.evaluation)} font-semibold">${escapeHtml(entry.evaluation)}</span>
+                                <span class="px-2 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">${Number(entry.progress_percent || 0)}%</span>
+                            </div>
+                            <span class="text-xs text-gray-400">${formatDate(entry.update_date)}</span>
+                        </div>
+                        <p class="text-sm text-gray-700 whitespace-pre-wrap">${escapeHtml(entry.update_note)}</p>
+                        ${entry.evidence_url ? `<a href="${escapeHtml(entry.evidence_url)}" target="_blank" rel="noopener noreferrer" class="inline-block mt-2 text-xs text-sky-600 hover:text-sky-800 font-semibold">根拠URLを開く</a>` : ""}
+                    </article>
+                `).join("");
+            } catch (error) {
+                console.error(error);
+                history.innerHTML = `<p class="text-center text-red-400 py-8">更新履歴の読み込みに失敗しました。</p>`;
+            }
+        }
+
+        function openUpdateModal(trackerId) {
+            currentUpdateTrackerId = trackerId;
+            const item = trackerItems.find((tracker) => tracker.id === trackerId);
+            if (!item) return;
+            document.getElementById("update-modal-title").textContent = "更新履歴";
+            document.getElementById("update-modal-subtitle").textContent = `${item.member_name} / ${item.request_summary}`;
+            document.getElementById("update-date").value = new Date().toISOString().slice(0, 10);
+            document.getElementById("update-status").value = item.status;
+            document.getElementById("update-evaluation").value = item.evaluation;
+            document.getElementById("update-progress-percent").value = Number(item.progress_percent || 0);
+            document.getElementById("update-note").value = "";
+            document.getElementById("update-evidence-url").value = "";
+            document.getElementById("update-modal").classList.remove("hidden");
+            renderUpdateHistory(trackerId);
+        }
+
+        function closeUpdateModal() {
+            document.getElementById("update-modal").classList.add("hidden");
+            currentUpdateTrackerId = null;
+        }
+
+        async function saveUpdate() {
+            if (!currentUpdateTrackerId) return;
+            const note = document.getElementById("update-note").value.trim();
+            if (!note) {
+                alert("更新内容を入力してください。");
+                return;
+            }
+
+            const payload = {
+                tracker_id: currentUpdateTrackerId,
+                update_date: document.getElementById("update-date").value || new Date().toISOString().slice(0, 10),
+                status: document.getElementById("update-status").value,
+                evaluation: document.getElementById("update-evaluation").value,
+                progress_percent: Number(document.getElementById("update-progress-percent").value || 0),
+                update_note: note,
+                evidence_url: document.getElementById("update-evidence-url").value.trim() || null
+            };
+
+            const saveBtn = document.getElementById("update-save-btn");
+            saveBtn.disabled = true;
+            try {
+                const supabase = getClient();
+                let error;
+                ({ error } = await supabase.from("general_question_updates").insert(payload));
+                if (error) throw error;
+
+                ({ error } = await supabase
+                    .from("general_question_tracker")
+                    .update({
+                        status: payload.status,
+                        evaluation: payload.evaluation,
+                        progress_percent: payload.progress_percent,
+                        action_summary: note,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq("id", currentUpdateTrackerId));
+                if (error) throw error;
+
+                await loadTrackers();
+                filterTrackers();
+                await renderUpdateHistory(currentUpdateTrackerId);
+                document.getElementById("update-note").value = "";
+                document.getElementById("update-evidence-url").value = "";
+            } catch (error) {
+                console.error(error);
+                alert("更新履歴の保存に失敗しました。");
+            } finally {
+                saveBtn.disabled = false;
+            }
+        }
+
+        document.getElementById("open-create-btn").addEventListener("click", () => openTrackerModal(null));
+        document.getElementById("search-input").addEventListener("input", filterTrackers);
+        document.getElementById("status-filter").addEventListener("change", filterTrackers);
+        document.getElementById("member-filter").addEventListener("change", filterTrackers);
+        document.getElementById("category-filter").addEventListener("change", filterTrackers);
+        document.getElementById("tracker-modal-close").addEventListener("click", closeTrackerModal);
+        document.getElementById("tracker-cancel-btn").addEventListener("click", closeTrackerModal);
+        document.getElementById("tracker-save-btn").addEventListener("click", saveTracker);
+        document.getElementById("tracker-delete-btn").addEventListener("click", deleteTracker);
+        document.getElementById("update-modal-close").addEventListener("click", closeUpdateModal);
+        document.getElementById("update-save-btn").addEventListener("click", saveUpdate);
+        document.getElementById("tracker-modal").addEventListener("click", (event) => {
+            if (event.target === event.currentTarget) closeTrackerModal();
+        });
+        document.getElementById("update-modal").addEventListener("click", (event) => {
+            if (event.target === event.currentTarget) closeUpdateModal();
+        });
+
+        setSelectOptions("form-status", STATUS_OPTIONS);
+        setSelectOptions("form-evaluation", EVALUATION_OPTIONS);
+        setSelectOptions("form-priority", PRIORITY_OPTIONS);
+        setSelectOptions("update-status", STATUS_OPTIONS);
+        setSelectOptions("update-evaluation", EVALUATION_OPTIONS);
+
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "general-question-tracker.html",
+            onReady: () => {
+                loadTrackers();
+            }
+        });
+
+        window.openTrackerModal = openTrackerModal;
+        window.openUpdateModal = openUpdateModal;
+    </script>
+</body>
+</html>

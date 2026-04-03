@@ -379,3 +379,93 @@ for update to anon using (true);
 drop policy if exists document_ink_notes_delete_anon_temp on public.document_ink_notes;
 create policy document_ink_notes_delete_anon_temp on public.document_ink_notes
 for delete to anon using (true);
+
+-- ----------------------------------------------------------------------
+-- general_question_tracker テーブル（一般質問の要望・答弁追跡）
+-- 一般質問で出た要望と答弁を案件として登録し、後続の実施状況を追跡する。
+-- ----------------------------------------------------------------------
+create table if not exists public.general_question_tracker (
+    id bigserial primary key,
+    session_id text not null,
+    question_date date,
+    member_name text not null,
+    committee text,
+    category text,
+    department text,
+    request_summary text not null,
+    answer_summary text not null default '',
+    action_summary text not null default '',
+    status text not null default '未着手' check (status in ('未着手', '調査中', '進行中', '一部実施', '実施済み', '要再確認')),
+    evaluation text not null default '要確認' check (evaluation in ('要確認', '概ね良好', '一部不足', '未実施', '再質問候補')),
+    priority text not null default '中' check (priority in ('高', '中', '低')),
+    progress_percent int not null default 0 check (progress_percent >= 0 and progress_percent <= 100),
+    follow_up_due date,
+    hearing_url text,
+    source_excerpt text not null default '',
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create index if not exists general_question_tracker_session_idx
+on public.general_question_tracker (session_id);
+
+create index if not exists general_question_tracker_status_idx
+on public.general_question_tracker (status);
+
+create index if not exists general_question_tracker_member_idx
+on public.general_question_tracker (member_name);
+
+alter table public.general_question_tracker enable row level security;
+
+drop policy if exists general_question_tracker_select_anon_temp on public.general_question_tracker;
+create policy general_question_tracker_select_anon_temp on public.general_question_tracker
+for select to anon using (true);
+
+drop policy if exists general_question_tracker_insert_anon_temp on public.general_question_tracker;
+create policy general_question_tracker_insert_anon_temp on public.general_question_tracker
+for insert to anon with check (true);
+
+drop policy if exists general_question_tracker_update_anon_temp on public.general_question_tracker;
+create policy general_question_tracker_update_anon_temp on public.general_question_tracker
+for update to anon using (true);
+
+drop policy if exists general_question_tracker_delete_anon_temp on public.general_question_tracker;
+create policy general_question_tracker_delete_anon_temp on public.general_question_tracker
+for delete to anon using (true);
+
+-- ----------------------------------------------------------------------
+-- general_question_updates テーブル（一般質問の追跡更新履歴）
+-- 進捗確認・所見・再質問候補などを時系列で残す。
+-- ----------------------------------------------------------------------
+create table if not exists public.general_question_updates (
+    id bigserial primary key,
+    tracker_id bigint not null references public.general_question_tracker(id) on delete cascade,
+    update_date date not null default current_date,
+    status text not null default '進行中' check (status in ('未着手', '調査中', '進行中', '一部実施', '実施済み', '要再確認')),
+    evaluation text not null default '要確認' check (evaluation in ('要確認', '概ね良好', '一部不足', '未実施', '再質問候補')),
+    progress_percent int not null default 0 check (progress_percent >= 0 and progress_percent <= 100),
+    update_note text not null,
+    evidence_url text,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists general_question_updates_tracker_idx
+on public.general_question_updates (tracker_id, update_date desc);
+
+alter table public.general_question_updates enable row level security;
+
+drop policy if exists general_question_updates_select_anon_temp on public.general_question_updates;
+create policy general_question_updates_select_anon_temp on public.general_question_updates
+for select to anon using (true);
+
+drop policy if exists general_question_updates_insert_anon_temp on public.general_question_updates;
+create policy general_question_updates_insert_anon_temp on public.general_question_updates
+for insert to anon with check (true);
+
+drop policy if exists general_question_updates_update_anon_temp on public.general_question_updates;
+create policy general_question_updates_update_anon_temp on public.general_question_updates
+for update to anon using (true);
+
+drop policy if exists general_question_updates_delete_anon_temp on public.general_question_updates;
+create policy general_question_updates_delete_anon_temp on public.general_question_updates
+for delete to anon using (true);
