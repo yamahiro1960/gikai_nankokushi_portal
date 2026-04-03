@@ -78,6 +78,12 @@
             <p id="result-count" class="mt-3 text-xs text-gray-400"></p>
         </section>
 
+        <section id="setup-guide" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6">
+            <h2 class="text-base font-bold text-amber-800 mb-2"><i class="fas fa-triangle-exclamation mr-2"></i>初回セットアップが必要です</h2>
+            <p class="text-sm text-amber-900 mb-2">追跡テーブルがまだ Supabase に作成されていない可能性があります。</p>
+            <p class="text-sm text-amber-800">Supabase の SQL Editor で [supabase_setup.sql](supabase_setup.sql) の追加分を実行した後、このページを再読み込みしてください。</p>
+        </section>
+
         <section id="tracker-list" class="space-y-4">
             <p class="text-center text-gray-400 py-10">読み込み中...</p>
         </section>
@@ -390,6 +396,7 @@
 
         async function loadTrackers() {
             const container = document.getElementById("tracker-list");
+            const setupGuide = document.getElementById("setup-guide");
             try {
                 const supabase = getClient();
                 const { data, error } = await supabase
@@ -400,11 +407,15 @@
                 if (error) throw error;
 
                 trackerItems = data || [];
+                setupGuide.classList.add("hidden");
                 updateMetrics(trackerItems);
                 populateFilters(trackerItems);
                 renderTrackers(trackerItems);
             } catch (error) {
                 console.error(error);
+                const message = String((error && (error.message || error.details || error.hint)) || "");
+                const looksLikeMissingTable = /general_question_tracker|relation .* does not exist|Could not find the table/i.test(message);
+                setupGuide.classList.toggle("hidden", !looksLikeMissingTable);
                 container.innerHTML = `<p class="text-center text-red-400 py-10">追跡案件の読み込みに失敗しました。</p>`;
             }
         }
