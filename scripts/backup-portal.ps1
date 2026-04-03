@@ -2,8 +2,14 @@ param(
     [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
     [string]$BackupRoot = (Join-Path $env:USERPROFILE "Documents\gikai_portal_backups"),
     [switch]$SkipDbExport,
+    [switch]$SkipFullDbDump,
     [string]$SupabaseUrl = "",
     [string]$SupabaseAnonKey = "",
+    [string]$PgHost = "",
+    [int]$PgPort = 5432,
+    [string]$PgUser = "postgres",
+    [string]$PgDatabase = "postgres",
+    [string]$PgPassword = "",
     [string[]]$Tables = @(
         "general_question_tracker",
         "general_question_updates",
@@ -77,6 +83,8 @@ if ([string]::IsNullOrWhiteSpace($SupabaseAnonKey)) {
 
 $dbDir = Join-Path $targetDir "db_csv"
 $dbExportLog = @()
+$fullDumpLog = @()
+$fullDumpPath = Join-Path $targetDir "supabase_full.dump"
 
 if (-not $SkipDbExport) {
     if ([string]::IsNullOrWhiteSpace($SupabaseUrl) -or [string]::IsNullOrWhiteSpace($SupabaseAnonKey)) {
@@ -102,6 +110,49 @@ if (-not $SkipDbExport) {
     }
 }
 
+if (-not $SkipFullDbDump) {
+    $pgDumpCmd = Get-Command pg_dump -ErrorAction SilentlyContinue
+    if ($null -eq $pgDumpCmd) {
+        $fullDumpLog += "SKIPPED: pg_dump not found."
+    } else {
+        if ([string]::IsNullOrWhiteSpace($PgHost)) {
+            $fullDumpLog += "SKIPPED: PgHost not provided."
+        } else {
+            if ([string]::IsNullOrWhiteSpace($PgPassword)) {
+                $PgPassword = $env:PGPASSWORD
+            }
+
+            if ([string]::IsNullOrWhiteSpace($PgPassword)) {
+                $fullDumpLog += "SKIPPED: PgPassword not provided."
+            } else {
+                try {
+                    $oldPgPassword = $env:PGPASSWORD
+                    $env:PGPASSWORD = $PgPassword
+                    $args = @(
+                        "-h", $PgHost,
+                        "-p", $PgPort,
+                        "-U", $PgUser,
+                        "-d", $PgDatabase,
+                        "-F", "c",
+                        "-f", $fullDumpPath
+                    )
+
+                    & $pgDumpCmd.Source @args
+                    if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $fullDumpPath)) {
+                        $fullDumpLog += "OK: full dump created."
+                    } else {
+                        $fullDumpLog += "FAILED: pg_dump exited with code $LASTEXITCODE"
+                    }
+                } catch {
+                    $fullDumpLog += "FAILED: $($_.Exception.Message)"
+                } finally {
+                    $env:PGPASSWORD = $oldPgPassword
+                }
+            }
+        }
+    }
+}
+
 $headCommit = ""
 try {
     $headCommit = (git -C $ProjectRoot rev-parse HEAD).Trim()
@@ -114,12 +165,17 @@ $meta = [ordered]@{
     project_root = $ProjectRoot
     zip_path = $zipPath
     bundle_path = "not-created"
+    full_dump_path = "not-created"
     head_commit = $headCommit
     db_export = $dbExportLog
+    full_dump = $fullDumpLog
 }
 
 if (Test-Path -LiteralPath $bundlePath) {
     $meta.bundle_path = $bundlePath
+}
+if (Test-Path -LiteralPath $fullDumpPath) {
+    $meta.full_dump_path = $fullDumpPath
 }
 
 $metaPath = Join-Path $targetDir "backup_meta.json"
@@ -134,4 +190,8 @@ if (Test-Path -LiteralPath $bundlePath) {
 if ($dbExportLog.Count -gt 0) {
     Write-Host "DB export summary:"
     $dbExportLog | ForEach-Object { Write-Host " - $_" }
+}
+if ($fullDumpLog.Count -gt 0) {
+    Write-Host "Full dump summary:"
+    $fullDumpLog | ForEach-Object { Write-Host " - $_" }
 }
