@@ -96,9 +96,30 @@
                     <h2 id="tracker-modal-title" class="text-xl font-bold">案件を登録</h2>
                     <p class="text-sm text-gray-500">議事録から拾った要望と答弁を案件化して追跡します。</p>
                 </div>
-                <button id="tracker-modal-close" type="button" class="text-gray-400 hover:text-gray-600 text-xl">
-                    <i class="fas fa-times"></i>
-                </button>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button id="ai-draft-toggle-btn" type="button"
+                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold border border-indigo-200">
+                        <i class="fas fa-robot"></i><span class="hidden sm:inline ml-1">AI下書き</span>
+                    </button>
+                    <button id="tracker-modal-close" type="button" class="text-gray-400 hover:text-gray-600 text-xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="ai-draft-panel" class="hidden mb-5 border border-indigo-200 rounded-xl bg-indigo-50 p-4">
+                <h3 class="text-sm font-bold text-indigo-800 mb-1"><i class="fas fa-robot mr-1"></i>AI下書き（Gemini）</h3>
+                <p class="text-xs text-indigo-600 mb-3">議事録テキストを貼り付けると、Gemini が議員名・担当部局・要望要旨・答弁要旨などを自動抽出してフォームに転記します。転記後は内容を確認・修正してください。</p>
+                <textarea id="ai-draft-input" rows="7"
+                    class="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-3"
+                    placeholder="議事録テキストをここに貼り付け…（一問一答の一件分を貼り付けると精度が上がります）"></textarea>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <button id="ai-draft-run-btn" type="button"
+                        class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold flex items-center gap-2">
+                        <i class="fas fa-wand-magic-sparkles"></i>Geminiで抽出
+                    </button>
+                    <span id="ai-draft-status" class="text-xs"></span>
+                </div>
             </div>
 
             <form id="tracker-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -218,6 +239,10 @@
         let currentTrackerId = null;
         let currentUpdateTrackerId = null;
         let supabaseClient = null;
+
+        const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+        let geminiApiKey = "";
+        let geminiModel = DEFAULT_GEMINI_MODEL;
 
         function getClient() {
             if (supabaseClient) return supabaseClient;
@@ -581,6 +606,116 @@
             }
         }
 
+        // ─── Gemini AI下書き ───────────────────────────────────────────
+        async function loadGeminiKey() {
+            try {
+                const session = portalAuth.getSession ? portalAuth.getSession() : null;
+                if (!session) return;
+                const memberId = session.memberId || session.userId || "";
+                const email = (session.email || (session.user && session.user.email) || "").trim().toLowerCase();
+                const supabase = getClient();
+                let member = null;
+                if (memberId) {
+                    const { data } = await supabase.from("member_directory").select("member_id").eq("member_id", memberId).maybeSingle();
+                    member = data;
+                } else if (email) {
+                    const { data } = await supabase.from("member_directory").select("member_id").eq("email", email).maybeSingle();
+                    member = data;
+                }
+                if (!member) return;
+                const { data } = await supabase
+                    .from("meeting_settings")
+                    .select("setting_payload")
+                    .eq("setting_key", `user_gemini_${member.member_id}`)
+                    .maybeSingle();
+                if (data && data.setting_payload) {
+                    geminiApiKey = data.setting_payload.apiKey || "";
+                    geminiModel = data.setting_payload.model || DEFAULT_GEMINI_MODEL;
+                }
+            } catch (e) {
+                console.warn("Gemini設定の読み込みに失敗:", e);
+            }
+        }
+
+        async function callGemini(promptText) {
+            if (!geminiApiKey) {
+                throw new Error("Gemini APIキーが未設定です。「AI政策アシスタント」ページでAPIキーを設定してください。");
+            }
+            const endpoint = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: promptText }] }],
+                    generationConfig: { temperature: 0.1 }
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                const msg = data && data.error && data.error.message ? data.error.message : `HTTP ${response.status}`;
+                throw new Error(msg);
+            }
+            return data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts
+                ? data.candidates[0].content.parts.map((p) => p.text || "").join("\n")
+                : "";
+        }
+
+        async function runAiDraft() {
+            const inputText = document.getElementById("ai-draft-input").value.trim();
+            const statusEl = document.getElementById("ai-draft-status");
+            const runBtn = document.getElementById("ai-draft-run-btn");
+
+            if (!inputText) {
+                alert("議事録テキストを貼り付けてください。");
+                return;
+            }
+
+            runBtn.disabled = true;
+            statusEl.className = "text-xs text-indigo-600";
+            statusEl.textContent = "Geminiに問い合わせ中…";
+
+            const prompt = `あなたは地方議会の議事録を分析するアシスタントです。
+以下の議事録テキストから一般質問の情報を抽出し、必ず JSON オブジェクトのみを返してください（説明文・コードブロック記号は不要）。
+
+抽出する項目:
+- member_name: 質問した議員の氏名（敬称なし、不明なら ""）
+- committee: 所属委員会（産業建設 / 教育民生 / 総務 のいずれか、不明なら ""）
+- category: 質問の分野・テーマ（例: 防災、子育て支援、道路整備 など。30字以内、不明なら ""）
+- department: 答弁した担当部局・担当課名（主担当のみ。不明なら ""）
+- request_summary: 議員が要望または質問した内容の要旨（200字以内）
+- answer_summary: 執行部が答弁した内容の要旨（200字以内）
+
+返す形式（このJSONオブジェクトのみ）:
+{"member_name":"...","committee":"...","category":"...","department":"...","request_summary":"...","answer_summary":"..."}
+
+議事録テキスト:
+${inputText}`;
+
+            try {
+                const result = await callGemini(prompt);
+                const jsonMatch = result.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) throw new Error("Geminiの応答からJSONを取得できませんでした。");
+                const extracted = JSON.parse(jsonMatch[0]);
+
+                if (extracted.member_name) document.getElementById("form-member-name").value = extracted.member_name;
+                if (extracted.committee) document.getElementById("form-committee").value = extracted.committee;
+                if (extracted.category) document.getElementById("form-category").value = extracted.category;
+                if (extracted.department) document.getElementById("form-department").value = extracted.department;
+                if (extracted.request_summary) document.getElementById("form-request-summary").value = extracted.request_summary;
+                if (extracted.answer_summary) document.getElementById("form-answer-summary").value = extracted.answer_summary;
+
+                statusEl.className = "text-xs text-emerald-600 font-semibold";
+                statusEl.textContent = "✓ フォームに転記しました。内容を確認・修正してください。";
+            } catch (e) {
+                console.error(e);
+                statusEl.className = "text-xs text-rose-600";
+                statusEl.textContent = `エラー: ${e.message}`;
+            } finally {
+                runBtn.disabled = false;
+            }
+        }
+        // ─────────────────────────────────────────────────────────────
+
         function openUpdateModal(trackerId) {
             currentUpdateTrackerId = trackerId;
             const item = trackerItems.find((tracker) => tracker.id === trackerId);
@@ -654,6 +789,15 @@
         }
 
         document.getElementById("open-create-btn").addEventListener("click", () => openTrackerModal(null));
+        document.getElementById("ai-draft-toggle-btn").addEventListener("click", () => {
+            const panel = document.getElementById("ai-draft-panel");
+            const isHidden = panel.classList.toggle("hidden");
+            if (!isHidden) {
+                document.getElementById("ai-draft-status").textContent = "";
+                document.getElementById("ai-draft-input").focus();
+            }
+        });
+        document.getElementById("ai-draft-run-btn").addEventListener("click", runAiDraft);
         document.getElementById("search-input").addEventListener("input", filterTrackers);
         document.getElementById("status-filter").addEventListener("change", filterTrackers);
         document.getElementById("member-filter").addEventListener("change", filterTrackers);
@@ -683,6 +827,7 @@
             returnTo: "general-question-tracker.html",
             onReady: () => {
                 loadTrackers();
+                loadGeminiKey();
             }
         });
 
