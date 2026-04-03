@@ -416,6 +416,7 @@
 
             try {
                 const supabase = getNoteClient();
+                console.log("[inkNote] 読込: memberId=", memberId, "sessionId=", sessionId, "docName=", documentInfo.fileName);
                 const { data, error } = await supabase
                     .from("document_ink_notes")
                     .select("ink_payload, updated_at")
@@ -426,17 +427,19 @@
 
                 if (error) throw error;
 
+                console.log("[inkNote] DB結果:", data);
                 inkStrokes = data && Array.isArray(data.ink_payload) ? data.ink_payload : [];
+                console.log("[inkNote] ストローク数:", inkStrokes.length);
                 inkVisible = true;
                 updateInkCanvasVisibility();
-                // ブラウザのレイアウト更新後に確実に再描画する
-                requestAnimationFrame(() => resizeInkCanvas());
+                // 2フレーム待機してレイアウト確定後に描画
+                requestAnimationFrame(() => requestAnimationFrame(() => resizeInkCanvas()));
 
                 if (data && data.updated_at) {
                     const dt = new Date(data.updated_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-                    setInkStatus(`最終保存: ${dt}`);
+                    setInkStatus(`最終保存: ${dt}（${inkStrokes.length}件）`);
                 } else {
-                    setInkStatus("未保存");
+                    setInkStatus(inkStrokes.length > 0 ? `未保存（${inkStrokes.length}件）` : "未保存");
                 }
             } catch (error) {
                 console.warn("手書きメモ読込エラー:", error);
