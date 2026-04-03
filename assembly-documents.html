@@ -496,11 +496,40 @@
             }
         }
 
-        function clearInkNote() {
+        async function clearInkNote() {
+            const memberId = getNoteMemberId();
+            const clearBtn = document.getElementById("ink-clear-btn");
+
             resetInkData();
             inkVisible = true;
             updateInkCanvasVisibility();
-            setInkStatus("未保存");
+
+            if (!memberId || !currentNoteDocName || !currentNoteSessionId) {
+                setInkStatus("未保存");
+                return;
+            }
+
+            clearBtn.disabled = true;
+            setInkStatus("手書き削除中...");
+
+            try {
+                const supabase = getNoteClient();
+                const { error } = await supabase
+                    .from("document_ink_notes")
+                    .delete()
+                    .eq("member_id", memberId)
+                    .eq("session_id", currentNoteSessionId)
+                    .eq("document_name", currentNoteDocName);
+
+                if (error) throw error;
+
+                setInkStatus("手書きを削除しました");
+            } catch (error) {
+                console.warn("手書きメモ削除エラー:", error);
+                setInkStatus("手書き削除エラー");
+            } finally {
+                clearBtn.disabled = false;
+            }
         }
 
         function undoInkStroke() {
