@@ -29,9 +29,19 @@
     <script src="auth-config.js"></script>
     <script src="auth.js"></script>
     <script>
+        let activePdfObjectUrl = null;
+
         function getParam(name) {
             const params = new URLSearchParams(window.location.search);
             return params.get(name) || "";
+        }
+
+        function releasePdfObjectUrl() {
+            if (!activePdfObjectUrl) {
+                return;
+            }
+            URL.revokeObjectURL(activePdfObjectUrl);
+            activePdfObjectUrl = null;
         }
 
         function getReturnTo() {
@@ -72,17 +82,45 @@
             window.location.href = returnTo;
         }
 
-        function initViewer() {
+        async function renderPdf(pdfUrl) {
+            const iframe = document.getElementById("pdf-viewer");
+            const pathLabel = document.getElementById("viewer-path");
+
+            iframe.src = "about:blank";
+            releasePdfObjectUrl();
+
+            if (!pdfUrl) {
+                pathLabel.textContent = "PDF URLが指定されていません。";
+                return;
+            }
+
+            pathLabel.textContent = "PDFを読み込み中...";
+
+            try {
+                const response = await fetch(pdfUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                activePdfObjectUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+                iframe.src = activePdfObjectUrl;
+                pathLabel.textContent = `表示中: ${pdfUrl}`;
+            } catch (error) {
+                console.warn("PDF読込に失敗したため直接URL表示に切り替えます。", error);
+                iframe.src = pdfUrl;
+                pathLabel.textContent = `表示中（直接URL）: ${pdfUrl}`;
+            }
+        }
+
+        async function initViewer() {
             const pdfUrl = getPdfUrl();
             const label = getLabel();
             const session = getParam("session");
 
             document.getElementById("viewer-title").textContent = label;
             document.getElementById("viewer-subtitle").textContent = session ? `第${session}回議会` : "議会資料";
-            document.getElementById("viewer-path").textContent = pdfUrl ? `表示中: ${pdfUrl}` : "PDF URLが指定されていません。";
-
-            const iframe = document.getElementById("pdf-viewer");
-            iframe.src = pdfUrl || "about:blank";
+            await renderPdf(pdfUrl);
         }
 
         document.getElementById("finish-btn").addEventListener("click", closeViewer);
@@ -93,6 +131,8 @@
             returnTo: "assembly-documents.html",
             onReady: initViewer
         });
+
+        window.addEventListener("beforeunload", releasePdfObjectUrl);
     </script>
 </body>
 </html>
