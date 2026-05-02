@@ -211,6 +211,31 @@
             return segments.map((segment) => encodeURIComponent(segment)).join("/");
         }
 
+        function buildViewerUrl(session, documentInfo) {
+            const pdfPath = buildPdfPath(session, documentInfo);
+            const returnTo = `assembly-documents.html?session=${encodeURIComponent(session)}`;
+            const url = new URL("assembly-document-viewer.html", window.location.href);
+            url.searchParams.set("session", session);
+            url.searchParams.set("fileName", documentInfo.fileName || "");
+            url.searchParams.set("label", documentInfo.label || documentInfo.fileName || "資料");
+            url.searchParams.set("pdf", pdfPath);
+            url.searchParams.set("returnTo", returnTo);
+            return url.toString();
+        }
+
+        function openPdfViewer(session, documentInfo) {
+            const viewerUrl = buildViewerUrl(session, documentInfo);
+            const popup = window.open(viewerUrl, "_blank");
+
+            if (!popup) {
+                window.location.href = viewerUrl;
+                return;
+            }
+
+            document.getElementById("viewer-title").textContent = "資料を別画面で開きました";
+            document.getElementById("pdf-path-label").textContent = `別画面: ${documentInfo.label || documentInfo.fileName}`;
+        }
+
         function getButtonClass(type) {
             return (DOCUMENT_TYPE_META[type] || DOCUMENT_TYPE_META.bill).buttonClass;
         }
@@ -610,36 +635,17 @@
         async function showPdfByIndex(session, index) {
             navIndex = index;
             const documentInfo = navDocuments[index];
-            const pdfPath = buildPdfPath(session, documentInfo);
-            document.getElementById("viewer-title").textContent = documentInfo.label;
-            document.getElementById("pdf-viewer").src = "about:blank";
-            document.getElementById("pdf-open-link").href = pdfPath;
-            document.getElementById("pdf-path-label").textContent = "PDFを読み込み中...";
             updateNavBar();
-            await loadPdfIntoViewer(documentInfo, pdfPath);
-            resizeInkCanvas();
-            document.getElementById("pdf-path-label").textContent = `表示中: ${pdfPath}`;
-            loadNote(session, documentInfo);
-            loadInkNote(session, documentInfo);
+            openPdfViewer(session, documentInfo);
         }
 
         async function showPdf(session, documentInfo) {
             const index = navDocuments.indexOf(documentInfo);
             if (index !== -1) {
-                await showPdfByIndex(session, index);
-            } else {
-                // docタイプなどnav対象外の場合はそのまま表示
-                const pdfPath = buildPdfPath(session, documentInfo);
-                document.getElementById("viewer-title").textContent = documentInfo.label;
-                document.getElementById("pdf-viewer").src = "about:blank";
-                document.getElementById("pdf-open-link").href = pdfPath;
-                document.getElementById("pdf-path-label").textContent = "PDFを読み込み中...";
-                await loadPdfIntoViewer(documentInfo, pdfPath);
-                resizeInkCanvas();
-                document.getElementById("pdf-path-label").textContent = `表示中: ${pdfPath}`;
-                loadNote(session, documentInfo);
-                loadInkNote(session, documentInfo);
+                navIndex = index;
+                updateNavBar();
             }
+            openPdfViewer(session, documentInfo);
         }
 
         function renderBillButtons(session) {
@@ -720,8 +726,8 @@
             }
             const documents = getDocuments(session);
 
-            // PDF表示可能な資料のみナビゲーション対象にする
-            navDocuments = documents.filter((documentInfo) => isPreviewableDocument(documentInfo));
+            // PDFは別画面で開くため、この画面では前後ナビゲーションを表示しない
+            navDocuments = [];
             navIndex = -1;
 
             document.getElementById("session-title").textContent = `第${session}回議会`;
@@ -730,11 +736,11 @@
                 : "この回次のPDFはまだ登録されていません。";
             renderBillButtons(session);
 
-            document.getElementById("viewer-title").textContent = "資料を選択してください";
+            document.getElementById("viewer-title").textContent = "資料を選択すると別画面で開きます";
             document.getElementById("pdf-open-link").href = "#";
             releasePdfObjectUrl();
             document.getElementById("pdf-viewer").src = "about:blank";
-            document.getElementById("pdf-path-label").textContent = "";
+            document.getElementById("pdf-path-label").textContent = "この画面内ではPDFを表示しません。資料ボタンから別画面を開いてください。";
             currentNoteDocName = null;
             currentNoteSessionId = null;
             inkVisible = true;
