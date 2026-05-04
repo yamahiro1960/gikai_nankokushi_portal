@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アンケート回答 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,_#cffafe,_#eff6ff_40%,_#f8fafc_75%)] text-slate-800">
+    <main class="max-w-3xl mx-auto px-4 py-10">
+        <section class="text-center mb-8">
+            <p class="text-sm font-semibold tracking-[0.3em] text-cyan-700 uppercase mb-3">Survey</p>
+            <h1 id="survey-title" class="text-3xl md:text-4xl font-bold mb-3">アンケートを読み込み中です</h1>
+            <p id="survey-description" class="text-slate-600 whitespace-pre-wrap">しばらくお待ちください。</p>
+        </section>
+
+        <section class="bg-white/90 backdrop-blur rounded-3xl shadow-xl border border-white p-6 md:p-8">
+            <div id="status-box" class="hidden mb-5 rounded-2xl px-4 py-3 text-sm"></div>
+
+            <div id="survey-question-card" class="mb-6 rounded-2xl bg-cyan-50 border border-cyan-100 p-5">
+                <p class="text-xs uppercase tracking-[0.2em] text-cyan-700 mb-2">質問</p>
+                <p id="survey-question" class="text-lg font-semibold">読み込み中...</p>
+            </div>
+
+            <form id="response-form" class="space-y-5">
+                <label class="block text-sm text-slate-700">お名前（任意）
+                    <input id="respondent-name" type="text" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-300" placeholder="匿名でも回答できます">
+                </label>
+
+                <label class="block text-sm text-slate-700">ご回答
+                    <textarea id="response-text" rows="8" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-300" placeholder="ご意見・ご提案を入力してください"></textarea>
+                </label>
+
+                <div class="flex justify-end">
+                    <button id="submit-btn" type="submit" class="px-5 py-3 rounded-2xl bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">
+                        <i class="fas fa-paper-plane mr-1"></i>送信する
+                    </button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script>
+        const surveyTitle = document.getElementById("survey-title");
+        const surveyDescription = document.getElementById("survey-description");
+        const surveyQuestion = document.getElementById("survey-question");
+        const statusBox = document.getElementById("status-box");
+        const responseForm = document.getElementById("response-form");
+        const submitBtn = document.getElementById("submit-btn");
+        const responseText = document.getElementById("response-text");
+        const respondentName = document.getElementById("respondent-name");
+        const questionCard = document.getElementById("survey-question-card");
+
+        let client = null;
+        let currentSurvey = null;
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;");
+        }
+
+        function showStatus(message, isError) {
+            statusBox.textContent = message;
+            statusBox.className = isError
+                ? "mb-5 rounded-2xl px-4 py-3 text-sm bg-rose-50 text-rose-700 border border-rose-200"
+                : "mb-5 rounded-2xl px-4 py-3 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200";
+            statusBox.classList.remove("hidden");
+        }
+
+        function getSurveyKey() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("key") || "";
+        }
+
+        async function loadSurvey() {
+            const key = getSurveyKey();
+            if (!key) {
+                surveyTitle.textContent = "アンケートが指定されていません";
+                surveyDescription.textContent = "URLを確認してください。";
+                questionCard.classList.add("hidden");
+                responseForm.classList.add("hidden");
+                return;
+            }
+
+            const { data, error } = await client
+                .from("survey_forms")
+                .select("id,title,description,question_text,thanks_message,is_active")
+                .eq("survey_key", key)
+                .limit(1)
+                .maybeSingle();
+
+            if (error || !data) {
+                console.error(error);
+                surveyTitle.textContent = "アンケートを読み込めませんでした";
+                surveyDescription.textContent = "URLが無効か、アンケートが削除されています。";
+                questionCard.classList.add("hidden");
+                responseForm.classList.add("hidden");
+                return;
+            }
+
+            if (!data.is_active) {
+                surveyTitle.textContent = data.title || "アンケート";
+                surveyDescription.textContent = "このアンケートは現在非公開です。";
+                questionCard.classList.add("hidden");
+                responseForm.classList.add("hidden");
+                return;
+            }
+
+            currentSurvey = data;
+            surveyTitle.textContent = data.title || "アンケート";
+            surveyDescription.textContent = data.description || "ご協力をお願いいたします。";
+            surveyQuestion.textContent = data.question_text || "ご意見を入力してください。";
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            if (!currentSurvey) {
+                return;
+            }
+
+            const answer = responseText.value.trim();
+            if (!answer) {
+                showStatus("回答内容を入力してください。", true);
+                return;
+            }
+
+            submitBtn.disabled = true;
+
+            const { error } = await client
+                .from("survey_responses")
+                .insert({
+                    survey_id: currentSurvey.id,
+                    respondent_name: respondentName.value.trim() || null,
+                    response_text: answer,
+                    submitted_at: new Date().toISOString()
+                });
+
+            submitBtn.disabled = false;
+
+            if (error) {
+                console.error(error);
+                showStatus(`送信に失敗しました: ${error.message}`, true);
+                return;
+            }
+
+            responseForm.reset();
+            showStatus(currentSurvey.thanks_message || "回答ありがとうございます。", false);
+        }
+
+        client = window.supabase.createClient(window.AUTH_CONFIG.supabaseUrl, window.AUTH_CONFIG.supabaseAnonKey);
+        responseForm.addEventListener("submit", handleSubmit);
+        loadSurvey();
+    </script>
+</body>
+</html>

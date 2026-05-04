@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>予算データ | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <div class="text-right">
+                <span class="text-sm">予算データ</span>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="knowledge.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>議員ナレッジ共有に戻る
+            </a>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg mb-8">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">予算データ</h1>
+                    <p class="text-emerald-100">南国市の予算・決算に関するデータを年度・区分ごとに確認できます。</p>
+                </div>
+                <div class="text-sm bg-white/20 px-3 py-2 rounded-lg">モード: 参照</div>
+            </div>
+        </section>
+
+        <!-- フィルター -->
+        <section class="bg-white rounded-xl shadow-sm p-5 border border-gray-200 mb-6">
+            <div class="flex flex-wrap gap-4 items-end">
+                <div>
+                    <label class="text-xs font-semibold text-gray-600 block mb-1">年度</label>
+                    <select id="filterYear" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-600 block mb-1">区分</label>
+                    <select id="filterType" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">すべて</option>
+                        <option value="当初予算">当初予算</option>
+                        <option value="補正予算">補正予算</option>
+                        <option value="決算">決算</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-600 block mb-1">款（大分類）</label>
+                    <select id="filterKan" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                <button id="filterBtn" class="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700">
+                    <i class="fas fa-search mr-1"></i>絞り込む
+                </button>
+                <button id="resetBtn" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200">
+                    リセット
+                </button>
+            </div>
+        </section>
+
+        <!-- サマリーカード -->
+        <section id="summaryCards" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 hidden">
+            <div class="bg-white rounded-xl p-4 shadow-sm border-t-4 border-emerald-400 text-center">
+                <p class="text-xs text-gray-500 mb-1">歳入合計</p>
+                <p id="totalRevenue" class="text-lg font-bold text-emerald-700">-</p>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border-t-4 border-sky-400 text-center">
+                <p class="text-xs text-gray-500 mb-1">歳出合計</p>
+                <p id="totalExpense" class="text-lg font-bold text-sky-700">-</p>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border-t-4 border-amber-400 text-center">
+                <p class="text-xs text-gray-500 mb-1">前年比（歳入）</p>
+                <p id="revenueChange" class="text-lg font-bold text-amber-700">-</p>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border-t-4 border-purple-400 text-center">
+                <p class="text-xs text-gray-500 mb-1">件数</p>
+                <p id="rowCount" class="text-lg font-bold text-purple-700">-</p>
+            </div>
+        </section>
+
+        <!-- データテーブル -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="text-left p-3 border-b">年度</th>
+                        <th class="text-left p-3 border-b">区分</th>
+                        <th class="text-left p-3 border-b">款</th>
+                        <th class="text-left p-3 border-b">項目名</th>
+                        <th class="text-right p-3 border-b">金額（千円）</th>
+                        <th class="text-left p-3 border-b">備考</th>
+                    </tr>
+                </thead>
+                <tbody id="budgetRows">
+                    <tr><td colspan="6" class="p-4 text-center text-gray-400">読込中...</td></tr>
+                </tbody>
+            </table>
+        </section>
+        <p id="noDataMsg" class="mt-4 text-sm text-gray-500 hidden text-center">該当するデータがありません。</p>
+        <p id="statusMsg" class="mt-3 text-sm text-gray-500"></p>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        const budgetRows   = document.getElementById("budgetRows");
+        const statusMsg    = document.getElementById("statusMsg");
+        const noDataMsg    = document.getElementById("noDataMsg");
+        const summaryCards = document.getElementById("summaryCards");
+        const filterYear   = document.getElementById("filterYear");
+        const filterType   = document.getElementById("filterType");
+        const filterKan    = document.getElementById("filterKan");
+
+        let _client = null;
+        let _allRows = [];
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;");
+        }
+
+        function formatAmount(value) {
+            if (value === null || value === undefined || value === "") return "-";
+            return Number(value).toLocaleString("ja-JP");
+        }
+
+        function renderRows(rows) {
+            noDataMsg.classList.add("hidden");
+
+            if (!rows || rows.length === 0) {
+                budgetRows.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">データがありません</td></tr>`;
+                noDataMsg.classList.remove("hidden");
+                summaryCards.classList.add("hidden");
+                return;
+            }
+
+            budgetRows.innerHTML = rows.map((row) => `
+                <tr class="hover:bg-gray-50 border-b">
+                    <td class="p-3">${escapeHtml(row.fiscal_year || "")}</td>
+                    <td class="p-3">
+                        <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold
+                            ${row.budget_type === '当初予算' ? 'bg-emerald-100 text-emerald-700' :
+                              row.budget_type === '補正予算' ? 'bg-amber-100 text-amber-700' :
+                              'bg-blue-100 text-blue-700'}">
+                            ${escapeHtml(row.budget_type || "")}
+                        </span>
+                    </td>
+                    <td class="p-3 text-gray-600">${escapeHtml(row.kan || "")}</td>
+                    <td class="p-3 font-medium">${escapeHtml(row.item_name || "")}</td>
+                    <td class="p-3 text-right font-mono">${formatAmount(row.amount)}</td>
+                    <td class="p-3 text-gray-500 text-xs">${escapeHtml(row.note || "")}</td>
+                </tr>
+            `).join("");
+
+            // サマリー計算
+            const revenue = rows.filter((r) => r.account_type === "歳入").reduce((s, r) => s + (Number(r.amount) || 0), 0);
+            const expense = rows.filter((r) => r.account_type === "歳出").reduce((s, r) => s + (Number(r.amount) || 0), 0);
+            document.getElementById("totalRevenue").textContent = revenue ? revenue.toLocaleString("ja-JP") + " 千円" : "-";
+            document.getElementById("totalExpense").textContent = expense ? expense.toLocaleString("ja-JP") + " 千円" : "-";
+            document.getElementById("revenueChange").textContent = "-";
+            document.getElementById("rowCount").textContent = rows.length + " 件";
+            summaryCards.classList.remove("hidden");
+        }
+
+        function buildFilters() {
+            return {
+                year: filterYear.value,
+                type: filterType.value,
+                kan:  filterKan.value
+            };
+        }
+
+        function applyFilter(rows, filters) {
+            return rows.filter((row) => {
+                if (filters.year && String(row.fiscal_year) !== filters.year) return false;
+                if (filters.type && row.budget_type !== filters.type) return false;
+                if (filters.kan  && row.kan !== filters.kan) return false;
+                return true;
+            });
+        }
+
+        function populateFilterOptions(rows) {
+            const years = [...new Set(rows.map((r) => r.fiscal_year).filter(Boolean))].sort().reverse();
+            filterYear.innerHTML = '<option value="">すべて</option>';
+            years.forEach((y) => {
+                const opt = document.createElement("option");
+                opt.value = y;
+                opt.textContent = y + "年度";
+                filterYear.appendChild(opt);
+            });
+
+            const kans = [...new Set(rows.map((r) => r.kan).filter(Boolean))].sort();
+            filterKan.innerHTML = '<option value="">すべて</option>';
+            kans.forEach((k) => {
+                const opt = document.createElement("option");
+                opt.value = k;
+                opt.textContent = k;
+                filterKan.appendChild(opt);
+            });
+        }
+
+        async function loadBudgetData(client) {
+            const { data, error } = await client
+                .from("budget_data")
+                .select("fiscal_year,budget_type,account_type,kan,item_name,amount,note")
+                .order("fiscal_year", { ascending: false })
+                .order("kan", { ascending: true });
+
+            if (error) {
+                budgetRows.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">読込失敗: ${escapeHtml(error.message)}<br><span class="text-xs text-gray-400">（budget_dataテーブルが未作成の場合は管理者に連絡してください）</span></td></tr>`;
+                statusMsg.textContent = "";
+                return;
+            }
+
+            _allRows = data || [];
+            populateFilterOptions(_allRows);
+            renderRows(_allRows);
+            statusMsg.textContent = `全 ${_allRows.length} 件取得`;
+        }
+
+        document.getElementById("filterBtn").addEventListener("click", () => {
+            const filtered = applyFilter(_allRows, buildFilters());
+            renderRows(filtered);
+            statusMsg.textContent = `${filtered.length} 件表示中`;
+        });
+
+        document.getElementById("resetBtn").addEventListener("click", () => {
+            filterYear.value = "";
+            filterType.value = "";
+            filterKan.value  = "";
+            renderRows(_allRows);
+            statusMsg.textContent = `全 ${_allRows.length} 件表示`;
+        });
+
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            authTargetId: "authArea",
+            returnTo: "budget-data.html",
+            onReady: async ({ client }) => {
+                _client = client;
+                await loadBudgetData(client);
+            }
+        });
+    </script>
+</body>
+</html>

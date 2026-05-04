@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アンケート管理 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <header class="bg-cyan-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center gap-4">
+            <a href="index.html" class="text-lg font-bold tracking-wider hover:text-cyan-100">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <div class="text-right">
+                <span class="text-sm">アンケート管理</span>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6">
+            <a href="knowledge.html" class="text-cyan-700 hover:text-cyan-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>議員ナレッジ共有に戻る
+            </a>
+        </div>
+
+        <section class="rounded-3xl p-6 md:p-8 bg-gradient-to-r from-cyan-600 via-sky-600 to-indigo-700 text-white shadow-lg mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-2">アンケート管理</h1>
+                    <p class="text-cyan-100">アンケート本文を作成すると、その場で案内文とQRコードを生成できます。作成済みアンケートは一覧で管理し、作成者名も確認できます。</p>
+                </div>
+                <div class="flex flex-wrap gap-3 text-sm">
+                    <div class="px-4 py-2 rounded-xl bg-white/15">モード: 作成・一覧管理</div>
+                    <button id="new-survey-btn" type="button" class="px-4 py-2 rounded-xl bg-white text-cyan-700 font-semibold hover:bg-cyan-50">
+                        <i class="fas fa-plus mr-1"></i>新規作成
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white rounded-2xl shadow-sm p-5 border-t-4 border-cyan-400">
+                <p class="text-xs text-slate-500">登録アンケート数</p>
+                <p id="metric-total" class="text-3xl font-bold mt-2">0</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm p-5 border-t-4 border-emerald-400">
+                <p class="text-xs text-slate-500">公開中</p>
+                <p id="metric-active" class="text-3xl font-bold mt-2">0</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm p-5 border-t-4 border-indigo-400">
+                <p class="text-xs text-slate-500">回答件数</p>
+                <p id="metric-responses" class="text-3xl font-bold mt-2">0</p>
+            </div>
+        </section>
+
+        <section id="setup-guide" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+            <h2 class="text-base font-bold text-amber-800 mb-2"><i class="fas fa-triangle-exclamation mr-2"></i>初回セットアップが必要です</h2>
+            <p class="text-sm text-amber-900 mb-2">アンケート用のテーブルがまだ Supabase に作成されていない可能性があります。</p>
+            <p class="text-sm text-amber-800">Supabase の SQL Editor で [supabase_setup.sql](supabase_setup.sql) の追加分を実行した後、このページを再読み込みしてください。</p>
+        </section>
+
+        <section class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_420px] gap-6 mb-8">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex items-start justify-between gap-4 mb-5">
+                    <div>
+                        <h2 id="form-title" class="text-xl font-bold">アンケートを作成</h2>
+                        <p class="text-sm text-slate-500">設問文を入力すると、共有用の文章とQRコードを右側に表示します。</p>
+                    </div>
+                    <span id="owner-badge" class="text-xs px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200"></span>
+                </div>
+
+                <div id="form-message" class="hidden mb-4 rounded-xl px-4 py-3 text-sm"></div>
+
+                <form id="survey-form" class="grid grid-cols-1 gap-4">
+                    <label class="text-sm text-slate-700">アンケート名
+                        <input id="survey-title" type="text" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-300" placeholder="例: 市政に関するご意見アンケート">
+                    </label>
+
+                    <label class="text-sm text-slate-700">説明文
+                        <textarea id="survey-description" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-300" placeholder="アンケートの目的や回答対象を記載"></textarea>
+                    </label>
+
+                    <label class="text-sm text-slate-700">質問文
+                        <textarea id="survey-question" rows="4" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-300" placeholder="例: 今後の南国市のまちづくりで優先してほしいテーマを教えてください。"></textarea>
+                    </label>
+
+                    <label class="text-sm text-slate-700">案内文
+                        <textarea id="survey-share-message" rows="5" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-300" placeholder="配布用の文章を入力。未入力の場合は自動生成されます。"></textarea>
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label class="text-sm text-slate-700">回答後メッセージ
+                            <textarea id="survey-thanks-message" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-300" placeholder="回答ありがとうございます。ご意見は今後の議会活動に活用します。"></textarea>
+                        </label>
+
+                        <label class="text-sm text-slate-700">公開状態
+                            <select id="survey-active" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
+                                <option value="true">公開中</option>
+                                <option value="false">非公開</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="flex flex-wrap justify-end gap-3 pt-2">
+                        <button id="cancel-edit-btn" type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold hidden">編集をやめる</button>
+                        <button id="save-survey-btn" type="submit" class="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">
+                            <i class="fas fa-save mr-1"></i>保存する
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <aside class="bg-slate-950 text-white rounded-2xl shadow-sm p-6 border border-slate-800">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">共有文章・QRコード</h2>
+                        <p class="text-sm text-slate-300">配布前にスマートフォンで読み取り確認してください。</p>
+                    </div>
+                    <button id="copy-share-btn" type="button" class="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold">文章をコピー</button>
+                </div>
+
+                <div class="bg-white rounded-2xl text-slate-900 p-4 mb-4">
+                    <p id="preview-title" class="font-bold text-lg mb-1">アンケート名を入力してください</p>
+                    <p id="preview-description" class="text-sm text-slate-600 whitespace-pre-wrap">説明文がここに表示されます。</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p class="text-xs uppercase tracking-[0.2em] text-cyan-200 mb-2">回答URL</p>
+                        <a id="preview-link" href="#" target="_blank" rel="noopener noreferrer" class="text-sm break-all text-cyan-200 hover:text-white"></a>
+                    </div>
+
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p class="text-xs uppercase tracking-[0.2em] text-cyan-200 mb-2">案内文</p>
+                        <textarea id="preview-message" readonly rows="8" class="w-full rounded-xl bg-slate-900 border border-white/10 px-4 py-3 text-sm text-slate-100"></textarea>
+                    </div>
+
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col items-center">
+                        <p class="text-xs uppercase tracking-[0.2em] text-cyan-200 mb-3 self-start">QRコード</p>
+                        <div id="qr-code" class="bg-white p-4 rounded-2xl min-h-[212px] min-w-[212px] flex items-center justify-center"></div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-xl font-bold">作成済みアンケート一覧</h2>
+                    <p class="text-sm text-slate-500">作成アカウントの氏名と回答件数を確認できます。</p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <input id="search-input" type="text" placeholder="アンケート名・作成者で検索" class="rounded-xl border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300">
+                    <select id="ownership-filter" class="rounded-xl border border-slate-200 px-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
+                        <option value="all">すべて表示</option>
+                        <option value="mine">自分が作成したもの</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-100 text-slate-700">
+                        <tr>
+                            <th class="px-4 py-3 text-left">アンケート名</th>
+                            <th class="px-4 py-3 text-left">作成者</th>
+                            <th class="px-4 py-3 text-left">公開状態</th>
+                            <th class="px-4 py-3 text-right">回答件数</th>
+                            <th class="px-4 py-3 text-left">作成日</th>
+                            <th class="px-4 py-3 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="survey-table-body" class="divide-y divide-slate-100 bg-white">
+                        <tr><td colspan="6" class="px-4 py-12 text-center text-slate-400">読み込み中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-slate-400 text-xs">
+        &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        const state = {
+            client: null,
+            actor: null,
+            surveys: [],
+            responseCounts: new Map(),
+            editingSurveyId: null,
+            previewKey: "",
+            sharedSurvey: null
+        };
+
+        const formTitle = document.getElementById("form-title");
+        const ownerBadge = document.getElementById("owner-badge");
+        const formMessage = document.getElementById("form-message");
+        const surveyForm = document.getElementById("survey-form");
+        const titleInput = document.getElementById("survey-title");
+        const descriptionInput = document.getElementById("survey-description");
+        const questionInput = document.getElementById("survey-question");
+        const shareMessageInput = document.getElementById("survey-share-message");
+        const thanksMessageInput = document.getElementById("survey-thanks-message");
+        const activeInput = document.getElementById("survey-active");
+        const cancelEditBtn = document.getElementById("cancel-edit-btn");
+        const surveyTableBody = document.getElementById("survey-table-body");
+        const searchInput = document.getElementById("search-input");
+        const ownershipFilter = document.getElementById("ownership-filter");
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function normalizeEmail(value) {
+            return String(value || "").trim().toLowerCase();
+        }
+
+        function createSurveyKey() {
+            return `survey-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        }
+
+        function formatDate(value) {
+            if (!value) return "-";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString("ja-JP");
+        }
+
+        function getResponseUrl(surveyKey) {
+            return new URL(`survey-response.html?key=${encodeURIComponent(surveyKey)}`, window.location.href).toString();
+        }
+
+        function getDefaultShareMessage(values, url) {
+            const lines = [];
+            lines.push(values.title || "アンケートのお願い");
+            if (values.description) {
+                lines.push(values.description);
+            }
+            if (values.question) {
+                lines.push(`質問: ${values.question}`);
+            }
+            lines.push("ご回答は下記URLまたはQRコードからお願いします。");
+            lines.push(url);
+            return lines.join("\n\n");
+        }
+
+        function showMessage(message, isError) {
+            formMessage.textContent = message;
+            formMessage.className = isError
+                ? "mb-4 rounded-xl px-4 py-3 text-sm bg-rose-50 text-rose-700 border border-rose-200"
+                : "mb-4 rounded-xl px-4 py-3 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200";
+            formMessage.classList.remove("hidden");
+        }
+
+        function clearMessage() {
+            formMessage.classList.add("hidden");
+        }
+
+        async function resolveActor(context) {
+            const localSession = window.portalAuth && typeof window.portalAuth.getSession === "function"
+                ? window.portalAuth.getSession()
+                : null;
+
+            const actor = {
+                memberId: (context.session && (context.session.memberId || context.session.userId)) || (localSession && (localSession.memberId || localSession.userId)) || "",
+                email: normalizeEmail((context.profile && context.profile.email) || (context.session && (context.session.email || (context.session.user && context.session.user.email))) || (localSession && localSession.email) || ""),
+                name: (context.profile && context.profile.display_name) || (context.session && context.session.displayName) || (localSession && localSession.displayName) || "",
+                role: context.role || "viewer",
+                isAdmin: context.role === "admin"
+            };
+
+            if ((actor.memberId && actor.name) || !actor.email) {
+                return actor;
+            }
+
+            try {
+                const { data } = await context.client
+                    .from("member_directory")
+                    .select("member_id,full_name")
+                    .eq("email", actor.email)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (data) {
+                    actor.memberId = actor.memberId || data.member_id || "";
+                    actor.name = actor.name || data.full_name || "";
+                }
+            } catch (error) {
+                console.warn("actor resolve failed", error);
+            }
+
+            if (!actor.name) {
+                actor.name = actor.email || "ユーザー";
+            }
+
+            return actor;
+        }
+
+        function canManageSurvey(survey) {
+            if (!survey || !state.actor) return false;
+            if (state.actor.isAdmin) return true;
+            return isOwnedByActor(survey);
+        }
+
+        function isOwnedByActor(survey) {
+            if (!survey || !state.actor) return false;
+            const sameMember = state.actor.memberId && survey.creator_member_id && state.actor.memberId === survey.creator_member_id;
+            const sameEmail = state.actor.email && survey.creator_email && state.actor.email === normalizeEmail(survey.creator_email);
+            return sameMember || sameEmail;
+        }
+
+        function getFormValues() {
+            return {
+                title: titleInput.value.trim(),
+                description: descriptionInput.value.trim(),
+                question: questionInput.value.trim(),
+                shareMessage: shareMessageInput.value.trim(),
+                thanksMessage: thanksMessageInput.value.trim(),
+                isActive: activeInput.value === "true"
+            };
+        }
+
+        function resetForm() {
+            state.editingSurveyId = null;
+            state.previewKey = createSurveyKey();
+            state.sharedSurvey = null;
+            formTitle.textContent = "アンケートを作成";
+            cancelEditBtn.classList.add("hidden");
+            surveyForm.reset();
+            activeInput.value = "true";
+            thanksMessageInput.value = "回答ありがとうございます。ご意見は今後の議会活動に活用します。";
+            renderSharePreview();
+            clearMessage();
+        }
+
+        function fillForm(survey) {
+            state.editingSurveyId = survey.id;
+            state.previewKey = survey.survey_key;
+            state.sharedSurvey = survey;
+            formTitle.textContent = "アンケートを編集";
+            cancelEditBtn.classList.remove("hidden");
+            titleInput.value = survey.title || "";
+            descriptionInput.value = survey.description || "";
+            questionInput.value = survey.question_text || "";
+            shareMessageInput.value = survey.share_message || "";
+            thanksMessageInput.value = survey.thanks_message || "";
+            activeInput.value = survey.is_active ? "true" : "false";
+            renderSharePreview();
+            clearMessage();
+        }
+
+        function renderMetrics() {
+            document.getElementById("metric-total").textContent = String(state.surveys.length);
+            document.getElementById("metric-active").textContent = String(state.surveys.filter((survey) => survey.is_active).length);
+            const totalResponses = Array.from(state.responseCounts.values()).reduce((sum, count) => sum + count, 0);
+            document.getElementById("metric-responses").textContent = String(totalResponses);
+        }
+
+        function renderSharePreview() {
+            const source = state.sharedSurvey && state.editingSurveyId === null
+                ? {
+                    title: state.sharedSurvey.title || "",
+                    description: state.sharedSurvey.description || "",
+                    question: state.sharedSurvey.question_text || "",
+                    shareMessage: state.sharedSurvey.share_message || "",
+                    thanksMessage: state.sharedSurvey.thanks_message || "",
+                    isActive: !!state.sharedSurvey.is_active,
+                    surveyKey: state.sharedSurvey.survey_key
+                }
+                : {
+                    ...getFormValues(),
+                    surveyKey: state.previewKey
+                };
+
+            const url = getResponseUrl(source.surveyKey);
+            const message = source.shareMessage || getDefaultShareMessage(source, url);
+
+            document.getElementById("preview-title").textContent = source.title || "アンケート名を入力してください";
+            document.getElementById("preview-description").textContent = source.description || "説明文がここに表示されます。";
+            document.getElementById("preview-link").textContent = url;
+            document.getElementById("preview-link").href = url;
+            document.getElementById("preview-message").value = message;
+
+            const qrContainer = document.getElementById("qr-code");
+            qrContainer.innerHTML = "";
+            if (window.QRCode) {
+                new QRCode(qrContainer, {
+                    text: url,
+                    width: 180,
+                    height: 180,
+                    colorDark: "#0f172a",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } else {
+                qrContainer.textContent = "QRコードライブラリを読み込めませんでした。";
+            }
+        }
+
+        function renderTable() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            const ownership = ownershipFilter.value;
+            const filtered = state.surveys.filter((survey) => {
+                if (ownership === "mine" && !isOwnedByActor(survey)) {
+                    return false;
+                }
+
+                if (!searchTerm) {
+                    return true;
+                }
+
+                return [survey.title, survey.creator_name, survey.creator_email]
+                    .some((value) => String(value || "").toLowerCase().includes(searchTerm));
+            });
+
+            if (filtered.length === 0) {
+                surveyTableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-12 text-center text-slate-400">表示できるアンケートがありません。</td></tr>';
+                return;
+            }
+
+            surveyTableBody.innerHTML = filtered.map((survey) => {
+                const canManage = canManageSurvey(survey);
+                const responseCount = state.responseCounts.get(survey.id) || 0;
+                return `
+                    <tr class="align-top">
+                        <td class="px-4 py-4">
+                            <div class="font-semibold text-slate-900">${escapeHtml(survey.title || "")}</div>
+                            <div class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(survey.question_text || "")}</div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="font-semibold text-slate-800">${escapeHtml(survey.creator_name || "-")}</div>
+                            <div class="text-xs text-slate-500">${escapeHtml(survey.creator_email || "")}</div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${survey.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"}">${survey.is_active ? "公開中" : "非公開"}</span>
+                        </td>
+                        <td class="px-4 py-4 text-right font-semibold">${responseCount}</td>
+                        <td class="px-4 py-4 text-slate-600">${escapeHtml(formatDate(survey.created_at))}</td>
+                        <td class="px-4 py-4">
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" data-action="share" data-id="${survey.id}" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold">QR表示</button>
+                                ${canManage ? `<button type="button" data-action="edit" data-id="${survey.id}" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">編集</button>` : ""}
+                                ${canManage ? `<button type="button" data-action="delete" data-id="${survey.id}" class="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold">削除</button>` : ""}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        async function loadData() {
+            const setupGuide = document.getElementById("setup-guide");
+            setupGuide.classList.add("hidden");
+
+            const [surveysResult, responsesResult] = await Promise.all([
+                state.client
+                    .from("survey_forms")
+                    .select("id,survey_key,title,description,question_text,share_message,thanks_message,is_active,creator_member_id,creator_email,creator_name,created_at,updated_at")
+                    .order("created_at", { ascending: false }),
+                state.client
+                    .from("survey_responses")
+                    .select("id,survey_id")
+            ]);
+
+            if (surveysResult.error) {
+                console.error(surveysResult.error);
+                setupGuide.classList.remove("hidden");
+                surveyTableBody.innerHTML = `<tr><td colspan="6" class="px-4 py-12 text-center text-rose-500">読込失敗: ${escapeHtml(surveysResult.error.message)}</td></tr>`;
+                return;
+            }
+
+            if (responsesResult.error) {
+                console.error(responsesResult.error);
+                showMessage(`回答件数の取得に失敗しました: ${responsesResult.error.message}`, true);
+            }
+
+            state.surveys = surveysResult.data || [];
+            state.responseCounts = new Map();
+            (responsesResult.data || []).forEach((row) => {
+                state.responseCounts.set(row.survey_id, (state.responseCounts.get(row.survey_id) || 0) + 1);
+            });
+
+            renderMetrics();
+            renderTable();
+        }
+
+        async function saveSurvey(event) {
+            event.preventDefault();
+            clearMessage();
+
+            const values = getFormValues();
+            if (!values.title || !values.question) {
+                showMessage("アンケート名と質問文は必須です。", true);
+                return;
+            }
+
+            const surveyKey = state.editingSurveyId
+                ? ((state.surveys.find((item) => item.id === state.editingSurveyId) || {}).survey_key || state.previewKey)
+                : state.previewKey;
+            const responseUrl = getResponseUrl(surveyKey);
+            const payload = {
+                survey_key: surveyKey,
+                title: values.title,
+                description: values.description,
+                question_text: values.question,
+                share_message: values.shareMessage || getDefaultShareMessage(values, responseUrl),
+                thanks_message: values.thanksMessage || "回答ありがとうございます。ご意見は今後の議会活動に活用します。",
+                is_active: values.isActive,
+                updated_at: new Date().toISOString()
+            };
+
+            let result;
+            if (state.editingSurveyId) {
+                const target = state.surveys.find((item) => item.id === state.editingSurveyId);
+                if (!canManageSurvey(target)) {
+                    showMessage("このアンケートを編集する権限がありません。", true);
+                    return;
+                }
+
+                result = await state.client
+                    .from("survey_forms")
+                    .update(payload)
+                    .eq("id", state.editingSurveyId)
+                    .select("id,survey_key,title,description,question_text,share_message,thanks_message,is_active,creator_member_id,creator_email,creator_name,created_at,updated_at")
+                    .single();
+            } else {
+                result = await state.client
+                    .from("survey_forms")
+                    .insert({
+                        ...payload,
+                        creator_member_id: state.actor.memberId || null,
+                        creator_email: state.actor.email || null,
+                        creator_name: state.actor.name || "ユーザー",
+                        created_at: new Date().toISOString()
+                    })
+                    .select("id,survey_key,title,description,question_text,share_message,thanks_message,is_active,creator_member_id,creator_email,creator_name,created_at,updated_at")
+                    .single();
+            }
+
+            if (result.error) {
+                console.error(result.error);
+                showMessage(`保存に失敗しました: ${result.error.message}`, true);
+                return;
+            }
+
+            showMessage("アンケートを保存しました。右側の文章とQRコードをそのまま配布できます。", false);
+            state.sharedSurvey = result.data;
+            await loadData();
+            fillForm(result.data);
+        }
+
+        async function deleteSurvey(surveyId) {
+            const survey = state.surveys.find((item) => item.id === surveyId);
+            if (!survey || !canManageSurvey(survey)) {
+                showMessage("このアンケートを削除する権限がありません。", true);
+                return;
+            }
+
+            const confirmed = window.confirm(`「${survey.title}」を削除します。回答履歴も削除されます。よろしいですか。`);
+            if (!confirmed) {
+                return;
+            }
+
+            const { error } = await state.client
+                .from("survey_forms")
+                .delete()
+                .eq("id", surveyId);
+
+            if (error) {
+                console.error(error);
+                showMessage(`削除に失敗しました: ${error.message}`, true);
+                return;
+            }
+
+            showMessage("アンケートを削除しました。", false);
+            resetForm();
+            await loadData();
+        }
+
+        function handleTableClick(event) {
+            const button = event.target.closest("button[data-action]");
+            if (!button) {
+                return;
+            }
+
+            const surveyId = Number(button.dataset.id);
+            const survey = state.surveys.find((item) => item.id === surveyId);
+            if (!survey) {
+                return;
+            }
+
+            const action = button.dataset.action;
+            if (action === "share") {
+                state.sharedSurvey = survey;
+                state.editingSurveyId = null;
+                renderSharePreview();
+                return;
+            }
+
+            if (action === "edit") {
+                fillForm(survey);
+                return;
+            }
+
+            if (action === "delete") {
+                deleteSurvey(surveyId);
+            }
+        }
+
+        function bindEvents() {
+            surveyForm.addEventListener("submit", saveSurvey);
+            [titleInput, descriptionInput, questionInput, shareMessageInput, thanksMessageInput, activeInput].forEach((element) => {
+                element.addEventListener("input", () => {
+                    state.sharedSurvey = null;
+                    renderSharePreview();
+                });
+                element.addEventListener("change", () => {
+                    state.sharedSurvey = null;
+                    renderSharePreview();
+                });
+            });
+
+            cancelEditBtn.addEventListener("click", resetForm);
+            document.getElementById("new-survey-btn").addEventListener("click", resetForm);
+            document.getElementById("copy-share-btn").addEventListener("click", async () => {
+                const text = document.getElementById("preview-message").value;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showMessage("案内文をクリップボードにコピーしました。", false);
+                } catch (error) {
+                    console.error(error);
+                    showMessage("クリップボードへのコピーに失敗しました。", true);
+                }
+            });
+            searchInput.addEventListener("input", renderTable);
+            ownershipFilter.addEventListener("change", renderTable);
+            surveyTableBody.addEventListener("click", handleTableClick);
+        }
+
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            authTargetId: "authArea",
+            returnTo: "survey-manager.html",
+            onReady: async (context) => {
+                state.client = context.client;
+                state.actor = await resolveActor(context);
+                ownerBadge.textContent = `作成者: ${state.actor.name}`;
+                bindEvents();
+                resetForm();
+                await loadData();
+            }
+        });
+    </script>
+</body>
+</html>
