@@ -18,6 +18,38 @@ create table if not exists public.profiles (
     created_at timestamptz not null default now()
 );
 
+-- 操作監査ログ
+create table if not exists public.audit_log (
+    id bigserial primary key,
+    actor_email text,
+    target_email text,
+    action_type text not null,
+    before_value text,
+    after_value text,
+    note text,
+    created_at timestamptz not null default now()
+);
+
+-- audit_log ポリシー（認証ユーザーが insert/select 可能）
+alter table public.audit_log enable row level security;
+
+drop policy if exists audit_log_select_admin on public.audit_log;
+create policy audit_log_select_admin on public.audit_log
+for select using (auth.uid() is not null);
+
+drop policy if exists audit_log_insert_authenticated on public.audit_log;
+create policy audit_log_insert_authenticated on public.audit_log
+for insert with check (auth.uid() is not null);
+
+-- anon（一時運用）からも insert 可能にする
+drop policy if exists audit_log_insert_anon_temp on public.audit_log;
+create policy audit_log_insert_anon_temp on public.audit_log
+for insert to anon with check (true);
+
+drop policy if exists audit_log_select_anon_temp on public.audit_log;
+create policy audit_log_select_anon_temp on public.audit_log
+for select to anon using (true);
+
 create table if not exists public.meeting_settings (
     setting_key text primary key,
     setting_payload jsonb not null,

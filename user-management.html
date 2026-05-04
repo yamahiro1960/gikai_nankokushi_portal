@@ -45,7 +45,53 @@
         </div>
 
         <p id="message" class="mt-4 text-sm text-slate-700"></p>
+
+        <!-- 監査ログ -->
+        <section class="mt-10">
+            <h2 class="text-lg font-bold mb-3 text-slate-700">操作ログ（直近20件）</h2>
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead class="bg-slate-100">
+                        <tr>
+                            <th class="text-left p-2 border-b">日時</th>
+                            <th class="text-left p-2 border-b">操作者</th>
+                            <th class="text-left p-2 border-b">対象</th>
+                            <th class="text-left p-2 border-b">操作</th>
+                            <th class="text-left p-2 border-b">変更前</th>
+                            <th class="text-left p-2 border-b">変更後</th>
+                            <th class="text-left p-2 border-b">備考</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditLogRows">
+                        <tr><td colspan="7" class="p-3 text-slate-400 text-center">読込中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </main>
+
+    <!-- 台帳紐づけモーダル -->
+    <div id="linkModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <h2 class="text-lg font-bold mb-2 text-slate-800">台帳に紐づける</h2>
+            <p class="text-sm text-slate-600 mb-4">
+                このログインアカウント（<span id="modalEmail" class="font-semibold text-indigo-700"></span>）を、台帳の人物に紐づけます。<br>
+                紐づけると台帳の氏名・区分が反映され、ログイン状態を管理できます。
+            </p>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">台帳から選択</label>
+            <select id="memberLinkSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4">
+                <option value="">選択してください</option>
+            </select>
+            <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-4">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                選択した台帳レコードのメールアドレスを上書き更新します。この操作は元に戻せません。
+            </p>
+            <div class="flex gap-3 justify-end">
+                <button id="modalCancelBtn" onclick="closeLinkModal()" class="px-4 py-2 text-sm rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">キャンセル</button>
+                <button id="modalLinkBtn" class="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" disabled>紐づける</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
@@ -54,6 +100,449 @@
         const userRows = document.getElementById("userRows");
         const message = document.getElementById("message");
         const summary = document.getElementById("summary");
+        const auditLogRows = document.getElementById("auditLogRows");
+
+        let _client = null;
+        let _currentUserEmail = "";
+        let _mergedRows = [];
+
+        // ─── ユーティリティ ───────────────────────────────────────────
+        function normalizeEmail(value) {
+            return (value || "").trim().toLowerCase();
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function accessRoleToProfileRole(accessRole) {
+            return accessRole === "管理者" ? "admin" : "viewer";
+        }
+
+        function profileRoleToAccessRole(profileRole) {
+            return profileRole === "admin" ? "管理者" : "使用者";
+        }
+
+        function getLoginStatusBadge(isCurrent) {
+            if (isCurrent === true)  return '<span class="inline-block bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-semibold">有効</span>';
+            if (isCurrent === false) return '<span class="inline-block bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-xs font-semibold">無効</span>';
+            return '<span class="inline-block bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-xs font-semibold">未連携</span>';
+        }
+
+        function showMessage(text, isError = false) {
+            message.textContent = text;
+            message.className = `mt-4 text-sm ${isError ? "text-red-600 font-semibold" : "text-slate-700"}`;
+        }
+
+        // ─── 最後の管理者チェック ─────────────────────────────────────
+        function countActiveAdmins() {
+            return _mergedRows.filter((r) => r.role === "admin" && r.is_current !== false).length;
+        }
+
+        function isLastAdmin(item) {
+            return item.role === "admin" && countActiveAdmins() <= 1;
+        }
+
+        // ─── 監査ログ ─────────────────────────────────────────────────
+        async function writeAuditLog(client, { targetEmail, actionType, beforeValue, afterValue, note = "" }) {
+            try {
+                await client.from("audit_log").insert({
+                    actor_email: _currentUserEmail || "不明",
+                    target_email: targetEmail || "",
+                    action_type: actionType,
+                    before_value: beforeValue || "",
+                    after_value: afterValue || "",
+                    note: note
+                });
+            } catch (_err) {
+                // 監査ログ失敗は握りつぶす（本処理は継続）
+            }
+        }
+
+        async function loadAuditLog(client) {
+            try {
+                const { data, error } = await client
+                    .from("audit_log")
+                    .select("created_at,actor_email,target_email,action_type,before_value,after_value,note")
+                    .order("created_at", { ascending: false })
+                    .limit(20);
+
+                if (error || !data) {
+                    auditLogRows.innerHTML = `<tr><td colspan="7" class="p-3 text-slate-400 text-center">ログテーブル未作成、または読込失敗</td></tr>`;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    auditLogRows.innerHTML = `<tr><td colspan="7" class="p-3 text-slate-400 text-center">ログなし</td></tr>`;
+                    return;
+                }
+
+                auditLogRows.innerHTML = data.map((row) => {
+                    const dt = new Date(row.created_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+                    return `<tr class="hover:bg-slate-50">
+                        <td class="p-2 border-b text-slate-500 whitespace-nowrap">${escapeHtml(dt)}</td>
+                        <td class="p-2 border-b">${escapeHtml(row.actor_email)}</td>
+                        <td class="p-2 border-b">${escapeHtml(row.target_email)}</td>
+                        <td class="p-2 border-b font-semibold text-indigo-700">${escapeHtml(row.action_type)}</td>
+                        <td class="p-2 border-b text-slate-500">${escapeHtml(row.before_value)}</td>
+                        <td class="p-2 border-b text-emerald-700">${escapeHtml(row.after_value)}</td>
+                        <td class="p-2 border-b text-slate-400">${escapeHtml(row.note)}</td>
+                    </tr>`;
+                }).join("");
+            } catch (_err) {
+                auditLogRows.innerHTML = `<tr><td colspan="7" class="p-3 text-slate-400 text-center">ログテーブル未作成（supabase_setup.sql を適用してください）</td></tr>`;
+            }
+        }
+
+        // ─── データ取得 ───────────────────────────────────────────────
+        async function fetchProfiles(client) {
+            const { data, error } = await client
+                .from("profiles")
+                .select("user_id,email,display_name,role")
+                .order("email", { ascending: true });
+            return error ? { items: [], error } : { items: data || [], error: null };
+        }
+
+        async function fetchMembers(client) {
+            const full = await client
+                .from("member_directory")
+                .select("member_id,full_name,category,email,is_current,access_role")
+                .order("member_id", { ascending: true });
+
+            if (!full.error) return { items: full.data || [], error: null };
+
+            const fallback = await client
+                .from("member_directory")
+                .select("member_id,full_name,category,email")
+                .order("member_id", { ascending: true });
+
+            if (fallback.error) return { items: [], error: fallback.error };
+
+            return {
+                items: (fallback.data || []).map((item) => ({ ...item, is_current: true, access_role: "使用者" })),
+                error: null
+            };
+        }
+
+        function mergeRows(profileItems, memberItems) {
+            const memberByEmail = new Map();
+            memberItems.forEach((m) => {
+                const key = normalizeEmail(m.email);
+                if (key) memberByEmail.set(key, m);
+            });
+
+            const rows = profileItems.map((profile) => {
+                const key = normalizeEmail(profile.email);
+                const member = memberByEmail.get(key) || null;
+                return {
+                    user_id: profile.user_id,
+                    member_id: member ? member.member_id : "",
+                    email: profile.email || (member ? member.email : ""),
+                    name: (member && member.full_name) || profile.display_name || "",
+                    category: member ? (member.category || "") : "",
+                    is_current: member ? !!member.is_current : null,
+                    role: profile.role || "viewer",
+                    hasProfile: true,
+                    hasMember: !!member
+                };
+            });
+
+            const linkedEmails = new Set(rows.map((r) => normalizeEmail(r.email)).filter(Boolean));
+            memberItems.forEach((member) => {
+                const key = normalizeEmail(member.email);
+                if (!key || linkedEmails.has(key)) return;
+                rows.push({
+                    user_id: "",
+                    member_id: member.member_id || "",
+                    email: member.email || "",
+                    name: member.full_name || "",
+                    category: member.category || "",
+                    is_current: !!member.is_current,
+                    role: accessRoleToProfileRole(member.access_role),
+                    hasProfile: false,
+                    hasMember: true
+                });
+            });
+
+            return rows.sort((a, b) => (a.email || "").localeCompare(b.email || "", "ja"));
+        }
+
+        // ─── 台帳紐づけモーダル ───────────────────────────────────────
+        let _linkTargetProfileEmail = "";
+        let _linkTargetUserId = "";
+
+        async function openLinkModal(profileEmail, userId) {
+            _linkTargetProfileEmail = profileEmail;
+            _linkTargetUserId = userId;
+            document.getElementById("modalEmail").textContent = profileEmail;
+
+            // 台帳側でメール未設定 or 未連携の候補を取得
+            const { data: members } = await _client
+                .from("member_directory")
+                .select("member_id,full_name,category,email")
+                .order("member_id", { ascending: true });
+
+            const linkedEmails = new Set(
+                _mergedRows.filter((r) => r.hasMember && r.hasProfile).map((r) => normalizeEmail(r.email))
+            );
+
+            const candidates = (members || []).filter((m) => {
+                const mEmail = normalizeEmail(m.email);
+                return !mEmail || !linkedEmails.has(mEmail);
+            });
+
+            const sel = document.getElementById("memberLinkSelect");
+            sel.innerHTML = '<option value="">選択してください</option>';
+            candidates.forEach((m) => {
+                const opt = document.createElement("option");
+                opt.value = m.member_id;
+                opt.textContent = `${m.full_name}（${m.category || "未設定"}）${m.email ? " — 現在: " + m.email : " — メール未設定"}`;
+                sel.appendChild(opt);
+            });
+
+            document.getElementById("modalLinkBtn").disabled = true;
+            sel.onchange = () => {
+                document.getElementById("modalLinkBtn").disabled = !sel.value;
+            };
+
+            document.getElementById("modalLinkBtn").onclick = async () => {
+                const memberId = sel.value;
+                if (!memberId) return;
+                document.getElementById("modalLinkBtn").disabled = true;
+
+                const { error } = await _client
+                    .from("member_directory")
+                    .update({ email: normalizeEmail(profileEmail) })
+                    .eq("member_id", memberId);
+
+                if (error) {
+                    showMessage(`紐づけ失敗: ${error.message}`, true);
+                    closeLinkModal();
+                    return;
+                }
+
+                await writeAuditLog(_client, {
+                    targetEmail: profileEmail,
+                    actionType: "台帳紐づけ",
+                    beforeValue: memberId + " (メール未設定)",
+                    afterValue: profileEmail,
+                    note: `member_id: ${memberId}`
+                });
+
+                showMessage(`「${profileEmail}」を台帳に紐づけました。`);
+                closeLinkModal();
+                await loadUsers(_client);
+            };
+
+            document.getElementById("linkModal").classList.remove("hidden");
+        }
+
+        function closeLinkModal() {
+            document.getElementById("linkModal").classList.add("hidden");
+        }
+
+        // ─── テーブル描画 ─────────────────────────────────────────────
+        function renderRows(items, client) {
+            userRows.innerHTML = "";
+            _mergedRows = items;
+
+            const activeCount   = items.filter((r) => r.is_current === true).length;
+            const inactiveCount = items.filter((r) => r.is_current === false).length;
+            const unlinkedCount = items.filter((r) => !r.hasMember).length;
+            summary.textContent = `対象: ${items.length}件 / ログイン有効: ${activeCount}件 / 無効: ${inactiveCount}件 / 台帳未連携: ${unlinkedCount}件`;
+
+            items.forEach((item) => {
+                const roleOptions = item.hasProfile ? ["viewer", "editor", "admin"] : ["viewer", "admin"];
+                const roleOptionsHtml = roleOptions
+                    .map((v) => `<option value="${v}" ${item.role === v ? "selected" : ""}>${v}</option>`)
+                    .join("");
+
+                const linkBtn = (!item.hasMember && item.hasProfile)
+                    ? `<button data-profile-email="${escapeHtml(item.email)}" data-user-id="${escapeHtml(item.user_id)}" class="linkMember bg-amber-500 text-white px-2 py-1 rounded text-xs ml-1">台帳に紐づける</button>`
+                    : "";
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="p-3 border-b">${escapeHtml(item.email || "")}</td>
+                    <td class="p-3 border-b">
+                        <div class="font-semibold text-slate-800">${escapeHtml(item.name || "-")}</div>
+                        <div class="text-xs text-slate-500">${escapeHtml(item.category || "未設定")}${item.hasMember ? "" : ' <span class="text-amber-600">/ 台帳未連携</span>'}</div>
+                        ${linkBtn}
+                    </td>
+                    <td class="p-3 border-b">
+                        <div class="mb-2">${getLoginStatusBadge(item.is_current)}</div>
+                        <button
+                            data-member-id="${escapeHtml(item.member_id || "")}"
+                            data-is-current="${item.is_current === true ? "true" : "false"}"
+                            data-role="${escapeHtml(item.role)}"
+                            class="toggleLogin bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs ${item.hasMember ? "" : "opacity-50 cursor-not-allowed"}"
+                            ${item.hasMember ? "" : "disabled"}
+                        >
+                            ${item.is_current === false ? "有効化" : "無効化"}
+                        </button>
+                    </td>
+                    <td class="p-3 border-b">${escapeHtml(item.role || "viewer")}</td>
+                    <td class="p-3 border-b">
+                        <select data-user-id="${escapeHtml(item.user_id || "")}" data-member-id="${escapeHtml(item.member_id || "")}" class="roleSelect border border-slate-300 rounded px-2 py-1 mr-2">
+                            ${roleOptionsHtml}
+                        </select>
+                        <button data-user-id="${escapeHtml(item.user_id || "")}" data-member-id="${escapeHtml(item.member_id || "")}" data-email="${escapeHtml(item.email || "")}" data-current-role="${escapeHtml(item.role || "viewer")}" class="saveRole bg-indigo-600 text-white px-3 py-1 rounded">保存</button>
+                    </td>
+                `;
+                userRows.appendChild(tr);
+            });
+
+            // 権限保存
+            document.querySelectorAll(".saveRole").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const userId      = button.getAttribute("data-user-id");
+                    const memberId    = button.getAttribute("data-member-id");
+                    const targetEmail = button.getAttribute("data-email");
+                    const currentRole = button.getAttribute("data-current-role");
+                    const select      = document.querySelector(`.roleSelect[data-user-id='${userId}'][data-member-id='${memberId}']`);
+                    const newRole     = select.value;
+
+                    if (!userId && newRole === "editor") {
+                        showMessage("profiles未連携のため、editor は設定できません。先に対象者を認証ユーザーとして作成してください。", true);
+                        return;
+                    }
+
+                    // 最後の管理者からの降格チェック
+                    if (currentRole === "admin" && newRole !== "admin") {
+                        const row = _mergedRows.find((r) => r.user_id === userId || r.email === targetEmail);
+                        if (row && isLastAdmin(row)) {
+                            showMessage("⚠️ この操作は実行できません。最後の管理者（admin）の権限を変更することはできません。", true);
+                            return;
+                        }
+                    }
+
+                    if (userId) {
+                        const { error: profileError } = await client
+                            .from("profiles")
+                            .update({ role: newRole })
+                            .eq("user_id", userId);
+                        if (profileError) {
+                            showMessage(`権限更新失敗(profiles): ${profileError.message}`, true);
+                            return;
+                        }
+                    }
+
+                    if (memberId) {
+                        const accessRole = profileRoleToAccessRole(newRole);
+                        const { error: memberError } = await client
+                            .from("member_directory")
+                            .update({ access_role: accessRole })
+                            .eq("member_id", memberId);
+                        if (memberError) {
+                            showMessage(`権限更新失敗(member_directory): ${memberError.message}`, true);
+                            return;
+                        }
+                    }
+
+                    await writeAuditLog(client, {
+                        targetEmail,
+                        actionType: "権限変更",
+                        beforeValue: currentRole,
+                        afterValue: newRole
+                    });
+
+                    showMessage("権限を更新しました。");
+                    await loadUsers(client);
+                });
+            });
+
+            // ログイン有効/無効切替
+            document.querySelectorAll(".toggleLogin").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const memberId  = button.getAttribute("data-member-id");
+                    const isCurrent = button.getAttribute("data-is-current") === "true";
+                    const role      = button.getAttribute("data-role");
+
+                    if (!memberId) {
+                        showMessage("台帳未連携のため、ログイン状態を変更できません。", true);
+                        return;
+                    }
+
+                    // 最後の管理者を無効化できない
+                    if (isCurrent && role === "admin") {
+                        const row = _mergedRows.find((r) => r.member_id === memberId);
+                        if (row && isLastAdmin(row)) {
+                            showMessage("⚠️ この操作は実行できません。最後の管理者（admin）を無効化することはできません。", true);
+                            return;
+                        }
+                    }
+
+                    const targetEmail = (_mergedRows.find((r) => r.member_id === memberId) || {}).email || "";
+                    const nextValue   = !isCurrent;
+
+                    const { error } = await client
+                        .from("member_directory")
+                        .update({ is_current: nextValue })
+                        .eq("member_id", memberId);
+
+                    if (error) {
+                        showMessage(`ログイン状態更新失敗: ${error.message}`, true);
+                        return;
+                    }
+
+                    await writeAuditLog(client, {
+                        targetEmail,
+                        actionType: "ログイン状態変更",
+                        beforeValue: isCurrent ? "有効" : "無効",
+                        afterValue: nextValue ? "有効" : "無効"
+                    });
+
+                    showMessage(`「${targetEmail}」のログイン状態を${nextValue ? "有効" : "無効"}に更新しました。`);
+                    await loadUsers(client);
+                });
+            });
+
+            // 台帳紐づけボタン
+            document.querySelectorAll(".linkMember").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const profileEmail = button.getAttribute("data-profile-email");
+                    const userId       = button.getAttribute("data-user-id");
+                    await openLinkModal(profileEmail, userId);
+                });
+            });
+        }
+
+        // ─── 一覧読込 ────────────────────────────────────────────────
+        async function loadUsers(client) {
+            const profilesResult = await fetchProfiles(client);
+            const membersResult  = await fetchMembers(client);
+
+            if (profilesResult.error && membersResult.error) {
+                showMessage(`読込失敗: ${profilesResult.error.message}`, true);
+                return;
+            }
+            if (profilesResult.error && !membersResult.error) {
+                showMessage(`profiles 読込に失敗したため、台帳データのみ表示しています: ${profilesResult.error.message}`, true);
+            }
+
+            const mergedRows = mergeRows(profilesResult.items, membersResult.items);
+            renderRows(mergedRows, client);
+            await loadAuditLog(client);
+        }
+
+        // ─── 初期化 ──────────────────────────────────────────────────
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "admin",
+            authTargetId: "authArea",
+            returnTo: "user-management.html",
+            onReady: async ({ client, profile, session }) => {
+                _client = client;
+                _currentUserEmail = (profile && profile.email) || (session && session.email) || "";
+                await loadUsers(client);
+            }
+        });
+    </script>
 
         function normalizeEmail(value) {
             return (value || "").trim().toLowerCase();
