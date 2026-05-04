@@ -20,14 +20,22 @@
         </div>
 
         <h1 class="text-3xl font-bold mb-2">ログインユーザー管理</h1>
-        <p class="text-sm text-slate-600 mb-6">登録済みユーザーの権限を変更できます（adminのみ）。</p>
+        <p class="text-sm text-slate-600 mb-4">登録済みユーザーの権限変更と、議員・職員ごとのログイン有効/無効を管理できます（adminのみ）。</p>
+
+        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-6 text-sm text-indigo-900">
+            <p class="font-semibold mb-1">運用メモ</p>
+            <p>この画面では「権限変更」と「ログイン可否（現職フラグ）」を管理します。新規ユーザー招待・削除・パスワード関連は Supabase 側で実施してください。</p>
+        </div>
+
+        <div id="summary" class="mb-4 text-sm text-slate-700"></div>
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-100">
                     <tr>
                         <th class="text-left p-3 border-b">メール</th>
-                        <th class="text-left p-3 border-b">表示名</th>
+                        <th class="text-left p-3 border-b">氏名 / 区分</th>
+                        <th class="text-left p-3 border-b">ログイン状態</th>
                         <th class="text-left p-3 border-b">現在の権限</th>
                         <th class="text-left p-3 border-b">変更</th>
                     </tr>
@@ -45,22 +53,171 @@
     <script>
         const userRows = document.getElementById("userRows");
         const message = document.getElementById("message");
+        const summary = document.getElementById("summary");
+
+        function normalizeEmail(value) {
+            return (value || "").trim().toLowerCase();
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function accessRoleToProfileRole(accessRole) {
+            return accessRole === "管理者" ? "admin" : "viewer";
+        }
+
+        function profileRoleToAccessRole(profileRole) {
+            return profileRole === "admin" ? "管理者" : "使用者";
+        }
+
+        function getLoginStatusBadge(isCurrent) {
+            if (isCurrent === true) {
+                return '<span class="inline-block bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-semibold">有効</span>';
+            }
+            if (isCurrent === false) {
+                return '<span class="inline-block bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-xs font-semibold">無効</span>';
+            }
+            return '<span class="inline-block bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-xs font-semibold">未連携</span>';
+        }
+
+        async function fetchProfiles(client) {
+            const { data, error } = await client
+                .from("profiles")
+                .select("user_id,email,display_name,role")
+                .order("email", { ascending: true });
+
+            if (error) {
+                return { items: [], error };
+            }
+
+            return { items: data || [], error: null };
+        }
+
+        async function fetchMembers(client) {
+            const full = await client
+                .from("member_directory")
+                .select("member_id,full_name,category,email,is_current,access_role")
+                .order("member_id", { ascending: true });
+
+            if (!full.error) {
+                return { items: full.data || [], error: null };
+            }
+
+            const fallback = await client
+                .from("member_directory")
+                .select("member_id,full_name,category,email")
+                .order("member_id", { ascending: true });
+
+            if (fallback.error) {
+                return { items: [], error: fallback.error };
+            }
+
+            return {
+                items: (fallback.data || []).map((item) => ({
+                    ...item,
+                    is_current: true,
+                    access_role: "使用者"
+                })),
+                error: null
+            };
+        }
+
+        function mergeRows(profileItems, memberItems) {
+            const memberByEmail = new Map();
+            memberItems.forEach((member) => {
+                const key = normalizeEmail(member.email);
+                if (key) {
+                    memberByEmail.set(key, member);
+                }
+            });
+
+            const rows = profileItems.map((profile) => {
+                const key = normalizeEmail(profile.email);
+                const member = memberByEmail.get(key) || null;
+                return {
+                    user_id: profile.user_id,
+                    member_id: member ? member.member_id : "",
+                    email: profile.email || (member ? member.email : ""),
+                    name: (member && member.full_name) || profile.display_name || "",
+                    category: member ? (member.category || "") : "",
+                    is_current: member ? !!member.is_current : null,
+                    role: profile.role || "viewer",
+                    hasProfile: true,
+                    hasMember: !!member
+                };
+            });
+
+            const linkedEmails = new Set(rows.map((row) => normalizeEmail(row.email)).filter(Boolean));
+            memberItems.forEach((member) => {
+                const key = normalizeEmail(member.email);
+                if (!key || linkedEmails.has(key)) {
+                    return;
+                }
+
+                rows.push({
+                    user_id: "",
+                    member_id: member.member_id || "",
+                    email: member.email || "",
+                    name: member.full_name || "",
+                    category: member.category || "",
+                    is_current: !!member.is_current,
+                    role: accessRoleToProfileRole(member.access_role),
+                    hasProfile: false,
+                    hasMember: true
+                });
+            });
+
+            return rows.sort((a, b) => {
+                return (a.email || "").localeCompare(b.email || "", "ja");
+            });
+        }
 
         function renderRows(items, client) {
             userRows.innerHTML = "";
+
+            const activeCount = items.filter((item) => item.is_current === true).length;
+            const inactiveCount = items.filter((item) => item.is_current === false).length;
+            const unlinkedCount = items.filter((item) => !item.hasMember).length;
+            summary.textContent = `対象: ${items.length}件 / ログイン有効: ${activeCount}件 / 無効: ${inactiveCount}件 / 台帳未連携: ${unlinkedCount}件`;
+
             items.forEach((item) => {
+                const roleOptions = item.hasProfile
+                    ? ["viewer", "editor", "admin"]
+                    : ["viewer", "admin"];
+                const roleOptionsHtml = roleOptions
+                    .map((roleValue) => `<option value="${roleValue}" ${item.role === roleValue ? "selected" : ""}>${roleValue}</option>`)
+                    .join("");
+
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td class="p-3 border-b">${item.email || ""}</td>
-                    <td class="p-3 border-b">${item.display_name || ""}</td>
-                    <td class="p-3 border-b">${item.role || "viewer"}</td>
+                    <td class="p-3 border-b">${escapeHtml(item.email || "")}</td>
                     <td class="p-3 border-b">
-                        <select data-id="${item.user_id}" class="roleSelect border border-slate-300 rounded px-2 py-1 mr-2">
-                            <option value="viewer" ${item.role === "viewer" ? "selected" : ""}>viewer</option>
-                            <option value="editor" ${item.role === "editor" ? "selected" : ""}>editor</option>
-                            <option value="admin" ${item.role === "admin" ? "selected" : ""}>admin</option>
+                        <div class="font-semibold text-slate-800">${escapeHtml(item.name || "-")}</div>
+                        <div class="text-xs text-slate-500">${escapeHtml(item.category || "未設定")}${item.hasMember ? "" : " / 台帳未連携"}</div>
+                    </td>
+                    <td class="p-3 border-b">
+                        <div class="mb-2">${getLoginStatusBadge(item.is_current)}</div>
+                        <button
+                            data-member-id="${escapeHtml(item.member_id || "") }"
+                            data-is-current="${item.is_current === true ? "true" : "false"}"
+                            class="toggleLogin bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs ${item.hasMember ? "" : "opacity-50 cursor-not-allowed"}"
+                            ${item.hasMember ? "" : "disabled"}
+                        >
+                            ${item.is_current === false ? "有効化" : "無効化"}
+                        </button>
+                    </td>
+                    <td class="p-3 border-b">${escapeHtml(item.role || "viewer")}</td>
+                    <td class="p-3 border-b">
+                        <select data-user-id="${escapeHtml(item.user_id || "")}" data-member-id="${escapeHtml(item.member_id || "")}" class="roleSelect border border-slate-300 rounded px-2 py-1 mr-2">
+                            ${roleOptionsHtml}
                         </select>
-                        <button data-id="${item.user_id}" class="saveRole bg-indigo-600 text-white px-3 py-1 rounded">保存</button>
+                        <button data-user-id="${escapeHtml(item.user_id || "")}" data-member-id="${escapeHtml(item.member_id || "")}" class="saveRole bg-indigo-600 text-white px-3 py-1 rounded">保存</button>
                     </td>
                 `;
                 userRows.appendChild(tr);
@@ -68,38 +225,89 @@
 
             document.querySelectorAll(".saveRole").forEach((button) => {
                 button.addEventListener("click", async () => {
-                    const userId = button.getAttribute("data-id");
-                    const select = document.querySelector(`.roleSelect[data-id='${userId}']`);
+                    const userId = button.getAttribute("data-user-id");
+                    const memberId = button.getAttribute("data-member-id");
+                    const selector = `.roleSelect[data-user-id='${userId}'][data-member-id='${memberId}']`;
+                    const select = document.querySelector(selector);
                     const role = select.value;
 
-                    const { error } = await client
-                        .from("profiles")
-                        .update({ role })
-                        .eq("user_id", userId);
-
-                    if (error) {
-                        message.textContent = `更新失敗: ${error.message}`;
+                    if (!userId && role === "editor") {
+                        message.textContent = "profiles未連携のため、editor は設定できません。先に対象者を認証ユーザーとして作成してください。";
                         return;
+                    }
+
+                    if (userId) {
+                        const { error: profileError } = await client
+                            .from("profiles")
+                            .update({ role })
+                            .eq("user_id", userId);
+
+                        if (profileError) {
+                            message.textContent = `権限更新失敗(profiles): ${profileError.message}`;
+                            return;
+                        }
+                    }
+
+                    if (memberId) {
+                        const accessRole = profileRoleToAccessRole(role);
+                        const { error: memberError } = await client
+                            .from("member_directory")
+                            .update({ access_role: accessRole })
+                            .eq("member_id", memberId);
+
+                        if (memberError) {
+                            message.textContent = `権限更新失敗(member_directory): ${memberError.message}`;
+                            return;
+                        }
                     }
 
                     message.textContent = "権限を更新しました。";
                     await loadUsers(client);
                 });
             });
+
+            document.querySelectorAll(".toggleLogin").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const memberId = button.getAttribute("data-member-id");
+                    if (!memberId) {
+                        message.textContent = "台帳未連携のため、ログイン状態を変更できません。";
+                        return;
+                    }
+
+                    const isCurrent = button.getAttribute("data-is-current") === "true";
+                    const nextValue = !isCurrent;
+
+                    const { error } = await client
+                        .from("member_directory")
+                        .update({ is_current: nextValue })
+                        .eq("member_id", memberId);
+
+                    if (error) {
+                        message.textContent = `ログイン状態更新失敗: ${error.message}`;
+                        return;
+                    }
+
+                    message.textContent = `ログイン状態を${nextValue ? "有効" : "無効"}に更新しました。`;
+                    await loadUsers(client);
+                });
+            });
         }
 
         async function loadUsers(client) {
-            const { data, error } = await client
-                .from("profiles")
-                .select("user_id,email,display_name,role")
-                .order("email", { ascending: true });
+            const profilesResult = await fetchProfiles(client);
+            const membersResult = await fetchMembers(client);
 
-            if (error) {
-                message.textContent = `読込失敗: ${error.message}`;
+            if (profilesResult.error && membersResult.error) {
+                message.textContent = `読込失敗: ${profilesResult.error.message}`;
                 return;
             }
 
-            renderRows(data || [], client);
+            if (profilesResult.error && !membersResult.error) {
+                message.textContent = `profiles 読込に失敗したため、台帳データのみ表示しています: ${profilesResult.error.message}`;
+            }
+
+            const mergedRows = mergeRows(profilesResult.items, membersResult.items);
+            renderRows(mergedRows, client);
         }
 
         portalAuth.init({
