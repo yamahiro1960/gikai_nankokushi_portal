@@ -59,15 +59,15 @@
                         <i class="fas fa-square-poll-vertical text-cyan-600"></i>
                         住民アンケート
                     </h2>
-                    <p class="text-sm text-gray-600">住民向けアンケートを作成し、QRコード付きの案内文をそのまま配布できます。作成済みアンケートの一覧と作成者名も確認できます。</p>
+                    <p class="text-sm text-gray-600">Google 側で作成したアンケートの索引を管理し、公開フォームや回答スプレッドシートへ素早くアクセスできます。</p>
                 </div>
-                <a href="survey-manager.html" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-cyan-600 text-white font-semibold hover:bg-cyan-700 whitespace-nowrap">
-                    <i class="fas fa-qrcode mr-2"></i>アンケート管理を開く
+                <a href="survey-catalog.html" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-cyan-600 text-white font-semibold hover:bg-cyan-700 whitespace-nowrap">
+                    <i class="fas fa-table-list mr-2"></i>アンケート索引を開く
                 </a>
             </div>
 
             <div id="survey-setup-guide" class="hidden mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                アンケート集計テーブルが未作成の可能性があります。[supabase_survey_setup.sql](supabase_survey_setup.sql) を Supabase に反映してください。
+                アンケート索引テーブルが未作成の可能性があります。supabase_survey_catalog_setup.sql を Supabase に反映してください。
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 text-sm">
@@ -88,15 +88,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div class="rounded-xl border border-cyan-100 bg-cyan-50 p-4">
                     <p class="font-semibold text-cyan-800 mb-1">作成</p>
-                    <p class="text-gray-600">設問文を入力して公開用アンケートを登録</p>
+                    <p class="text-gray-600">Google Form で作成し、URL を索引に登録</p>
                 </div>
                 <div class="rounded-xl border border-orange-100 bg-orange-50 p-4">
                     <p class="font-semibold text-orange-800 mb-1">配布</p>
-                    <p class="text-gray-600">案内文とQRコードを印刷物やSNSに展開</p>
+                    <p class="text-gray-600">公開フォームリンクをコピーして配布</p>
                 </div>
                 <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
                     <p class="font-semibold text-emerald-800 mb-1">確認</p>
-                    <p class="text-gray-600">回答件数と作成アカウントの氏名を一覧で確認</p>
+                    <p class="text-gray-600">一覧からフォームと Sheets をすぐ開ける</p>
                 </div>
             </div>
 
@@ -104,7 +104,7 @@
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                     <div>
                         <h3 class="text-base font-bold text-slate-900">公開中アンケート一覧</h3>
-                        <p class="text-sm text-slate-500">住民がすぐ回答できる公開中アンケートを新しい順に表示します。</p>
+                        <p class="text-sm text-slate-500">索引に登録された公開中アンケートを新しい順に表示します。</p>
                     </div>
                 </div>
                 <div id="survey-active-list" class="space-y-3">
@@ -210,19 +210,15 @@
             return date.toLocaleDateString("ja-JP");
         }
 
-        function getSurveyResponseUrl(surveyKey) {
-            return `survey-response.html?key=${encodeURIComponent(surveyKey)}`;
-        }
-
         function setSurveySummary(activeCount, responseCount, latestOwner) {
             document.getElementById("survey-active-count").textContent = String(activeCount);
             document.getElementById("survey-response-count").textContent = String(responseCount);
             document.getElementById("survey-latest-owner").textContent = latestOwner || "未登録";
         }
 
-        function renderActiveSurveyList(surveys, responseCounts) {
+        function renderActiveSurveyList(surveys) {
             const list = document.getElementById("survey-active-list");
-            const activeSurveys = surveys.filter((item) => item.is_active).slice(0, 3);
+            const activeSurveys = surveys.filter((item) => item.status === "公開中").slice(0, 3);
 
             if (activeSurveys.length === 0) {
                 list.innerHTML = '<div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-400">公開中のアンケートはまだありません。</div>';
@@ -230,7 +226,6 @@
             }
 
             list.innerHTML = activeSurveys.map((survey) => {
-                const responseCount = responseCounts.get(survey.id) || 0;
                 return `
                     <article class="rounded-xl border border-slate-200 bg-white p-4">
                         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -238,14 +233,15 @@
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">公開中</span>
                                     <span class="text-xs text-slate-400">作成日: ${escapeHtml(formatDate(survey.created_at))}</span>
-                                    <span class="text-xs text-slate-400">作成者: ${escapeHtml(survey.creator_name || "未設定")}</span>
+                                    <span class="text-xs text-slate-400">作成者: ${escapeHtml(survey.owner_name || "未設定")}</span>
                                 </div>
                                 <h4 class="font-bold text-slate-900 mb-1">${escapeHtml(survey.title || "")}</h4>
-                                <p class="text-sm text-slate-600 whitespace-pre-wrap">${escapeHtml(survey.description || survey.question_text || "")}</p>
+                                <p class="text-sm text-slate-600 whitespace-pre-wrap">${escapeHtml(survey.description || "")}</p>
                             </div>
-                            <div class="shrink-0 flex flex-col items-stretch gap-2 min-w-[180px]">
-                                <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-600">回答件数: <span class="font-bold text-slate-900">${responseCount}</span></div>
-                                <a href="${getSurveyResponseUrl(survey.survey_key)}" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-cyan-600 text-white font-semibold hover:bg-cyan-700">回答ページを開く</a>
+                            <div class="shrink-0 flex flex-col items-stretch gap-2 min-w-[200px]">
+                                <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-600">回答件数: <span class="font-bold text-slate-900">-</span></div>
+                                <a href="${escapeHtml(survey.google_form_public_url || "#")}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-cyan-600 text-white font-semibold hover:bg-cyan-700">フォームを開く</a>
+                                <a href="${escapeHtml(survey.google_sheet_url || "#")}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200">Sheetsを開く</a>
                             </div>
                         </div>
                     </article>
@@ -256,35 +252,25 @@
         async function loadSurveySummary(client) {
             const setupGuide = document.getElementById("survey-setup-guide");
 
-            const [formsResult, responsesResult] = await Promise.all([
-                client
-                    .from("survey_forms")
-                    .select("id,survey_key,title,description,question_text,is_active,creator_name,created_at")
-                    .order("created_at", { ascending: false }),
-                client
-                    .from("survey_responses")
-                    .select("id,survey_id")
-            ]);
+            const formsResult = await client
+                .from("survey_catalog")
+                .select("id,title,description,status,google_form_public_url,google_sheet_url,owner_name,created_at")
+                .order("created_at", { ascending: false });
 
-            if (formsResult.error || responsesResult.error) {
-                console.error(formsResult.error || responsesResult.error);
+            if (formsResult.error) {
+                console.error(formsResult.error);
                 setupGuide.classList.remove("hidden");
                 setSurveySummary("-", "-", "未取得");
-                renderActiveSurveyList([], new Map());
+                renderActiveSurveyList([]);
                 return;
             }
 
             const forms = formsResult.data || [];
-            const responses = responsesResult.data || [];
-            const responseCounts = new Map();
-            responses.forEach((row) => {
-                responseCounts.set(row.survey_id, (responseCounts.get(row.survey_id) || 0) + 1);
-            });
-            const activeCount = forms.filter((item) => item.is_active).length;
-            const latestOwner = forms.length > 0 ? (forms[0].creator_name || "未設定") : "未登録";
+            const activeCount = forms.filter((item) => item.status === "公開中").length;
+            const latestOwner = forms.length > 0 ? (forms[0].owner_name || "未設定") : "未登録";
 
-            setSurveySummary(activeCount, responses.length, latestOwner);
-            renderActiveSurveyList(forms, responseCounts);
+            setSurveySummary(activeCount, "-", latestOwner);
+            renderActiveSurveyList(forms);
         }
 
         portalAuth.init({

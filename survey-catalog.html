@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アンケート索引管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <style>
+        .link-button {
+            cursor: pointer;
+            color: #0891b2;
+            text-decoration: underline;
+        }
+        .link-button:hover {
+            color: #0e7490;
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="authArea"></div>
+
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-4">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-900">アンケート索引管理</h1>
+                        <p class="text-sm text-slate-500 mt-1">Google Form のアンケートをポータルで管理・配布します</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <!-- Two Column Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left: Registration Form -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6 sticky top-24">
+                        <h2 class="text-lg font-bold text-slate-900 mb-4">アンケート登録</h2>
+
+                        <div id="form-message" class="hidden mb-4 rounded-xl px-4 py-3 text-sm"></div>
+
+                        <form id="survey-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Google Form 公開URL
+                                    <span class="text-rose-600">*</span>
+                                </label>
+                                <input 
+                                    id="form-public-url" 
+                                    type="url" 
+                                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                                    placeholder="https://docs.google.com/forms/d/e/.../viewform"
+                                    required
+                                >
+                                <p class="text-xs text-slate-500 mt-1">配布用の回答フォームURLを貼り付けてください（短縮URLは不可）</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Google Form 編集URL
+                                </label>
+                                <input 
+                                    id="form-edit-url" 
+                                    type="url" 
+                                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                                    placeholder="https://docs.google.com/forms/d/.../edit"
+                                >
+                                <p class="text-xs text-slate-500 mt-1">任意。保存され、作成者のみ表示されます</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Google Spreadsheet URL
+                                    <span class="text-rose-600">*</span>
+                                </label>
+                                <input 
+                                    id="sheet-url" 
+                                    type="url" 
+                                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                                    required
+                                >
+                                <p class="text-xs text-slate-500 mt-1">回答が保存されるスプレッドシートのURLです</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    アンケート名
+                                    <span class="text-rose-600">*</span>
+                                </label>
+                                <input 
+                                    id="survey-title" 
+                                    type="text" 
+                                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                                    placeholder="例: 市政に関するご意見アンケート"
+                                    required
+                                >
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    解説・目的
+                                </label>
+                                <textarea 
+                                    id="survey-description" 
+                                    rows="3" 
+                                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                                    placeholder="このアンケートの目的や対象者を説明してください"
+                                ></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    状態
+                                </label>
+                                <select
+                                    id="survey-status"
+                                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                                >
+                                    <option value="準備中">準備中</option>
+                                    <option value="公開中">公開中</option>
+                                    <option value="締切">締切</option>
+                                    <option value="保管">保管</option>
+                                </select>
+                            </div>
+
+                            <div class="flex gap-2 pt-2">
+                                <button 
+                                    type="submit" 
+                                    class="flex-1 px-4 py-2.5 rounded-lg bg-cyan-600 text-white font-semibold hover:bg-cyan-700 transition"
+                                >
+                                    登録
+                                </button>
+                                <button 
+                                    type="button" 
+                                    id="cancel-edit-btn" 
+                                    class="flex-1 px-4 py-2.5 rounded-lg bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300 hidden"
+                                >
+                                    キャンセル
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right: List and Details -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6">
+                        <h2 class="text-lg font-bold text-slate-900 mb-4">登録済みアンケート</h2>
+
+                        <div class="space-y-3 max-h-[600px] overflow-y-auto">
+                            <div id="survey-list" class="space-y-3">
+                                <p class="text-slate-400 text-sm">読み込み中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            client: null,
+            actor: null,
+            surveys: [],
+            editingId: null
+        };
+
+        const formPublicUrlInput = document.getElementById("form-public-url");
+        const formEditUrlInput = document.getElementById("form-edit-url");
+        const sheetUrlInput = document.getElementById("sheet-url");
+        const titleInput = document.getElementById("survey-title");
+        const descriptionInput = document.getElementById("survey-description");
+        const statusInput = document.getElementById("survey-status");
+        const surveyForm = document.getElementById("survey-form");
+        const formMessage = document.getElementById("form-message");
+        const cancelEditBtn = document.getElementById("cancel-edit-btn");
+        const surveyList = document.getElementById("survey-list");
+
+        // URL から ID を抽出
+        function extractFormId(url) {
+            const match = url.match(/\/forms\/d\/(?:e\/)?([a-zA-Z0-9-_]+)/);
+            return match ? match[1] : null;
+        }
+
+        function extractSheetId(url) {
+            const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            return match ? match[1] : null;
+        }
+
+        // メッセージ表示
+        function showMessage(text, isError = false) {
+            formMessage.textContent = text;
+            formMessage.className = isError 
+                ? "mb-4 rounded-xl px-4 py-3 text-sm bg-rose-50 text-rose-700 border border-rose-200" 
+                : "mb-4 rounded-xl px-4 py-3 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200";
+            formMessage.classList.remove("hidden");
+        }
+
+        function clearMessage() {
+            formMessage.classList.add("hidden");
+        }
+
+        // フォームリセット
+        function resetForm() {
+            state.editingId = null;
+            surveyForm.reset();
+            statusInput.value = "準備中";
+            cancelEditBtn.classList.add("hidden");
+            clearMessage();
+        }
+
+        // フォーム入力
+        function fillForm(survey) {
+            state.editingId = survey.id;
+            formPublicUrlInput.value = survey.google_form_public_url;
+            formEditUrlInput.value = survey.google_form_edit_url || "";
+            sheetUrlInput.value = survey.google_sheet_url;
+            titleInput.value = survey.title;
+            descriptionInput.value = survey.description;
+            statusInput.value = survey.status || "準備中";
+            cancelEditBtn.classList.remove("hidden");
+            clearMessage();
+        }
+
+        // フォーム送信
+        surveyForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formPublicUrl = formPublicUrlInput.value.trim();
+            const formEditUrl = formEditUrlInput.value.trim();
+            const sheetUrl = sheetUrlInput.value.trim();
+            const title = titleInput.value.trim();
+            const description = descriptionInput.value.trim();
+            const status = statusInput.value;
+
+            if (!formPublicUrl || !sheetUrl || !title) {
+                showMessage("Google Form 公開URL、Spreadsheet URL、アンケート名は必須です", true);
+                return;
+            }
+
+            const formId = extractFormId(formPublicUrl) || extractFormId(formEditUrl);
+            const sheetId = extractSheetId(sheetUrl);
+
+            if (!formId) {
+                showMessage("Google Form URL が無効です（forms.gle ではなく docs.google.com/forms のURLを入力してください）", true);
+                return;
+            }
+            if (!sheetId) {
+                showMessage("Google Spreadsheet URL が無効です", true);
+                return;
+            }
+
+            const payload = {
+                title,
+                description,
+                status,
+                google_form_public_url: formPublicUrl,
+                google_form_edit_url: formEditUrl || null,
+                google_form_id: formId,
+                google_sheet_url: sheetUrl,
+                google_sheet_id: sheetId,
+                owner_name: state.actor.name,
+                owner_email: state.actor.email,
+                updated_at: new Date().toISOString()
+            };
+
+            let result;
+            if (state.editingId) {
+                const target = state.surveys.find((s) => s.id === state.editingId);
+                if (target.owner_email !== state.actor.email) {
+                    showMessage("このアンケートを編集する権限がありません", true);
+                    return;
+                }
+
+                result = await state.client
+                    .from("survey_catalog")
+                    .update(payload)
+                    .eq("id", state.editingId)
+                    .select();
+            } else {
+                result = await state.client
+                    .from("survey_catalog")
+                    .insert(payload)
+                    .select();
+            }
+
+            if (result.error) {
+                showMessage(`エラー: ${result.error.message}`, true);
+                return;
+            }
+
+            showMessage(state.editingId ? "更新しました" : "登録しました");
+            resetForm();
+            await loadData();
+        });
+
+        // キャンセル
+        cancelEditBtn.addEventListener("click", resetForm);
+
+        // コピーボタン
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                alert("リンクをコピーしました");
+            } catch {
+                alert("コピーに失敗しました");
+            }
+        }
+
+        // 一覧を描画
+        function renderList() {
+            if (state.surveys.length === 0) {
+                surveyList.innerHTML = '<p class="text-slate-400 text-sm">アンケートがまだ登録されていません</p>';
+                return;
+            }
+
+            surveyList.innerHTML = state.surveys.map((survey) => {
+                const isOwner = survey.owner_email === state.actor.email;
+                const createdDate = new Date(survey.created_at).toLocaleDateString("ja-JP");
+                const statusColor = {
+                    "準備中": "bg-slate-100 text-slate-700",
+                    "公開中": "bg-emerald-100 text-emerald-700",
+                    "締切": "bg-amber-100 text-amber-700",
+                    "保管": "bg-slate-200 text-slate-600"
+                }[survey.status] || "bg-slate-100 text-slate-700";
+
+                return `
+                    <div class="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-slate-900">${escapeHtml(survey.title)}</h3>
+                                <p class="text-sm text-slate-600 mt-1">${escapeHtml(survey.description)}</p>
+                            </div>
+                            <span class="ml-3 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${statusColor}">
+                                ${survey.status}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-4 pb-4 border-b border-slate-200">
+                            <div>作成者: <span class="font-semibold text-slate-700">${escapeHtml(survey.owner_name)}</span></div>
+                            <div>作成日: <span class="font-semibold text-slate-700">${createdDate}</span></div>
+                            <div class="col-span-2">回答件数: <span class="font-semibold text-slate-700">-</span></div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                            <button 
+                                type="button" 
+                                class="px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 text-sm font-semibold hover:bg-cyan-100"
+                                onclick="copyToClipboard('${escapeJsString(survey.google_form_public_url)}')"
+                            >
+                                リンクをコピー
+                            </button>
+                            <a 
+                                href="${survey.google_form_public_url}" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100"
+                            >
+                                フォームを開く →
+                            </a>
+                            ${isOwner && survey.google_form_edit_url ? `
+                            <a 
+                                href="${survey.google_form_edit_url}" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                class="px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700 text-sm font-semibold hover:bg-violet-100"
+                            >
+                                編集フォームを開く →
+                            </a>
+                            ` : ""}
+                            <a 
+                                href="${survey.google_sheet_url}" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200"
+                            >
+                                回答は Sheets →
+                            </a>
+                            ${isOwner ? `
+                                <button 
+                                    type="button" 
+                                    class="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-sm font-semibold hover:bg-amber-100"
+                                    onclick="editSurvey(${survey.id})"
+                                >
+                                    編集
+                                </button>
+                                <button 
+                                    type="button" 
+                                    class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-sm font-semibold hover:bg-rose-100"
+                                    onclick="deleteSurvey(${survey.id})"
+                                >
+                                    削除
+                                </button>
+                            ` : ""}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function escapeHtml(text) {
+            const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+            return String(text || "").replace(/[&<>"']/g, (c) => map[c]);
+        }
+
+        function escapeJsString(text) {
+            return String(text || "").replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        // 編集
+        function editSurvey(id) {
+            const survey = state.surveys.find((s) => s.id === id);
+            if (survey) {
+                fillForm(survey);
+                titleInput.focus();
+            }
+        }
+
+        // 削除
+        async function deleteSurvey(id) {
+            if (!confirm("このアンケートを削除しますか？")) return;
+
+            const target = state.surveys.find((s) => s.id === id);
+            if (target.owner_email !== state.actor.email) {
+                showMessage("削除する権限がありません", true);
+                return;
+            }
+
+            const result = await state.client
+                .from("survey_catalog")
+                .delete()
+                .eq("id", id);
+
+            if (result.error) {
+                showMessage(`削除に失敗しました: ${result.error.message}`, true);
+                return;
+            }
+
+            showMessage("削除しました");
+            await loadData();
+        }
+
+        // データ読み込み
+        async function loadData() {
+            const result = await state.client
+                .from("survey_catalog")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            if (result.error) {
+                surveyList.innerHTML = `<p class="text-rose-500 text-sm">読み込みエラー: ${result.error.message}</p>`;
+                return;
+            }
+
+            state.surveys = result.data || [];
+            renderList();
+        }
+
+        // 初期化
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            authTargetId: "authArea",
+            returnTo: "survey-catalog.html",
+            onReady: async (auth) => {
+                state.client = auth.client;
+                state.actor = {
+                    name: auth.profile?.display_name || auth.session?.user?.email || "ユーザー",
+                    email: auth.session?.user?.email || ""
+                };
+                await loadData();
+            }
+        });
+    </script>
+</body>
+</html>
