@@ -42,13 +42,6 @@ create policy audit_log_insert_authenticated on public.audit_log
 for insert with check (auth.uid() is not null);
 
 -- anon（一時運用）からも insert 可能にする
-drop policy if exists audit_log_insert_anon_temp on public.audit_log;
-create policy audit_log_insert_anon_temp on public.audit_log
-for insert to anon with check (true);
-
-drop policy if exists audit_log_select_anon_temp on public.audit_log;
-create policy audit_log_select_anon_temp on public.audit_log
-for select to anon using (true);
 
 create table if not exists public.meeting_settings (
     setting_key text primary key,
@@ -135,55 +128,51 @@ for update using (
 );
 
 -- ----------------------------------------------------------------------
--- 暫定: ログイン認証を稼働させるまでの無認証運用ポリシー
--- authPaused=true の間、anonロールで各テーブルを読み書き可能にする。
--- 本番で認証運用へ移行する際は、_anon_temp が付くポリシーを削除すること。
--- ----------------------------------------------------------------------
-drop policy if exists meeting_settings_select_anon_temp on public.meeting_settings;
-create policy meeting_settings_select_anon_temp on public.meeting_settings
-for select to anon using (true);
+-- member_positions_master ポリシー（認証ユーザー全員が読み取り可、管理者のみ書き込み）
+drop policy if exists member_positions_master_select_authenticated on public.member_positions_master;
+create policy member_positions_master_select_authenticated on public.member_positions_master
+for select using (auth.uid() is not null);
 
-drop policy if exists meeting_settings_insert_anon_temp on public.meeting_settings;
-create policy meeting_settings_insert_anon_temp on public.meeting_settings
-for insert to anon with check (true);
+drop policy if exists member_positions_master_insert_admin on public.member_positions_master;
+create policy member_positions_master_insert_admin on public.member_positions_master
+for insert with check (
+    exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+);
 
-drop policy if exists meeting_settings_update_anon_temp on public.meeting_settings;
-create policy meeting_settings_update_anon_temp on public.meeting_settings
-for update to anon using (true);
+drop policy if exists member_positions_master_update_admin on public.member_positions_master;
+create policy member_positions_master_update_admin on public.member_positions_master
+for update using (
+    exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+);
 
--- member_positions_master ポリシー
-drop policy if exists member_positions_master_select_anon_temp on public.member_positions_master;
-create policy member_positions_master_select_anon_temp on public.member_positions_master
-for select to anon using (true);
+drop policy if exists member_positions_master_delete_admin on public.member_positions_master;
+create policy member_positions_master_delete_admin on public.member_positions_master
+for delete using (
+    exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+);
 
-drop policy if exists member_positions_master_insert_anon_temp on public.member_positions_master;
-create policy member_positions_master_insert_anon_temp on public.member_positions_master
-for insert to anon with check (true);
+-- member_directory ポリシー（認証ユーザー全員が読み取り可、管理者のみ書き込み）
+drop policy if exists member_directory_select_authenticated on public.member_directory;
+create policy member_directory_select_authenticated on public.member_directory
+for select using (auth.uid() is not null);
 
-drop policy if exists member_positions_master_update_anon_temp on public.member_positions_master;
-create policy member_positions_master_update_anon_temp on public.member_positions_master
-for update to anon using (true);
+drop policy if exists member_directory_insert_admin on public.member_directory;
+create policy member_directory_insert_admin on public.member_directory
+for insert with check (
+    exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+);
 
-drop policy if exists member_positions_master_delete_anon_temp on public.member_positions_master;
-create policy member_positions_master_delete_anon_temp on public.member_positions_master
-for delete to anon using (true);
+drop policy if exists member_directory_update_admin on public.member_directory;
+create policy member_directory_update_admin on public.member_directory
+for update using (
+    exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+);
 
--- member_directory ポリシー
-drop policy if exists member_directory_select_anon_temp on public.member_directory;
-create policy member_directory_select_anon_temp on public.member_directory
-for select to anon using (true);
-
-drop policy if exists member_directory_insert_anon_temp on public.member_directory;
-create policy member_directory_insert_anon_temp on public.member_directory
-for insert to anon with check (true);
-
-drop policy if exists member_directory_update_anon_temp on public.member_directory;
-create policy member_directory_update_anon_temp on public.member_directory
-for update to anon using (true);
-
-drop policy if exists member_directory_delete_anon_temp on public.member_directory;
-create policy member_directory_delete_anon_temp on public.member_directory
-for delete to anon using (true);
+drop policy if exists member_directory_delete_admin on public.member_directory;
+create policy member_directory_delete_admin on public.member_directory
+for delete using (
+    exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+);
 
 -- ----------------------------------------------------------------------
 -- member_directory -> profiles 同期
@@ -362,21 +351,22 @@ create table if not exists public.document_notes (
 
 alter table public.document_notes enable row level security;
 
-drop policy if exists document_notes_select_anon_temp on public.document_notes;
-create policy document_notes_select_anon_temp on public.document_notes
-for select to anon using (true);
+-- document_notes ポリシー（本人のデータのみ操作可）
+drop policy if exists document_notes_select_own on public.document_notes;
+create policy document_notes_select_own on public.document_notes
+for select using (member_id = public.current_member_id());
 
-drop policy if exists document_notes_insert_anon_temp on public.document_notes;
-create policy document_notes_insert_anon_temp on public.document_notes
-for insert to anon with check (true);
+drop policy if exists document_notes_insert_own on public.document_notes;
+create policy document_notes_insert_own on public.document_notes
+for insert with check (auth.uid() is not null and member_id = public.current_member_id());
 
-drop policy if exists document_notes_update_anon_temp on public.document_notes;
-create policy document_notes_update_anon_temp on public.document_notes
-for update to anon using (true);
+drop policy if exists document_notes_update_own on public.document_notes;
+create policy document_notes_update_own on public.document_notes
+for update using (member_id = public.current_member_id());
 
-drop policy if exists document_notes_delete_anon_temp on public.document_notes;
-create policy document_notes_delete_anon_temp on public.document_notes
-for delete to anon using (true);
+drop policy if exists document_notes_delete_own on public.document_notes;
+create policy document_notes_delete_own on public.document_notes
+for delete using (member_id = public.current_member_id());
 
 -- ----------------------------------------------------------------------
 -- document_ink_notes テーブル（議案手書きメモ：個人専用）
@@ -396,21 +386,22 @@ create table if not exists public.document_ink_notes (
 
 alter table public.document_ink_notes enable row level security;
 
-drop policy if exists document_ink_notes_select_anon_temp on public.document_ink_notes;
-create policy document_ink_notes_select_anon_temp on public.document_ink_notes
-for select to anon using (true);
+-- document_ink_notes ポリシー（本人のデータのみ操作可）
+drop policy if exists document_ink_notes_select_own on public.document_ink_notes;
+create policy document_ink_notes_select_own on public.document_ink_notes
+for select using (member_id = public.current_member_id());
 
-drop policy if exists document_ink_notes_insert_anon_temp on public.document_ink_notes;
-create policy document_ink_notes_insert_anon_temp on public.document_ink_notes
-for insert to anon with check (true);
+drop policy if exists document_ink_notes_insert_own on public.document_ink_notes;
+create policy document_ink_notes_insert_own on public.document_ink_notes
+for insert with check (auth.uid() is not null and member_id = public.current_member_id());
 
-drop policy if exists document_ink_notes_update_anon_temp on public.document_ink_notes;
-create policy document_ink_notes_update_anon_temp on public.document_ink_notes
-for update to anon using (true);
+drop policy if exists document_ink_notes_update_own on public.document_ink_notes;
+create policy document_ink_notes_update_own on public.document_ink_notes
+for update using (member_id = public.current_member_id());
 
-drop policy if exists document_ink_notes_delete_anon_temp on public.document_ink_notes;
-create policy document_ink_notes_delete_anon_temp on public.document_ink_notes
-for delete to anon using (true);
+drop policy if exists document_ink_notes_delete_own on public.document_ink_notes;
+create policy document_ink_notes_delete_own on public.document_ink_notes
+for delete using (member_id = public.current_member_id());
 
 -- ----------------------------------------------------------------------
 -- general_question_tracker テーブル（一般質問の要望・答弁追跡）
@@ -449,21 +440,22 @@ on public.general_question_tracker (member_name);
 
 alter table public.general_question_tracker enable row level security;
 
-drop policy if exists general_question_tracker_select_anon_temp on public.general_question_tracker;
-create policy general_question_tracker_select_anon_temp on public.general_question_tracker
-for select to anon using (true);
+-- general_question_tracker ポリシー（認証ユーザー全員が読み書き可）
+drop policy if exists general_question_tracker_select_authenticated on public.general_question_tracker;
+create policy general_question_tracker_select_authenticated on public.general_question_tracker
+for select using (auth.uid() is not null);
 
-drop policy if exists general_question_tracker_insert_anon_temp on public.general_question_tracker;
-create policy general_question_tracker_insert_anon_temp on public.general_question_tracker
-for insert to anon with check (true);
+drop policy if exists general_question_tracker_insert_authenticated on public.general_question_tracker;
+create policy general_question_tracker_insert_authenticated on public.general_question_tracker
+for insert with check (auth.uid() is not null);
 
-drop policy if exists general_question_tracker_update_anon_temp on public.general_question_tracker;
-create policy general_question_tracker_update_anon_temp on public.general_question_tracker
-for update to anon using (true);
+drop policy if exists general_question_tracker_update_authenticated on public.general_question_tracker;
+create policy general_question_tracker_update_authenticated on public.general_question_tracker
+for update using (auth.uid() is not null);
 
-drop policy if exists general_question_tracker_delete_anon_temp on public.general_question_tracker;
-create policy general_question_tracker_delete_anon_temp on public.general_question_tracker
-for delete to anon using (true);
+drop policy if exists general_question_tracker_delete_authenticated on public.general_question_tracker;
+create policy general_question_tracker_delete_authenticated on public.general_question_tracker
+for delete using (auth.uid() is not null);
 
 -- ----------------------------------------------------------------------
 -- general_question_updates テーブル（一般質問の追跡更新履歴）
@@ -486,18 +478,19 @@ on public.general_question_updates (tracker_id, update_date desc);
 
 alter table public.general_question_updates enable row level security;
 
-drop policy if exists general_question_updates_select_anon_temp on public.general_question_updates;
-create policy general_question_updates_select_anon_temp on public.general_question_updates
-for select to anon using (true);
+-- general_question_updates ポリシー（認証ユーザー全員が読み書き可）
+drop policy if exists general_question_updates_select_authenticated on public.general_question_updates;
+create policy general_question_updates_select_authenticated on public.general_question_updates
+for select using (auth.uid() is not null);
 
-drop policy if exists general_question_updates_insert_anon_temp on public.general_question_updates;
-create policy general_question_updates_insert_anon_temp on public.general_question_updates
-for insert to anon with check (true);
+drop policy if exists general_question_updates_insert_authenticated on public.general_question_updates;
+create policy general_question_updates_insert_authenticated on public.general_question_updates
+for insert with check (auth.uid() is not null);
 
-drop policy if exists general_question_updates_update_anon_temp on public.general_question_updates;
-create policy general_question_updates_update_anon_temp on public.general_question_updates
-for update to anon using (true);
+drop policy if exists general_question_updates_update_authenticated on public.general_question_updates;
+create policy general_question_updates_update_authenticated on public.general_question_updates
+for update using (auth.uid() is not null);
 
-drop policy if exists general_question_updates_delete_anon_temp on public.general_question_updates;
-create policy general_question_updates_delete_anon_temp on public.general_question_updates
-for delete to anon using (true);
+drop policy if exists general_question_updates_delete_authenticated on public.general_question_updates;
+create policy general_question_updates_delete_authenticated on public.general_question_updates
+for delete using (auth.uid() is not null);
