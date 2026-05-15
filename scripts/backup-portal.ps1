@@ -9,7 +9,7 @@ param(
     [int]$PgPort = 5432,
     [string]$PgUser = "postgres",
     [string]$PgDatabase = "postgres",
-    [string]$PgPassword = "",
+    [SecureString]$PgPassword = $null,
     [string[]]$Tables = @(
         "general_question_tracker",
         "general_question_updates",
@@ -43,7 +43,7 @@ function Get-AuthConfigValue {
     return ""
 }
 
-function Ensure-Directory {
+function Initialize-Directory {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
         New-Item -ItemType Directory -Path $Path | Out-Null
@@ -106,7 +106,7 @@ function Find-PgDumpPath {
     return $bestPath
 }
 
-function Infer-PgHostFromSupabaseUrl {
+function Get-PgHostFromSupabaseUrl {
     param([string]$Url)
 
     if ([string]::IsNullOrWhiteSpace($Url)) {
@@ -122,11 +122,11 @@ function Infer-PgHostFromSupabaseUrl {
 }
 
 $ProjectRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
-Ensure-Directory -Path $BackupRoot
+Initialize-Directory -Path $BackupRoot
 
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $targetDir = Join-Path $BackupRoot "backup_$timestamp"
-Ensure-Directory -Path $targetDir
+Initialize-Directory -Path $targetDir
 
 $zipPath = Join-Path $targetDir "project_files.zip"
 $entries = Get-ChildItem -LiteralPath $ProjectRoot -Force | Where-Object {
@@ -152,7 +152,7 @@ if ([string]::IsNullOrWhiteSpace($SupabaseAnonKey)) {
     $SupabaseAnonKey = Get-AuthConfigValue -AuthConfigPath $authConfigPath -Name "supabaseAnonKey"
 }
 if ([string]::IsNullOrWhiteSpace($PgHost)) {
-    $PgHost = Infer-PgHostFromSupabaseUrl -Url $SupabaseUrl
+    $PgHost = Get-PgHostFromSupabaseUrl -Url $SupabaseUrl
 }
 
 $dbDir = Join-Path $targetDir "db_csv"
@@ -164,7 +164,7 @@ if (-not $SkipDbExport) {
     if ([string]::IsNullOrWhiteSpace($SupabaseUrl) -or [string]::IsNullOrWhiteSpace($SupabaseAnonKey)) {
         $dbExportLog += "DB export skipped: Supabase credentials not found."
     } else {
-        Ensure-Directory -Path $dbDir
+        Initialize-Directory -Path $dbDir
         $headers = @{
             "apikey" = $SupabaseAnonKey
             "Authorization" = "Bearer $SupabaseAnonKey"
@@ -192,17 +192,30 @@ if (-not $SkipFullDbDump) {
         if ([string]::IsNullOrWhiteSpace($PgHost)) {
             $fullDumpLog += "SKIPPED: PgHost not provided."
         } else {
-            if ([string]::IsNullOrWhiteSpace($PgPassword)) {
-                $PgPassword = $env:PGPASSWORD
+            $resolvedPgPassword = ""
+            if ($null -ne $PgPassword) {
+                $bstr = [IntPtr]::Zero
+                try {
+                    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($PgPassword)
+                    $resolvedPgPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+                } finally {
+                    if ($bstr -ne [IntPtr]::Zero) {
+                        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+                    }
+                }
             }
 
-            if ([string]::IsNullOrWhiteSpace($PgPassword)) {
+            if ([string]::IsNullOrWhiteSpace($resolvedPgPassword)) {
+                $resolvedPgPassword = $env:PGPASSWORD
+            }
+
+            if ([string]::IsNullOrWhiteSpace($resolvedPgPassword)) {
                 $fullDumpLog += "SKIPPED: PgPassword not provided."
             } else {
                 try {
                     $oldPgPassword = $env:PGPASSWORD
-                    $env:PGPASSWORD = $PgPassword
-                    $args = @(
+                    $env:PGPASSWORD = $resolvedPgPassword
+                    $pgDumpArgs = @(
                         "-h", $PgHost,
                         "-p", $PgPort,
                         "-U", $PgUser,
@@ -211,7 +224,7 @@ if (-not $SkipFullDbDump) {
                         "-f", $fullDumpPath
                     )
 
-                    & $pgDumpPath @args
+                    & $pgDumpPath @pgDumpArgs
                     if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $fullDumpPath)) {
                         $fullDumpLog += "OK: full dump created."
                     } else {
@@ -271,4 +284,4 @@ if ($fullDumpLog.Count -gt 0) {
 }
 
 # Example (full dump enabled):
-# powershell -ExecutionPolicy Bypass -File .\scripts\backup-portal.ps1 -PgPassword "<SUPABASE_DB_PASSWORD>"
+# powershell -ExecutionPolicy Bypass -File .\scripts\backup-portal.ps1 -PgPassword (ConvertTo-SecureString "<SUPABASE_DB_PASSWORD>" -AsPlainText -Force)
