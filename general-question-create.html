@@ -210,6 +210,16 @@
             return `user_general_question_draft_${memberId}`;
         }
 
+        async function getCurrentAuthUserId() {
+            const supabase = getClient();
+            const { data, error } = await supabase.auth.getSession();
+            if (error) {
+                throw error;
+            }
+            const userId = data && data.session && data.session.user ? data.session.user.id : "";
+            return userId || "";
+        }
+
         function showPanel(panelId) {
             document.getElementById("material-panel").classList.toggle("hidden", panelId !== "material-panel");
             document.getElementById("material-list-panel").classList.toggle("hidden", panelId !== "material-list");
@@ -252,19 +262,16 @@
                 return;
             }
 
-            const sess = window.portalAuth && typeof window.portalAuth.getSession === "function"
-                ? window.portalAuth.getSession()
-                : null;
-            const accountId = sess && sess.userId ? sess.userId : "";
-            if (!accountId) {
-                statusEl.textContent = "ログイン情報を取得できませんでした。";
-                return;
-            }
-
             saveBtn.disabled = true;
             statusEl.textContent = "保存中...";
 
             try {
+                const accountId = await getCurrentAuthUserId();
+                if (!accountId) {
+                    statusEl.textContent = "認証情報を取得できませんでした。再ログインしてください。";
+                    return;
+                }
+
                 const supabase = getClient();
                 const { data, error } = await supabase
                     .from("general_question_material")
