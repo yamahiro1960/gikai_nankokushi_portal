@@ -325,6 +325,7 @@
         let currentTrackerId = null;
         let currentUpdateTrackerId = null;
         let supabaseClient = null;
+        let pendingFocusTrackerId = null;
 
         const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
         const LEGACY_GEMINI_MODEL_MAP = {
@@ -517,7 +518,7 @@
             }
 
             container.innerHTML = items.map((item) => `
-                <article class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition">
+                <article id="tracker-item-${item.id}" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition">
                     <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
                         <div class="space-y-2">
                             <div class="flex flex-wrap items-center gap-2 text-xs">
@@ -565,6 +566,22 @@
                     </div>
                 </article>
             `).join("");
+
+            applyTrackerFocusIfNeeded(items);
+        }
+
+        function applyTrackerFocusIfNeeded(items) {
+            if (!pendingFocusTrackerId) return;
+
+            const exists = items.some((item) => Number(item.id) === Number(pendingFocusTrackerId));
+            if (!exists) return;
+
+            const target = document.getElementById(`tracker-item-${pendingFocusTrackerId}`);
+            if (!target) return;
+
+            target.classList.add("ring-2", "ring-sky-300", "ring-offset-2");
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+            pendingFocusTrackerId = null;
         }
 
         function filterTrackers() {
@@ -1310,7 +1327,14 @@ ${inputText}`;
         setSelectOptions("update-evaluation", EVALUATION_OPTIONS);
 
         function handleInitialOpenMode() {
-            const openMode = (new URLSearchParams(window.location.search).get("open") || "").trim().toLowerCase();
+            const params = new URLSearchParams(window.location.search);
+            const openMode = (params.get("open") || "").trim().toLowerCase();
+            const focusId = Number(params.get("focusId") || "");
+
+            if (Number.isFinite(focusId) && focusId > 0) {
+                pendingFocusTrackerId = focusId;
+            }
+
             if (openMode === "create") {
                 openTrackerModal(null);
             } else if (openMode === "bulk") {

@@ -30,10 +30,13 @@
         </section>
 
         <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <article class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-emerald-500 hover:shadow-md transition">
+            <article id="material-tile" class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-emerald-500 hover:shadow-md transition cursor-pointer">
                 <div class="text-emerald-500 text-3xl mb-4"><i class="fas fa-box-open"></i></div>
                 <h2 class="text-lg font-bold mb-2">質問の素材</h2>
                 <p class="text-sm text-gray-500 mb-4">論点整理や背景調査のために、AI支援とナレッジを活用します。</p>
+                <button id="open-material-panel-btn" type="button" class="inline-block bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 mb-3">
+                    必要項目を表示
+                </button>
                 <div class="flex flex-wrap gap-2">
                     <a href="ai-assistant.html" class="inline-block bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-100">AIで素材整理</a>
                     <a href="knowledge.html" class="inline-block bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-100">ナレッジ参照</a>
@@ -47,15 +50,104 @@
                 <a href="general-question-tracker.html" class="inline-block bg-sky-100 text-sky-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-sky-200">追跡画面を開く</a>
             </article>
 
-            <article class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-teal-500 hover:shadow-md transition">
+            <article id="create-tile" class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-teal-500 hover:shadow-md transition cursor-pointer">
                 <div class="text-teal-500 text-3xl mb-4"><i class="fas fa-pen-to-square"></i></div>
                 <h2 class="text-lg font-bold mb-2">新規質問作成</h2>
                 <p class="text-sm text-gray-500 mb-4">新しい一般質問案件を登録し、以後の答弁と進捗を追跡できます。</p>
+                <button id="open-create-panel-btn" type="button" class="inline-block bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-700 mb-3">
+                    作成フォームを表示
+                </button>
                 <div class="flex flex-wrap gap-2">
                     <a href="general-question-tracker.html?open=create" class="inline-block bg-teal-100 text-teal-700 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-teal-200">1件登録</a>
                     <a href="general-question-tracker.html?open=bulk" class="inline-block bg-teal-100 text-teal-700 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-teal-200">一括登録</a>
                 </div>
             </article>
+        </section>
+
+        <section id="material-panel" class="hidden mt-8 bg-white p-6 rounded-xl shadow-sm border border-emerald-100">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h2 class="text-xl font-bold text-emerald-700"><i class="fas fa-box-open mr-2"></i>質問の素材（必要項目）</h2>
+                <button id="close-material-panel-btn" type="button" class="text-sm text-gray-500 hover:text-gray-700 font-semibold">閉じる</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label class="text-sm text-gray-700">質問タイトル
+                    <input id="material-title" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="例: 子どもの通学路安全対策について">
+                </label>
+                <label class="text-sm text-gray-700">質問趣旨
+                    <input id="material-purpose" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="質問の目的・背景を簡潔に">
+                </label>
+                <label class="text-sm text-gray-700 md:col-span-2">内容
+                    <textarea id="material-content" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-28" placeholder="論点、課題、根拠データ、住民意見などを整理"></textarea>
+                </label>
+            </div>
+        </section>
+
+        <section id="create-panel" class="hidden mt-6 bg-white p-6 rounded-xl shadow-sm border border-teal-100">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h2 class="text-xl font-bold text-teal-700"><i class="fas fa-pen-to-square mr-2"></i>新規質問作成</h2>
+                <button id="close-create-panel-btn" type="button" class="text-sm text-gray-500 hover:text-gray-700 font-semibold">閉じる</button>
+            </div>
+
+            <div class="mb-4 p-4 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-between gap-3 flex-wrap">
+                <p class="text-sm text-indigo-800 font-semibold">
+                    論点整理や調査の補助に AIアシスタント（試運転）を利用できます。
+                </p>
+                <a href="ai-assistant.html" target="_blank" rel="noopener noreferrer" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                    <i class="fas fa-robot mr-1"></i>AIアシスタント（試運転）を起動
+                </a>
+            </div>
+
+            <form id="new-question-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label class="text-sm text-gray-700">回次
+                    <input id="new-question-session-id" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="例: 446">
+                </label>
+                <label class="text-sm text-gray-700">議員名
+                    <input id="new-question-member-name" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="議員名を入力">
+                </label>
+                <label class="text-sm text-gray-700">質問日
+                    <input id="new-question-date" type="date" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700">委員会
+                    <input id="new-question-committee" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="総務 / 産業建設 / 教育民生">
+                </label>
+                <label class="text-sm text-gray-700">分野
+                    <input id="new-question-category" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="防災 / 子育て / 交通 など">
+                </label>
+                <label class="text-sm text-gray-700">担当部局
+                    <input id="new-question-department" type="text" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="教育委員会 / 総務課 など">
+                </label>
+
+                <label class="text-sm text-gray-700 md:col-span-2">質問タイトル
+                    <input id="new-question-title" type="text" required class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="質問タイトルを入力">
+                </label>
+                <label class="text-sm text-gray-700 md:col-span-2">質問趣旨
+                    <textarea id="new-question-purpose" required class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-24" placeholder="質問の背景、目的、狙いを入力"></textarea>
+                </label>
+                <label class="text-sm text-gray-700 md:col-span-2">内容
+                    <textarea id="new-question-content" required class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-36" placeholder="問い、根拠、想定答弁の観点などを記入"></textarea>
+                </label>
+
+                <div class="md:col-span-2 border border-gray-200 rounded-xl p-4 bg-gray-50">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <h3 class="text-sm font-bold text-gray-700">関連情報の登録（画像・動画・SNSリンク）</h3>
+                        <button id="add-reference-btn" type="button" class="px-3 py-1.5 rounded-lg bg-teal-100 text-teal-700 text-xs font-semibold hover:bg-teal-200">
+                            <i class="fas fa-plus mr-1"></i>項目を追加
+                        </button>
+                    </div>
+                    <div id="reference-list" class="space-y-3"></div>
+                    <p class="text-xs text-gray-500 mt-2">URLを入力して素材情報を登録できます。（例: 画像URL、動画URL、SNS投稿URL）</p>
+                </div>
+
+                <div class="md:col-span-2 flex items-center gap-3 flex-wrap">
+                    <button id="save-draft-btn" type="submit" class="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm">
+                        <i class="fas fa-save mr-1"></i>下書き保存
+                    </button>
+                    <button id="register-tracker-btn" type="button" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold text-sm">
+                        <i class="fas fa-paper-plane mr-1"></i>追跡案件として登録
+                    </button>
+                    <span id="create-form-status" class="text-xs text-gray-500"></span>
+                </div>
+            </form>
         </section>
     </main>
 
@@ -67,10 +159,352 @@
     <script src="auth-config.js"></script>
     <script src="auth.js"></script>
     <script>
+        let dbClient = null;
+        let currentMemberId = "";
+
+        function getClient() {
+            if (dbClient) {
+                return dbClient;
+            }
+            dbClient = window.portalAuth && typeof window.portalAuth.ensureClient === "function"
+                ? window.portalAuth.ensureClient()
+                : window.supabase.createClient(window.AUTH_CONFIG.supabaseUrl, window.AUTH_CONFIG.supabaseAnonKey);
+            return dbClient;
+        }
+
+        function getCurrentMemberId() {
+            if (currentMemberId) {
+                return currentMemberId;
+            }
+            const sess = window.portalAuth && typeof window.portalAuth.getSession === "function"
+                ? window.portalAuth.getSession()
+                : null;
+            currentMemberId = sess && (sess.memberId || sess.userId) ? (sess.memberId || sess.userId) : "";
+            return currentMemberId;
+        }
+
+        function getDraftSettingKey(memberId) {
+            return `user_general_question_draft_${memberId}`;
+        }
+
+        function showPanel(panelId) {
+            document.getElementById("material-panel").classList.toggle("hidden", panelId !== "material-panel");
+            document.getElementById("create-panel").classList.toggle("hidden", panelId !== "create-panel");
+        }
+
+        function closePanel(panelId) {
+            document.getElementById(panelId).classList.add("hidden");
+        }
+
+        function createReferenceRow(initialData) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "grid grid-cols-1 md:grid-cols-12 gap-2 bg-white border border-gray-200 rounded-lg p-3";
+            wrapper.innerHTML = `
+                <label class="text-xs text-gray-600 md:col-span-3">種別
+                    <select class="reference-type mt-1 w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+                        <option value="image">画像</option>
+                        <option value="video">動画</option>
+                        <option value="sns">SNSリンク</option>
+                        <option value="other">その他リンク</option>
+                    </select>
+                </label>
+                <label class="text-xs text-gray-600 md:col-span-6">URL
+                    <input type="url" class="reference-url mt-1 w-full border border-gray-200 rounded px-2 py-1.5 text-sm" placeholder="https://...">
+                </label>
+                <label class="text-xs text-gray-600 md:col-span-2">補足
+                    <input type="text" class="reference-note mt-1 w-full border border-gray-200 rounded px-2 py-1.5 text-sm" placeholder="説明メモ">
+                </label>
+                <div class="md:col-span-1 flex items-end">
+                    <button type="button" class="remove-reference-btn w-full px-2 py-1.5 rounded bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-semibold">削除</button>
+                </div>
+            `;
+
+            if (initialData) {
+                wrapper.querySelector(".reference-type").value = initialData.type || "other";
+                wrapper.querySelector(".reference-url").value = initialData.url || "";
+                wrapper.querySelector(".reference-note").value = initialData.note || "";
+            }
+
+            wrapper.querySelector(".remove-reference-btn").addEventListener("click", () => {
+                wrapper.remove();
+            });
+
+            return wrapper;
+        }
+
+        function getReferencePayload() {
+            const rows = Array.from(document.querySelectorAll("#reference-list > div"));
+            return rows
+                .map((row) => ({
+                    type: row.querySelector(".reference-type").value,
+                    url: row.querySelector(".reference-url").value.trim(),
+                    note: row.querySelector(".reference-note").value.trim()
+                }))
+                .filter((item) => item.url);
+        }
+
+        function applyDraftToForm(draft) {
+            document.getElementById("new-question-session-id").value = draft.sessionId || "";
+            document.getElementById("new-question-member-name").value = draft.memberName || "";
+            document.getElementById("new-question-date").value = draft.questionDate || "";
+            document.getElementById("new-question-committee").value = draft.committee || "";
+            document.getElementById("new-question-category").value = draft.category || "";
+            document.getElementById("new-question-department").value = draft.department || "";
+            document.getElementById("new-question-title").value = draft.title || "";
+            document.getElementById("new-question-purpose").value = draft.purpose || "";
+            document.getElementById("new-question-content").value = draft.content || "";
+
+            const list = document.getElementById("reference-list");
+            list.innerHTML = "";
+            const refs = Array.isArray(draft.references) ? draft.references : [];
+            if (refs.length === 0) {
+                list.appendChild(createReferenceRow());
+            } else {
+                refs.forEach((ref) => list.appendChild(createReferenceRow(ref)));
+            }
+        }
+
+        function loadDraftFromLocalStorage() {
+            try {
+                const raw = localStorage.getItem("generalQuestionCreateDraft");
+                if (!raw) return;
+                const draft = JSON.parse(raw);
+                applyDraftToForm(draft);
+            } catch (error) {
+                console.warn("下書きの読込に失敗:", error);
+            }
+        }
+
+        async function loadDraftFromSupabase() {
+            const memberId = getCurrentMemberId();
+            if (!memberId) {
+                return false;
+            }
+
+            try {
+                const supabase = getClient();
+                const { data, error } = await supabase
+                    .from("meeting_settings")
+                    .select("setting_payload")
+                    .eq("setting_key", getDraftSettingKey(memberId))
+                    .maybeSingle();
+
+                if (error || !data || !data.setting_payload) {
+                    return false;
+                }
+
+                applyDraftToForm(data.setting_payload);
+                document.getElementById("create-form-status").textContent = "保存済み下書きを読み込みました（Supabase）";
+                return true;
+            } catch (error) {
+                console.warn("Supabase下書きの読込に失敗:", error);
+                return false;
+            }
+        }
+
+        async function saveDraftToSupabase(payload) {
+            const memberId = getCurrentMemberId();
+            if (!memberId) {
+                throw new Error("ログイン情報を取得できませんでした");
+            }
+
+            const supabase = getClient();
+            const { error } = await supabase
+                .from("meeting_settings")
+                .upsert({
+                    setting_key: getDraftSettingKey(memberId),
+                    setting_payload: {
+                        ...payload,
+                        memberId,
+                        updatedAt: new Date().toISOString()
+                    }
+                }, { onConflict: "setting_key" });
+
+            if (error) {
+                throw error;
+            }
+        }
+
+        function collectDraftPayload() {
+            return {
+                sessionId: document.getElementById("new-question-session-id").value.trim(),
+                memberName: document.getElementById("new-question-member-name").value.trim(),
+                questionDate: document.getElementById("new-question-date").value || null,
+                committee: document.getElementById("new-question-committee").value.trim(),
+                category: document.getElementById("new-question-category").value.trim(),
+                department: document.getElementById("new-question-department").value.trim(),
+                title: document.getElementById("new-question-title").value.trim(),
+                purpose: document.getElementById("new-question-purpose").value.trim(),
+                content: document.getElementById("new-question-content").value.trim(),
+                references: getReferencePayload(),
+                savedAt: new Date().toISOString()
+            };
+        }
+
+        function buildTrackerPayload(draft) {
+            const referencesText = (draft.references || [])
+                .map((item, index) => `${index + 1}. [${item.type}] ${item.url}${item.note ? ` (${item.note})` : ""}`)
+                .join("\n");
+
+            const sourceExcerpt = [
+                `質問タイトル: ${draft.title}`,
+                "",
+                "内容:",
+                draft.content,
+                "",
+                "関連情報:",
+                referencesText || "(なし)"
+            ].join("\n");
+
+            return {
+                session_id: draft.sessionId,
+                question_date: draft.questionDate || null,
+                member_name: draft.memberName,
+                committee: draft.committee || null,
+                category: draft.category || null,
+                department: draft.department || null,
+                request_summary: draft.purpose,
+                answer_summary: "",
+                action_summary: `作成ページで初回登録: ${draft.title}`,
+                status: "未着手",
+                evaluation: "要確認",
+                priority: "中",
+                progress_percent: 0,
+                follow_up_due: null,
+                hearing_url: null,
+                source_excerpt: sourceExcerpt,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+        }
+
+        function validateForTrackerRegister(draft) {
+            if (!draft.sessionId) {
+                return "回次を入力してください。";
+            }
+            if (!draft.memberName) {
+                return "議員名を入力してください。";
+            }
+            if (!draft.title) {
+                return "質問タイトルを入力してください。";
+            }
+            if (!draft.purpose) {
+                return "質問趣旨を入力してください。";
+            }
+            if (!draft.content) {
+                return "内容を入力してください。";
+            }
+            return "";
+        }
+
+        async function registerToTracker() {
+            const statusEl = document.getElementById("create-form-status");
+            const registerBtn = document.getElementById("register-tracker-btn");
+            const draft = collectDraftPayload();
+
+            const validationMessage = validateForTrackerRegister(draft);
+            if (validationMessage) {
+                statusEl.textContent = validationMessage;
+                return;
+            }
+
+            registerBtn.disabled = true;
+            statusEl.textContent = "追跡案件へ登録中...";
+
+            localStorage.setItem("generalQuestionCreateDraft", JSON.stringify(draft));
+
+            try {
+                await saveDraftToSupabase(draft);
+                const supabase = getClient();
+                const trackerPayload = buildTrackerPayload(draft);
+                const { data, error } = await supabase
+                    .from("general_question_tracker")
+                    .insert(trackerPayload)
+                    .select("id")
+                    .single();
+
+                if (error) {
+                    throw error;
+                }
+
+                const trackerId = data && data.id ? data.id : "";
+                statusEl.textContent = trackerId
+                    ? `追跡案件として登録しました（ID: ${trackerId}）`
+                    : "追跡案件として登録しました。";
+
+                if (trackerId) {
+                    setTimeout(() => {
+                        window.location.href = `general-question-tracker.html?focusId=${encodeURIComponent(String(trackerId))}`;
+                    }, 500);
+                }
+            } catch (error) {
+                console.error(error);
+                statusEl.textContent = `追跡案件登録に失敗しました: ${error.message || "不明なエラー"}`;
+            } finally {
+                registerBtn.disabled = false;
+            }
+        }
+
+        document.getElementById("open-material-panel-btn").addEventListener("click", () => showPanel("material-panel"));
+        document.getElementById("open-create-panel-btn").addEventListener("click", () => showPanel("create-panel"));
+        document.getElementById("close-material-panel-btn").addEventListener("click", () => closePanel("material-panel"));
+        document.getElementById("close-create-panel-btn").addEventListener("click", () => closePanel("create-panel"));
+
+        document.getElementById("material-tile").addEventListener("click", (event) => {
+            if (event.target.closest("a, button, input, textarea, select, label")) {
+                return;
+            }
+            showPanel("material-panel");
+        });
+
+        document.getElementById("create-tile").addEventListener("click", (event) => {
+            if (event.target.closest("a, button, input, textarea, select, label")) {
+                return;
+            }
+            showPanel("create-panel");
+        });
+
+        document.getElementById("add-reference-btn").addEventListener("click", () => {
+            document.getElementById("reference-list").appendChild(createReferenceRow());
+        });
+        document.getElementById("register-tracker-btn").addEventListener("click", registerToTracker);
+
+        document.getElementById("new-question-form").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const payload = collectDraftPayload();
+
+            const submitButton = event.target.querySelector("button[type='submit']");
+            submitButton.disabled = true;
+            localStorage.setItem("generalQuestionCreateDraft", JSON.stringify(payload));
+            try {
+                await saveDraftToSupabase(payload);
+                document.getElementById("create-form-status").textContent = `登録しました（Supabase保存）: ${new Date(payload.savedAt).toLocaleString("ja-JP")}`;
+            } catch (error) {
+                console.warn("Supabase保存に失敗:", error);
+                document.getElementById("create-form-status").textContent = `Supabase保存に失敗したため、ブラウザ下書きとして保存しました: ${new Date(payload.savedAt).toLocaleString("ja-JP")}`;
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+
+        if (document.getElementById("reference-list").children.length === 0) {
+            document.getElementById("reference-list").appendChild(createReferenceRow());
+        }
+        loadDraftFromLocalStorage();
+
         portalAuth.init({
             requireAuth: true,
             minRole: "viewer",
-            returnTo: "general-question-create.html"
+            returnTo: "general-question-create.html",
+            onReady: async (context) => {
+                const session = context && context.session ? context.session : null;
+                const displayName = session && (session.displayName || session.email) ? (session.displayName || session.email) : "";
+                const memberNameInput = document.getElementById("new-question-member-name");
+                if (memberNameInput && !memberNameInput.value && displayName) {
+                    memberNameInput.value = displayName;
+                }
+                await loadDraftFromSupabase();
+            }
         });
     </script>
 </body>
