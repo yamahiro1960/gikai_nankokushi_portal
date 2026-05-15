@@ -74,6 +74,12 @@
                     <textarea id="material-content" class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 h-28" placeholder="論点、課題、根拠データ、住民意見などを整理"></textarea>
                 </label>
             </div>
+            <div class="mt-4 flex items-center gap-3 flex-wrap">
+                <button id="save-material-btn" type="button" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm">
+                    <i class="fas fa-save mr-1"></i>保存
+                </button>
+                <span id="material-form-status" class="text-xs text-gray-500"></span>
+            </div>
         </section>
 
         <section id="material-list-panel" class="hidden mt-8 bg-white p-6 rounded-xl shadow-sm border border-emerald-100">
@@ -212,6 +218,80 @@
 
         function closePanel(panelId) {
             document.getElementById(panelId).classList.add("hidden");
+        }
+
+        function collectMaterialPayload() {
+            return {
+                title: document.getElementById("material-title").value.trim(),
+                summary: document.getElementById("material-purpose").value.trim(),
+                content: document.getElementById("material-content").value.trim()
+            };
+        }
+
+        function validateMaterialPayload(payload) {
+            if (!payload.title) {
+                return "質問タイトルを入力してください。";
+            }
+            if (!payload.summary) {
+                return "質問趣旨を入力してください。";
+            }
+            if (!payload.content) {
+                return "内容を入力してください。";
+            }
+            return "";
+        }
+
+        async function saveMaterial() {
+            const statusEl = document.getElementById("material-form-status");
+            const saveBtn = document.getElementById("save-material-btn");
+            const payload = collectMaterialPayload();
+            const validationMessage = validateMaterialPayload(payload);
+
+            if (validationMessage) {
+                statusEl.textContent = validationMessage;
+                return;
+            }
+
+            const sess = window.portalAuth && typeof window.portalAuth.getSession === "function"
+                ? window.portalAuth.getSession()
+                : null;
+            const accountId = sess && sess.userId ? sess.userId : "";
+            if (!accountId) {
+                statusEl.textContent = "ログイン情報を取得できませんでした。";
+                return;
+            }
+
+            saveBtn.disabled = true;
+            statusEl.textContent = "保存中...";
+
+            try {
+                const supabase = getClient();
+                const { data, error } = await supabase
+                    .from("general_question_material")
+                    .insert({
+                        account_id: accountId,
+                        category: null,
+                        title: payload.title,
+                        summary: payload.summary,
+                        content: payload.content,
+                        updated_at: new Date().toISOString()
+                    })
+                    .select("id")
+                    .single();
+
+                if (error) {
+                    throw error;
+                }
+
+                statusEl.textContent = data && data.id
+                    ? `素材を保存しました（ID: ${data.id}）`
+                    : "素材を保存しました。";
+            } catch (error) {
+                console.error(error);
+                statusEl.textContent = `保存に失敗しました: ${error.message || "不明なエラー"}`;
+            } finally {
+                saveBtn.disabled = false;
+            }
         }
 
         async function loadMaterialList() {
@@ -508,6 +588,7 @@
         document.getElementById("close-material-panel-btn").addEventListener("click", () => closePanel("material-panel"));
         document.getElementById("close-material-list-btn").addEventListener("click", () => closePanel("material-list-panel"));
         document.getElementById("close-create-panel-btn").addEventListener("click", () => closePanel("create-panel"));
+        document.getElementById("save-material-btn").addEventListener("click", saveMaterial);
 
         document.getElementById("material-tile").addEventListener("click", (event) => {
             if (event.target.closest("a, button, input, textarea, select, label")) {
