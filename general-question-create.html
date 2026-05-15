@@ -94,13 +94,14 @@
                             <th class="text-left px-3 py-2 font-semibold text-emerald-700">分野</th>
                             <th class="text-left px-3 py-2 font-semibold text-emerald-700">タイトル</th>
                             <th class="text-left px-3 py-2 font-semibold text-emerald-700">概要</th>
+                            <th class="text-left px-3 py-2 font-semibold text-emerald-700">内容</th>
                             <th class="text-left px-3 py-2 font-semibold text-emerald-700">作成日</th>
                             <th class="text-left px-3 py-2 font-semibold text-emerald-700">更新日</th>
                         </tr>
                     </thead>
                     <tbody id="material-list-body">
                         <tr>
-                            <td class="px-3 py-2 text-gray-500 text-center" colspan="5">読み込み中...</td>
+                            <td class="px-3 py-2 text-gray-500 text-center" colspan="6">読み込み中...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -334,19 +335,19 @@
 
         async function loadMaterialList() {
             const tbody = document.getElementById("material-list-body");
-            tbody.innerHTML = '<tr><td class="px-3 py-2 text-gray-500 text-center" colspan="5">読み込み中...</td></tr>';
+            tbody.innerHTML = '<tr><td class="px-3 py-2 text-gray-500 text-center" colspan="6">読み込み中...</td></tr>';
 
             try {
                 const accountId = await resolveAccountId();
                 if (!accountId) {
-                    tbody.innerHTML = '<tr><td class="px-3 py-2 text-gray-500 text-center" colspan="5">アカウント情報を取得できません</td></tr>';
+                    tbody.innerHTML = '<tr><td class="px-3 py-2 text-gray-500 text-center" colspan="6">アカウント情報を取得できません</td></tr>';
                     return;
                 }
 
                 const supabase = getClient();
                 const { data, error } = await supabase
                     .from("general_question_material")
-                    .select("id, category, title, summary, created_at, updated_at")
+                    .select("id, category, title, summary, content, created_at, updated_at")
                     .eq("account_id", accountId)
                     .order("created_at", { ascending: false });
 
@@ -355,7 +356,7 @@
                 }
 
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td class="px-3 py-2 text-gray-500 text-center" colspan="5">登録済みの素材がありません</td></tr>';
+                    tbody.innerHTML = '<tr><td class="px-3 py-2 text-gray-500 text-center" colspan="6">登録済みの素材がありません</td></tr>';
                     return;
                 }
 
@@ -364,13 +365,14 @@
                         <td class="px-3 py-2 text-gray-700">${item.category || ""}</td>
                         <td class="px-3 py-2 text-gray-700">${item.title || ""}</td>
                         <td class="px-3 py-2 text-gray-700 truncate" title="${item.summary || ""}">${item.summary || ""}</td>
+                        <td class="px-3 py-2 text-gray-700 truncate" title="${item.content || ""}">${item.content || ""}</td>
                         <td class="px-3 py-2 text-gray-700">${item.created_at ? item.created_at.substring(0, 10) : ""}</td>
                         <td class="px-3 py-2 text-gray-700">${item.updated_at ? item.updated_at.substring(0, 10) : ""}</td>
                     </tr>
                 `).join("");
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = `<tr><td class="px-3 py-2 text-red-500 text-center" colspan="5">データ読み込みエラー: ${error.message || "不明なエラー"}</td></tr>`;
+                tbody.innerHTML = `<tr><td class="px-3 py-2 text-red-500 text-center" colspan="6">データ読み込みエラー: ${error.message || "不明なエラー"}</td></tr>`;
             }
         }
 
