@@ -112,7 +112,7 @@
             </div>
 
             <!-- 開発者・システム設定 -->
-            <div class="bg-gray-100 p-6 rounded-xl shadow-sm border-t-4 border-gray-400 hover:shadow-md transition">
+            <div id="system-settings-tile" class="bg-gray-100 p-6 rounded-xl shadow-sm border-t-4 border-gray-400 hover:shadow-md transition hidden">
                 <div class="text-gray-400 text-3xl mb-4"><i class="fas fa-cog"></i></div>
                 <h3 class="text-lg font-bold mb-2 text-gray-600">システム設定</h3>
                 <p class="text-sm text-gray-400 mb-4">GitHub/clasp連携、データベースのメンテナンスを行います。</p>
@@ -211,6 +211,15 @@
                     if (greetingElement) {
                         const greeting = window.portalAuth.generateGreeting(context.profile, context.session);
                         greetingElement.textContent = greeting;
+                    }
+                }
+
+                const systemSettingsTile = document.getElementById("system-settings-tile");
+                if (systemSettingsTile) {
+                    if (context.role === "admin") {
+                        systemSettingsTile.classList.remove("hidden");
+                    } else {
+                        systemSettingsTile.classList.add("hidden");
                     }
                 }
 

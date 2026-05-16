@@ -27,7 +27,33 @@
             </a>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-gray-400">
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-cyan-500 mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                <h1 class="text-2xl font-bold text-gray-700">メンバー一覧表</h1>
+                <span class="text-xs sm:text-sm text-cyan-700 bg-cyan-50 border border-cyan-200 px-3 py-1 rounded-full">全員閲覧可 / 本人のみ編集可</span>
+            </div>
+            <p class="text-gray-600 mb-4 text-sm">氏名をタップすると修正画面が開きます。編集できるのは自分の情報のみです。</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-2 border">氏名</th>
+                            <th class="text-left p-2 border">電話番号</th>
+                        </tr>
+                    </thead>
+                    <tbody id="member-directory-list">
+                        <tr>
+                            <td class="p-2 border text-gray-500" colspan="2">読み込み中です...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p id="member-directory-message" class="mt-3 text-sm text-gray-600"></p>
+        </section>
+
+        <p id="admin-section-note" class="text-sm text-gray-600 mb-4 hidden">システム設定は管理者のみ表示されます。</p>
+
+        <div id="admin-settings-section" class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-gray-400 hidden">
             <h1 class="text-2xl font-bold mb-2 text-gray-700">システム設定</h1>
             <p class="text-gray-600 mb-6">各種設定メニューから、ユーザー管理・資料管理・運用設定を行います。</p>
 
@@ -135,6 +161,28 @@
         </div>
     </main>
 
+    <div id="member-edit-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">自分の情報を修正</h2>
+            <form id="member-edit-form" class="space-y-4">
+                <input id="edit_member_id" type="hidden">
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">名前</label>
+                    <input id="edit_full_name" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="名前を入力">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">電話番号</label>
+                    <input id="edit_phone" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 088-000-0000">
+                </div>
+                <div class="flex gap-3 justify-end pt-2">
+                    <button type="button" id="member-edit-cancel" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold">閉じる</button>
+                    <button type="submit" class="bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 rounded-lg text-sm font-semibold">保存</button>
+                </div>
+            </form>
+            <p id="member-edit-message" class="mt-3 text-sm text-gray-600"></p>
+        </div>
+    </div>
+
     <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
         &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
     </footer>
@@ -143,6 +191,139 @@
     <script src="auth.js"></script>
     <script>
         let dbClient = null;
+        let currentUserMemberId = "";
+        let currentUserEmail = "";
+        let memberRows = [];
+
+        function normalizeEmail(value) {
+            return String(value || "").trim().toLowerCase();
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function isOwnMemberRow(item) {
+            if (!item) {
+                return false;
+            }
+
+            if (currentUserMemberId && item.member_id === currentUserMemberId) {
+                return true;
+            }
+
+            const rowEmail = normalizeEmail(item.email);
+            return !!(currentUserEmail && rowEmail && rowEmail === currentUserEmail);
+        }
+
+        function closeMemberEditModal() {
+            document.getElementById("member-edit-modal").classList.add("hidden");
+            document.getElementById("member-edit-message").textContent = "";
+        }
+
+        function openMemberEditModal(item) {
+            document.getElementById("edit_member_id").value = item.member_id || "";
+            document.getElementById("edit_full_name").value = item.full_name || "";
+            document.getElementById("edit_phone").value = item.phone || "";
+            document.getElementById("member-edit-message").textContent = "";
+            document.getElementById("member-edit-modal").classList.remove("hidden");
+        }
+
+        async function loadMemberDirectory() {
+            const tbody = document.getElementById("member-directory-list");
+            const message = document.getElementById("member-directory-message");
+            tbody.innerHTML = "";
+            message.textContent = "";
+
+            const { data, error } = await dbClient
+                .from("member_directory")
+                .select("member_id,full_name,phone,email")
+                .order("member_id", { ascending: true });
+
+            if (error) {
+                message.textContent = "メンバー一覧の読込に失敗しました: " + error.message;
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="2">データを表示できませんでした。</td></tr>';
+                return;
+            }
+
+            memberRows = data || [];
+
+            if (memberRows.length === 0) {
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="2">登録データがありません。</td></tr>';
+                return;
+            }
+
+            memberRows.forEach((item) => {
+                const tr = document.createElement("tr");
+                const canEdit = isOwnMemberRow(item);
+                const nameText = escapeHtml(item.full_name || "");
+                const phoneText = escapeHtml(item.phone || "-");
+
+                tr.innerHTML = `
+                    <td class="p-2 border">
+                        ${canEdit
+                            ? `<button class="text-cyan-700 hover:text-cyan-900 underline" data-edit-self="${escapeHtml(item.member_id || "")}">${nameText}</button>`
+                            : `<span>${nameText}</span>`}
+                    </td>
+                    <td class="p-2 border">${phoneText}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            tbody.querySelectorAll("button[data-edit-self]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const memberId = btn.getAttribute("data-edit-self") || "";
+                    const target = memberRows.find((row) => row.member_id === memberId);
+                    if (!target || !isOwnMemberRow(target)) {
+                        return;
+                    }
+                    openMemberEditModal(target);
+                });
+            });
+        }
+
+        async function saveOwnMember(event) {
+            event.preventDefault();
+
+            const memberId = document.getElementById("edit_member_id").value.trim();
+            const fullName = document.getElementById("edit_full_name").value.trim();
+            const phone = document.getElementById("edit_phone").value.trim();
+            const message = document.getElementById("member-edit-message");
+
+            if (!memberId || !fullName) {
+                message.textContent = "名前を入力してください。";
+                return;
+            }
+
+            const target = memberRows.find((row) => row.member_id === memberId);
+            if (!target || !isOwnMemberRow(target)) {
+                message.textContent = "自分以外の情報は編集できません。";
+                return;
+            }
+
+            const { error } = await dbClient
+                .from("member_directory")
+                .update({
+                    full_name: fullName,
+                    phone: phone || null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq("member_id", memberId);
+
+            if (error) {
+                message.textContent = "更新に失敗しました: " + error.message;
+                return;
+            }
+
+            closeMemberEditModal();
+            document.getElementById("member-directory-message").textContent = "自分の情報を更新しました。";
+            await loadMemberDirectory();
+        }
 
         function clearAnnouncementForm() {
             document.getElementById("announcement-form").reset();
@@ -298,16 +479,37 @@
 
         document.getElementById("announcement-form").addEventListener("submit", saveAnnouncement);
         document.getElementById("announcement-clear").addEventListener("click", clearAnnouncementForm);
+        document.getElementById("member-edit-cancel").addEventListener("click", closeMemberEditModal);
+        document.getElementById("member-edit-form").addEventListener("submit", saveOwnMember);
+        document.getElementById("member-edit-modal").addEventListener("click", (event) => {
+            if (event.target && event.target.id === "member-edit-modal") {
+                closeMemberEditModal();
+            }
+        });
 
         portalAuth.init({
             requireAuth: true,
-            minRole: "admin",
+            minRole: "viewer",
             authTargetId: "authArea",
             returnTo: "system-settings.html",
-            onReady: async ({ client }) => {
+            onReady: async ({ client, role, session, profile }) => {
                 dbClient = client;
-                clearAnnouncementForm();
-                await loadAnnouncements();
+                currentUserMemberId = (session && session.memberId) ? String(session.memberId) : "";
+                currentUserEmail = normalizeEmail((session && session.email) || (profile && profile.email) || "");
+
+                await loadMemberDirectory();
+
+                const adminSection = document.getElementById("admin-settings-section");
+                const adminNote = document.getElementById("admin-section-note");
+                if (role === "admin") {
+                    adminSection.classList.remove("hidden");
+                    adminNote.classList.add("hidden");
+                    clearAnnouncementForm();
+                    await loadAnnouncements();
+                } else {
+                    adminSection.classList.add("hidden");
+                    adminNote.classList.remove("hidden");
+                }
             }
         });
     </script>

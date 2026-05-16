@@ -216,6 +216,8 @@
         &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
     </footer>
 
+    <div id="flow-message" class="fixed top-5 right-5 z-50 hidden max-w-sm rounded-xl px-4 py-3 text-sm font-semibold shadow-lg"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
     <script src="auth.js"></script>
@@ -230,6 +232,67 @@
             "事務局長": "局長",
             "副事務局長": "副局長"
         };
+        let flowMessageTimer = null;
+
+        function normalizeEmail(email) {
+            return String(email || "").trim().toLowerCase();
+        }
+
+        function showFlowMessage(message, type = "success") {
+            const panel = document.getElementById("flow-message");
+            if (!panel) {
+                return;
+            }
+
+            panel.classList.remove("hidden", "bg-emerald-600", "bg-rose-600", "bg-amber-500", "text-white");
+            panel.classList.add("text-white");
+            if (type === "error") {
+                panel.classList.add("bg-rose-600");
+            } else if (type === "warn") {
+                panel.classList.add("bg-amber-500");
+            } else {
+                panel.classList.add("bg-emerald-600");
+            }
+
+            panel.textContent = message;
+
+            if (flowMessageTimer) {
+                clearTimeout(flowMessageTimer);
+            }
+            flowMessageTimer = setTimeout(() => {
+                panel.classList.add("hidden");
+            }, 2600);
+        }
+
+        async function checkDuplicateMember({ memberId, fullName, email }) {
+            const normalizedEmail = normalizeEmail(email);
+
+            const { data, error } = await dbClient
+                .from("member_directory")
+                .select("member_id,full_name,email");
+
+            if (error) {
+                throw error;
+            }
+
+            const rows = data || [];
+            const duplicateByEmail = rows.find((row) => {
+                if (row.member_id === memberId) {
+                    return false;
+                }
+                return normalizeEmail(row.email) === normalizedEmail;
+            });
+
+            if (duplicateByEmail) {
+                return {
+                    duplicated: true,
+                    reason: "email",
+                    message: `同じメールアドレスは登録できません（${duplicateByEmail.full_name || duplicateByEmail.member_id}）。`
+                };
+            }
+
+            return { duplicated: false };
+        }
 
         function getGeminiSettingKey(memberId) {
             return `user_gemini_${memberId}`;
@@ -425,7 +488,7 @@
                 category,
                 position_name: positionName,
                 access_role: accessRole,
-                email: document.getElementById("email").value.trim() || null,
+                email: normalizeEmail(document.getElementById("email").value) || null,
                 committee: document.getElementById("committee").value || null,
                 committee_role: document.getElementById("committee_role").value || null,
                 is_giun: document.getElementById("is_giun").value === "true",
@@ -445,6 +508,32 @@
 
             if (!/@gmail\.com$/i.test(payload.email)) {
                 document.getElementById("form-message").textContent = "Gmailアドレス（@gmail.com）を入力してください。";
+                showFlowMessage("保存できませんでした（メール形式を確認してください）。", "error");
+                return;
+            }
+
+            if (!payload.full_name || !payload.full_name.trim()) {
+                document.getElementById("form-message").textContent = "氏名を入力してください。";
+                showFlowMessage("保存できませんでした（氏名を入力してください）。", "error");
+                return;
+            }
+
+            let duplicateCheck;
+            try {
+                duplicateCheck = await checkDuplicateMember({
+                    memberId: payload.member_id,
+                    fullName: payload.full_name,
+                    email: payload.email
+                });
+            } catch (dupError) {
+                document.getElementById("form-message").textContent = "重複チェック失敗: " + dupError.message;
+                showFlowMessage("保存できませんでした（重複チェック失敗）。", "error");
+                return;
+            }
+
+            if (duplicateCheck.duplicated) {
+                document.getElementById("form-message").textContent = duplicateCheck.message;
+                showFlowMessage("同じメールアドレスがあるため保存できません。", "warn");
                 return;
             }
 
@@ -452,6 +541,7 @@
                 const adminCount = await getAdminCount(currentMemberId);
                 if (adminCount >= 4) {
                     document.getElementById("form-message").textContent = "管理者は4人までしか登録できません。";
+                    showFlowMessage("保存できませんでした（管理者は4人まで）。", "error");
                     return;
                 }
             }
@@ -462,6 +552,7 @@
 
             if (error) {
                 document.getElementById("form-message").textContent = "保存失敗: " + error.message;
+                showFlowMessage("保存できませんでした。", "error");
                 return;
             }
 
@@ -485,6 +576,7 @@
 
                 if (keyError) {
                     document.getElementById("form-message").textContent = "利用者情報は保存しましたが、APIキー保存に失敗: " + keyError.message;
+                    showFlowMessage("利用者は保存、APIキーは失敗しました。", "warn");
                     await loadMembers();
                     return;
                 }
@@ -496,6 +588,7 @@
             }
 
             document.getElementById("form-message").textContent = "保存しました。";
+            showFlowMessage("登録内容を保存しました。", "success");
             clearForm();
             await loadMembers();
         }

@@ -206,8 +206,16 @@ create policy member_directory_insert_admin on public.member_directory
 for insert with check (public.is_portal_admin());
 
 drop policy if exists member_directory_update_admin on public.member_directory;
-create policy member_directory_update_admin on public.member_directory
-for update using (public.is_portal_admin());
+drop policy if exists member_directory_update_admin_or_self on public.member_directory;
+create policy member_directory_update_admin_or_self on public.member_directory
+for update using (
+    public.is_portal_admin()
+    or lower(trim(email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+)
+with check (
+    public.is_portal_admin()
+    or lower(trim(email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+);
 
 drop policy if exists member_directory_delete_admin on public.member_directory;
 create policy member_directory_delete_admin on public.member_directory
