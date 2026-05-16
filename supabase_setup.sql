@@ -73,7 +73,9 @@ create table if not exists public.member_directory (
     committee text check (committee in ('総務委員会', '産業建設委員会', '教育民生委員会', '総務', '産業建設', '教育民生')),
     committee_role text check (committee_role in ('委員長', '副委員長', '委員')),
     is_giun boolean not null default false,
+    giun_role text check (giun_role in ('委員長', '委員')),
     is_editorial_committee boolean not null default false,
+    editorial_role text check (editorial_role in ('委員長', '委員')),
     notes text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -101,6 +103,42 @@ on public.announcements (notice_date desc, start_time asc);
 alter table public.member_directory add column if not exists is_current boolean not null default true;
 alter table public.member_directory add column if not exists access_role text not null default '使用者';
 alter table public.member_directory add column if not exists furigana text;
+alter table public.member_directory add column if not exists giun_role text;
+alter table public.member_directory add column if not exists editorial_role text;
+
+-- 既存DB向け: 役職フィールドの値を正規化し、制約を安全に追加
+update public.member_directory
+set giun_role = null
+where giun_role is not null
+  and giun_role not in ('委員長', '委員');
+
+update public.member_directory
+set editorial_role = null
+where editorial_role is not null
+  and editorial_role not in ('委員長', '委員');
+
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'member_directory_giun_role_check'
+    ) then
+        alter table public.member_directory
+            add constraint member_directory_giun_role_check
+            check (giun_role is null or giun_role in ('委員長', '委員'));
+    end if;
+
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'member_directory_editorial_role_check'
+    ) then
+        alter table public.member_directory
+            add constraint member_directory_editorial_role_check
+            check (editorial_role is null or editorial_role in ('委員長', '委員'));
+    end if;
+end $$;
 
 alter table public.profiles enable row level security;
 alter table public.meeting_settings enable row level security;

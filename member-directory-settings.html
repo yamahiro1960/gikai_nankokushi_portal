@@ -129,10 +129,26 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">編集委員ですか？</label>
+                    <label class="text-sm font-semibold text-gray-700">議運の役職</label>
+                    <select id="giun_role" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">未設定</option>
+                        <option value="委員長">委員長</option>
+                        <option value="委員">委員</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">編集委員会メンバーですか？</label>
                     <select id="is_editorial_committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="true">YES</option>
                         <option value="false" selected>NO</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">編集委員会の役職</label>
+                    <select id="editorial_role" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">未設定</option>
+                        <option value="委員長">委員長</option>
+                        <option value="委員">委員</option>
                     </select>
                 </div>
                 <div class="md:col-span-2">
@@ -170,7 +186,9 @@
                             <th class="text-left p-2 border">役職</th>
                             <th class="text-left p-2 border">委員会</th>
                             <th class="text-left p-2 border">議運メンバーですか？</th>
+                            <th class="text-left p-2 border">議運役職</th>
                             <th class="text-left p-2 border">編集委員ですか？</th>
+                            <th class="text-left p-2 border">編集委員会役職</th>
                             <th class="text-left p-2 border">操作</th>
                         </tr>
                     </thead>
@@ -181,21 +199,27 @@
 
         <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-cyan-500 mt-6">
             <h2 class="text-xl font-bold mb-4 text-gray-700">メンバーまとめ表示</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                 <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                    <h3 class="text-sm font-bold text-gray-700 mb-2">1. 正副議長</h3>
+                    <h3 class="text-sm font-bold text-gray-700 mb-2">正副議長</h3>
                     <ul id="leaders-summary-list" class="text-sm text-gray-700 space-y-1">
                         <li class="text-gray-500">データを読み込み中です...</li>
                     </ul>
                 </div>
                 <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                    <h3 class="text-sm font-bold text-gray-700 mb-2">2. 委員会一覧</h3>
+                    <h3 class="text-sm font-bold text-gray-700 mb-2">議会運営委員会</h3>
+                    <ul id="giun-summary-list" class="text-sm text-gray-700 space-y-1">
+                        <li class="text-gray-500">データを読み込み中です...</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-2">委員会一覧</h3>
                     <ul id="committee-summary-list" class="text-sm text-gray-700 space-y-1">
                         <li class="text-gray-500">データを読み込み中です...</li>
                     </ul>
                 </div>
                 <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                    <h3 class="text-sm font-bold text-gray-700 mb-2">3. 編集委員一覧</h3>
+                    <h3 class="text-sm font-bold text-gray-700 mb-2">編集委員会</h3>
                     <ul id="editorial-summary-list" class="text-sm text-gray-700 space-y-1">
                         <li class="text-gray-500">データを読み込み中です...</li>
                     </ul>
@@ -352,48 +376,94 @@
             list.innerHTML = lines.map((line) => `<li>${line}</li>`).join("");
         }
 
+        function renderCommitteeBlocks(targetId, blocks, emptyText) {
+            const list = document.getElementById(targetId);
+            if (!list) return;
+
+            if (!blocks || blocks.length === 0) {
+                list.innerHTML = `<li class="text-gray-500">${emptyText}</li>`;
+                return;
+            }
+
+            list.innerHTML = blocks.map((block) => {
+                const memberLines = block.members.length > 0
+                    ? block.members.map((name, index) => `${index === 0 ? "委員" : "　　"}：${name}`).join("<br>")
+                    : "委員：未設定";
+
+                return `
+                    <li class="mb-3">
+                        <div class="font-semibold">${block.committeeName}</div>
+                        <div>委員長：${block.chairName}</div>
+                        <div>${memberLines}</div>
+                    </li>
+                `;
+            }).join("");
+        }
+
         function renderMemberSummaries(items) {
             const rows = items || [];
 
-            const leaders = rows
-                .filter((item) => item.position_name === "議長" || item.position_name === "副議長")
-                .sort((a, b) => {
-                    const rankA = a.position_name === "議長" ? 0 : 1;
-                    const rankB = b.position_name === "議長" ? 0 : 1;
-                    if (rankA !== rankB) return rankA - rankB;
-                    return String(a.furigana || "").localeCompare(String(b.furigana || ""), "ja");
-                })
-                .map((item) => `${escapeHtml(item.position_name)}: ${escapeHtml(item.full_name)}${item.furigana ? ` (${escapeHtml(item.furigana)})` : ""}`);
+            const chairPerson = rows.find((item) => item.position_name === "議長");
+            const viceChairPerson = rows.find((item) => item.position_name === "副議長");
+            const leaders = [
+                `議長：${chairPerson ? escapeHtml(chairPerson.full_name) : ""}`,
+                `副議長：${viceChairPerson ? escapeHtml(viceChairPerson.full_name) : ""}`
+            ];
+
+            const giunMembers = rows
+                .filter((item) => item.is_giun)
+                .sort((a, b) => String(a.furigana || "").localeCompare(String(b.furigana || ""), "ja"));
+            const giunChair = giunMembers.find((item) => normalizeMemberRole(item.giun_role || item.committee_role) === "委員長");
+            const giunOthers = giunMembers
+                .filter((item) => !giunChair || item.member_id !== giunChair.member_id)
+                .map((item, index) => `${index === 0 ? "委員" : "　　"}：${escapeHtml(item.full_name)}`);
+            const giunLines = [
+                `委員長：${giunChair ? escapeHtml(giunChair.full_name) : ""}`,
+                ...(giunOthers.length > 0 ? giunOthers : ["委員："])
+            ];
 
             const committeeOrder = ["総務委員会", "産業建設委員会", "教育民生委員会"];
-            const committeeRoleOrder = { "委員長": 0, "副委員長": 1, "委員": 2 };
             const committees = committeeOrder
                 .map((committeeName) => {
-                    const members = rows
+                    const committeeMembers = rows
                         .filter((item) => normalizeCommitteeName(item.committee) === committeeName)
                         .sort((a, b) => {
-                            const roleDiff = (committeeRoleOrder[a.committee_role] ?? 99) - (committeeRoleOrder[b.committee_role] ?? 99);
-                            if (roleDiff !== 0) return roleDiff;
                             return String(a.furigana || "").localeCompare(String(b.furigana || ""), "ja");
-                        })
-                        .map((item) => `${escapeHtml(item.full_name)}${item.committee_role ? `(${escapeHtml(item.committee_role)})` : ""}`);
+                        });
 
-                    if (members.length === 0) {
+                    if (committeeMembers.length === 0) {
                         return null;
                     }
 
-                    return `${escapeHtml(committeeName)}: ${members.join("、")}`;
+                    const chair = committeeMembers.find((item) => item.committee_role === "委員長");
+                    const memberNames = committeeMembers
+                        .filter((item) => item.committee_role !== "委員長")
+                        .map((item) => escapeHtml(item.full_name));
+
+                    return {
+                        committeeName: escapeHtml(committeeName),
+                        chairName: chair ? escapeHtml(chair.full_name) : "",
+                        members: memberNames
+                    };
                 })
                 .filter(Boolean);
 
-            const editorials = rows
+            const editorialMembers = rows
                 .filter((item) => item.is_editorial_committee)
-                .sort((a, b) => String(a.furigana || "").localeCompare(String(b.furigana || ""), "ja"))
-                .map((item) => `${escapeHtml(item.full_name)}${item.furigana ? ` (${escapeHtml(item.furigana)})` : ""}`);
+                .sort((a, b) => String(a.furigana || "").localeCompare(String(b.furigana || ""), "ja"));
+            const editorialChair = editorialMembers.find((item) => normalizeMemberRole(item.editorial_role || item.committee_role) === "委員長");
+            const editorialOthers = editorialMembers
+                .filter((item) => !editorialChair || item.member_id !== editorialChair.member_id)
+                .map((item, index) => `${index === 0 ? "委員" : "　　"}：${escapeHtml(item.full_name)}`);
+            const editorialLines = [
+                `委員長：${editorialChair ? escapeHtml(editorialChair.full_name) : ""}`,
+                ...(editorialOthers.length > 0 ? editorialOthers : ["委員："])
+            ];
 
             renderList("leaders-summary-list", leaders, "該当者はいません。");
-            renderList("committee-summary-list", committees, "委員会データはありません。");
-            renderList("editorial-summary-list", editorials, "該当者はいません。");
+            renderList("giun-summary-list", giunLines, "該当者はいません。");
+            renderCommitteeBlocks("committee-summary-list", committees, "委員会データはありません。");
+            renderList("editorial-summary-list", editorialLines, "該当者はいません。");
         }
 
         function normalizePosition(category, positionName) {
@@ -409,6 +479,14 @@
             if (raw === "産業建設") return "産業建設委員会";
             if (raw === "教育民生") return "教育民生委員会";
             return raw;
+        }
+
+        function normalizeMemberRole(value) {
+            const raw = String(value || "").trim();
+            if (raw === "委員長" || raw === "委員") {
+                return raw;
+            }
+            return "";
         }
 
         function renderPositionOptions(category, selectedValue = "未") {
@@ -479,7 +557,9 @@
             document.getElementById("committee").value = normalizeCommitteeName(item.committee);
             document.getElementById("committee_role").value = item.committee_role || "";
             document.getElementById("is_giun").value = item.is_giun ? "true" : "false";
+            document.getElementById("giun_role").value = normalizeMemberRole(item.giun_role || item.committee_role);
             document.getElementById("is_editorial_committee").value = item.is_editorial_committee ? "true" : "false";
+            document.getElementById("editorial_role").value = normalizeMemberRole(item.editorial_role || item.committee_role);
             document.getElementById("notes").value = item.notes || "";
 
             const settingKey = getGeminiSettingKey(item.member_id);
@@ -499,7 +579,7 @@
         async function loadMembers() {
             const { data, error } = await dbClient
                 .from("member_directory")
-                .select("member_id,full_name,furigana,is_current,access_role,category,position_name,committee,is_giun,is_editorial_committee")
+                .select("member_id,full_name,furigana,is_current,access_role,category,position_name,committee,committee_role,is_giun,giun_role,is_editorial_committee,editorial_role")
                 .order("category", { ascending: true })
                 .order("furigana", { ascending: true, nullsFirst: false })
                 .order("full_name", { ascending: true });
@@ -526,7 +606,9 @@
                     <td class="p-2 border">${item.position_name || ""}</td>
                     <td class="p-2 border">${item.committee || ""}</td>
                     <td class="p-2 border">${toYesNo(item.is_giun)}</td>
+                    <td class="p-2 border">${item.giun_role || ""}</td>
                     <td class="p-2 border">${toYesNo(item.is_editorial_committee)}</td>
+                    <td class="p-2 border">${item.editorial_role || ""}</td>
                     <td class="p-2 border">
                         <button class="text-indigo-700 hover:text-indigo-900 mr-3" data-edit="${item.member_id}">編集</button>
                         <button class="text-rose-700 hover:text-rose-900" data-delete="${item.member_id}">削除</button>
@@ -586,6 +668,10 @@
             const category = document.getElementById("category").value;
             const positionName = normalizePosition(category, document.getElementById("position_name").value);
             const accessRole = document.getElementById("access_role").value;
+            const isGiun = document.getElementById("is_giun").value === "true";
+            const isEditorialCommittee = document.getElementById("is_editorial_committee").value === "true";
+            const giunRole = isGiun ? normalizeMemberRole(document.getElementById("giun_role").value) : null;
+            const editorialRole = isEditorialCommittee ? normalizeMemberRole(document.getElementById("editorial_role").value) : null;
 
             const payload = {
                 member_id: currentMemberId,
@@ -602,8 +688,10 @@
                 email: normalizeEmail(document.getElementById("email").value) || null,
                 committee: normalizeCommitteeName(document.getElementById("committee").value) || null,
                 committee_role: document.getElementById("committee_role").value || null,
-                is_giun: document.getElementById("is_giun").value === "true",
-                is_editorial_committee: document.getElementById("is_editorial_committee").value === "true",
+                is_giun: isGiun,
+                giun_role: giunRole,
+                is_editorial_committee: isEditorialCommittee,
+                editorial_role: editorialRole,
                 notes: document.getElementById("notes").value.trim() || null,
                 updated_at: new Date().toISOString()
             };
