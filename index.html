@@ -142,8 +142,7 @@
             const dateText = formatAnnouncementDate(item.notice_date);
             const start = item.start_time ? String(item.start_time).slice(0, 5) : "--:--";
             const end = item.end_time ? String(item.end_time).slice(0, 5) : "--:--";
-            const ownerName = (item.owner_name || "未設定").trim();
-            const base = `${dateText} ${start}-${end} ${item.title || ""} / 登録: ${ownerName}`.trim();
+                const base = `${dateText} ${start}-${end} ${item.title || ""}`.trim();
             if (!item.content) {
                 return base;
             }
@@ -201,7 +200,7 @@
 
             const { data, error } = await client
                 .from("announcements")
-                .select("notice_date,start_time,end_time,title,content,owner_name")
+                    .select("notice_date,start_time,end_time,title,content")
                 .order("notice_date", { ascending: false })
                 .order("start_time", { ascending: true })
                 .limit(3);
