@@ -487,10 +487,10 @@ with check (
 );
 
 drop policy if exists committee_activity_posts_delete_creator_or_admin on public.committee_activity_posts;
-create policy committee_activity_posts_delete_creator_or_admin on public.committee_activity_posts
+drop policy if exists committee_activity_posts_delete_creator_only on public.committee_activity_posts;
+create policy committee_activity_posts_delete_creator_only on public.committee_activity_posts
 for delete using (
-    public.is_portal_admin()
-    or created_by_user_id = auth.uid()
+    created_by_user_id = auth.uid()
     or lower(trim(created_by_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
 );
 
@@ -521,10 +521,11 @@ for insert with check (
 );
 
 drop policy if exists committee_activity_recipients_delete_authorized on public.committee_activity_recipients;
-create policy committee_activity_recipients_delete_authorized on public.committee_activity_recipients
+drop policy if exists committee_activity_recipients_delete_creator_only on public.committee_activity_recipients;
+create policy committee_activity_recipients_delete_creator_only on public.committee_activity_recipients
 for delete using (
-    public.is_portal_admin()
-    or exists (
+    auth.uid() is not null
+    and exists (
         select 1
         from public.committee_activity_posts p
         where p.id = post_id

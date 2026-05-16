@@ -91,6 +91,32 @@
             </form>
             <p id="form-message" class="mt-3 text-sm text-gray-600"></p>
         </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-xl font-bold text-gray-700">登録済み委員会活動一覧</h2>
+                <button id="refresh-post-list" type="button" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded text-sm font-semibold">再読込</button>
+            </div>
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div>
+                    <label class="text-xs font-semibold text-gray-600">委員会で検索</label>
+                    <select id="list_filter_committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                        <option value="">すべて</option>
+                        <option value="総務委員会">総務委員会</option>
+                        <option value="産業建設委員会">産業建設委員会</option>
+                        <option value="教育民生委員会">教育民生委員会</option>
+                        <option value="議会運営委員会">議会運営委員会</option>
+                        <option value="編集委員会">編集委員会</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-xs font-semibold text-gray-600">キーワード検索（タイトル・内容）</label>
+                    <input id="list_filter_keyword" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 視察, 研修, 報告">
+                </div>
+            </div>
+            <p id="post-list-summary" class="text-sm text-gray-600 mt-2">読み込み中...</p>
+            <div id="activity-post-list" class="mt-3 space-y-2"></div>
+        </section>
     </main>
 
     <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
@@ -110,6 +136,7 @@
         let currentMode = "new";
         let currentPostId = null;
         let currentPostAttachments = [];
+        let currentPostList = [];
 
         function escapeHtml(value) {
             return String(value || "")
@@ -130,6 +157,206 @@
             if (raw === "産業建設") return "産業建設委員会";
             if (raw === "教育民生") return "教育民生委員会";
             return raw;
+        }
+
+        function formatDateLabel(value) {
+            if (!value) return "日付未設定";
+            return String(value);
+        }
+
+        function getPostSortTime(item) {
+            const activityTime = item && item.activity_date
+                ? Date.parse(`${item.activity_date}T00:00:00`)
+                : Number.NaN;
+            if (!Number.isNaN(activityTime)) {
+                return activityTime;
+            }
+            const createdTime = item && item.created_at ? Date.parse(item.created_at) : Number.NaN;
+            if (!Number.isNaN(createdTime)) {
+                return createdTime;
+            }
+            return 0;
+        }
+
+        function extractAttachmentPaths(attachments) {
+            if (!Array.isArray(attachments)) {
+                return [];
+            }
+
+            const paths = [];
+            attachments.forEach((item) => {
+                if (!item) return;
+                if (typeof item === "object") {
+                    const path = String(item.path || "").trim();
+                    if (path) {
+                        paths.push(path);
+                    }
+                    return;
+                }
+
+                if (typeof item === "string") {
+                    const value = item.trim();
+                    if (value && !/^https?:\/\//i.test(value)) {
+                        paths.push(value);
+                    }
+                }
+            });
+
+            return Array.from(new Set(paths));
+        }
+
+        function canDeletePost(item) {
+            if (!item) return false;
+            if (currentUserId && item.created_by_user_id && String(item.created_by_user_id) === String(currentUserId)) {
+                return true;
+            }
+            return normalizeEmail(item.created_by_email) === normalizeEmail(currentUserEmail);
+        }
+
+        function getFilteredPostList() {
+            const committeeFilter = document.getElementById("list_filter_committee").value;
+            const keyword = String(document.getElementById("list_filter_keyword").value || "").trim().toLowerCase();
+
+            return currentPostList
+                .filter((item) => {
+                    if (committeeFilter && item.committee_name !== committeeFilter) {
+                        return false;
+                    }
+                    if (!keyword) {
+                        return true;
+                    }
+                    const haystack = `${item.title || ""} ${item.activity_content || ""}`.toLowerCase();
+                    return haystack.includes(keyword);
+                })
+                .sort((a, b) => {
+                    const timeDiff = getPostSortTime(b) - getPostSortTime(a);
+                    if (timeDiff !== 0) {
+                        return timeDiff;
+                    }
+                    return (b.id || 0) - (a.id || 0);
+                });
+        }
+
+        function renderPostList() {
+            const container = document.getElementById("activity-post-list");
+            const summary = document.getElementById("post-list-summary");
+            const filteredPosts = getFilteredPostList();
+
+            if (!filteredPosts.length) {
+                summary.textContent = "表示できる登録済みデータはありません。";
+                container.innerHTML = '<p class="text-sm text-gray-500">該当データなし</p>';
+                return;
+            }
+
+            summary.textContent = `${filteredPosts.length}件表示 / 全${currentPostList.length}件`;
+            container.innerHTML = filteredPosts.map((item) => {
+                const isEditing = currentPostId && Number(currentPostId) === Number(item.id);
+                const attachmentCount = Array.isArray(item.attachments) ? item.attachments.length : 0;
+                const canDelete = canDeletePost(item);
+                const editingBadge = isEditing
+                    ? '<span class="text-[11px] px-2 py-0.5 rounded bg-amber-100 text-amber-700">編集中</span>'
+                    : "";
+                const deleteButton = canDelete
+                    ? `<button type="button" class="delete-post-from-list bg-red-50 hover:bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-semibold" data-post-id="${item.id}">削除</button>`
+                    : "";
+                return `
+                    <div class="border border-gray-200 rounded-lg px-3 py-3 bg-white">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-800 truncate">${escapeHtml(item.title || "タイトル未設定")}</p>
+                                <p class="text-xs text-gray-600 mt-1">${escapeHtml(item.committee_name || "") } | ${escapeHtml(formatDateLabel(item.activity_date))}</p>
+                                <p class="text-xs text-gray-500 mt-1">作成者: ${escapeHtml(item.created_by_name || "未設定")} / 添付: ${attachmentCount}件</p>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                ${editingBadge}
+                                <button type="button" class="open-post-from-list bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs font-semibold" data-post-id="${item.id}">編集</button>
+                                ${deleteButton}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            container.querySelectorAll(".open-post-from-list").forEach((button) => {
+                button.addEventListener("click", async (event) => {
+                    const id = Number(event.target.getAttribute("data-post-id"));
+                    const message = document.getElementById("form-message");
+                    message.textContent = "";
+                    try {
+                        await loadPostToForm(id);
+                        renderPostList();
+                    } catch (error) {
+                        message.textContent = "修正データの読み込みに失敗しました: " + error.message;
+                    }
+                });
+            });
+
+            container.querySelectorAll(".delete-post-from-list").forEach((button) => {
+                button.addEventListener("click", async (event) => {
+                    const id = Number(event.target.getAttribute("data-post-id"));
+                    const message = document.getElementById("form-message");
+                    message.textContent = "";
+                    const ok = window.confirm("この委員会活動を削除します。よろしいですか？");
+                    if (!ok) {
+                        return;
+                    }
+
+                    const target = currentPostList.find((item) => Number(item.id) === id);
+                    if (!canDeletePost(target)) {
+                        message.textContent = "削除できるのは作成者のみです。";
+                        return;
+                    }
+
+                    const attachmentPaths = extractAttachmentPaths(target && target.attachments);
+                    if (attachmentPaths.length > 0) {
+                        const { error: fileDeleteError } = await dbClient.storage
+                            .from("gian")
+                            .remove(attachmentPaths);
+
+                        if (fileDeleteError) {
+                            message.textContent = "関連ファイルの削除に失敗しました: " + fileDeleteError.message;
+                            return;
+                        }
+                    }
+
+                    const { error } = await dbClient
+                        .from("committee_activity_posts")
+                        .delete()
+                        .eq("id", id);
+
+                    if (error) {
+                        message.textContent = "削除に失敗しました: " + error.message;
+                        return;
+                    }
+
+                    if (currentPostId && Number(currentPostId) === id) {
+                        document.getElementById("committee-activity-form").reset();
+                        await switchToNewMode();
+                    }
+
+                    const committeeName = document.getElementById("committee_name").value;
+                    await loadPostsByCommittee(committeeName);
+                    await loadActivityPostList(committeeName);
+                    message.textContent = `削除しました（関連ファイル ${attachmentPaths.length} 件）。`;
+                });
+            });
+        }
+
+        async function loadActivityPostList(committeeName) {
+            let query = dbClient
+                .from("committee_activity_posts")
+                .select("id,committee_name,activity_date,title,activity_content,attachments,created_by_user_id,created_by_email,created_by_name,created_at")
+                .order("activity_date", { ascending: false })
+                .order("id", { ascending: false })
+                .limit(200);
+
+            const { data, error } = await query;
+            if (error) {
+                throw error;
+            }
+
+            currentPostList = data || [];
+            renderPostList();
         }
 
         async function resolveRecipients(committeeName) {
@@ -496,6 +723,8 @@
             } else {
                 await loadPostToForm(targetPostId);
             }
+
+            await loadActivityPostList(committeeName);
         }
 
         document.getElementById("committee-activity-form").addEventListener("submit", saveCommitteeActivity);
@@ -509,6 +738,7 @@
             currentPostId = null;
             setEditModeLabel();
             renderRecipientList();
+            renderPostList();
         });
 
         document.getElementById("check-all-recipients").addEventListener("click", () => {
@@ -528,6 +758,8 @@
             try {
                 await loadPostsByCommittee(committeeName);
                 await switchToNewMode();
+                document.getElementById("list_filter_committee").value = committeeName || "";
+                await loadActivityPostList(committeeName);
             } catch (error) {
                 message.textContent = "委員会情報の読み込みに失敗しました: " + error.message;
             }
@@ -550,6 +782,26 @@
 
         document.getElementById("switch-new-mode").addEventListener("click", async () => {
             await switchToNewMode();
+            renderPostList();
+        });
+
+        document.getElementById("refresh-post-list").addEventListener("click", async () => {
+            const committeeName = document.getElementById("committee_name").value;
+            const summary = document.getElementById("post-list-summary");
+            summary.textContent = "再読み込み中...";
+            try {
+                await loadActivityPostList(committeeName);
+            } catch (error) {
+                summary.textContent = "一覧の取得に失敗しました: " + error.message;
+            }
+        });
+
+        document.getElementById("list_filter_committee").addEventListener("change", () => {
+            renderPostList();
+        });
+
+        document.getElementById("list_filter_keyword").addEventListener("input", () => {
+            renderPostList();
         });
 
         portalAuth.init({
@@ -577,6 +829,7 @@
 
                 setEditModeLabel();
                 renderRecipientList();
+                await loadActivityPostList("");
             }
         });
     </script>
