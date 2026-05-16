@@ -43,18 +43,70 @@
                             <th class="text-left p-2 border">タイトル</th>
                             <th class="text-left p-2 border">内容</th>
                             <th class="text-left p-2 border">登録者</th>
+                            <th class="text-left p-2 border">操作</th>
                         </tr>
                     </thead>
                     <tbody id="announcement-list">
                         <tr>
-                            <td class="p-2 border text-gray-500" colspan="5">読み込み中です...</td>
+                            <td class="p-2 border text-gray-500" colspan="6">読み込み中です...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+            <p id="announcement-edit-note" class="mt-2 text-xs text-gray-500 hidden">修正は管理者のみ可能です。</p>
             <p id="announcement-message" class="mt-3 text-sm text-gray-600"></p>
         </section>
     </main>
+
+    <div id="announcement-edit-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">お知らせを修正</h2>
+            <form id="announcement-edit-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input id="edit_notice_no" type="hidden">
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">日付</label>
+                    <input id="edit_notice_date" type="date" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">タイトル</label>
+                    <input id="edit_notice_title" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">開始時間</label>
+                    <input id="edit_start_time" type="time" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">終了時間</label>
+                    <input id="edit_end_time" type="time" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">内容</label>
+                    <textarea id="edit_notice_content" rows="3" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">登録者</label>
+                    <input id="edit_owner_name" readonly class="mt-1 w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">連絡先電話</label>
+                    <input id="edit_contact_phone" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">連絡先メール</label>
+                    <input id="edit_contact_email" type="email" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">備考</label>
+                    <input id="edit_remarks" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="md:col-span-2 flex gap-3 justify-end pt-2">
+                    <button type="button" id="announcement-edit-cancel" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold">閉じる</button>
+                    <button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">保存</button>
+                </div>
+            </form>
+            <p id="announcement-edit-message" class="mt-3 text-sm text-gray-600"></p>
+        </div>
+    </div>
 
     <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
         &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
@@ -65,6 +117,18 @@
     <script src="auth.js"></script>
     <script>
         let dbClient = null;
+        let currentRole = "viewer";
+        let currentOwnerName = "未設定";
+        const announcementByNo = new Map();
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
 
         function formatDate(dateValue) {
             if (!dateValue) return "";
@@ -79,43 +143,140 @@
             return `${start} - ${end}`;
         }
 
+        function resolveOwnerName(session, profile) {
+            return (session && session.displayName)
+                || (profile && profile.display_name)
+                || (session && session.email)
+                || "未設定";
+        }
+
+        function closeEditModal() {
+            document.getElementById("announcement-edit-modal").classList.add("hidden");
+            document.getElementById("announcement-edit-message").textContent = "";
+        }
+
+        function openEditModal(item) {
+            document.getElementById("edit_notice_no").value = String(item.no || "");
+            document.getElementById("edit_notice_date").value = item.notice_date || "";
+            document.getElementById("edit_start_time").value = String(item.start_time || "").slice(0, 5);
+            document.getElementById("edit_end_time").value = String(item.end_time || "").slice(0, 5);
+            document.getElementById("edit_notice_title").value = item.title || "";
+            document.getElementById("edit_notice_content").value = item.content || "";
+            document.getElementById("edit_owner_name").value = currentOwnerName || "未設定";
+            document.getElementById("edit_contact_phone").value = item.contact_phone || "";
+            document.getElementById("edit_contact_email").value = item.contact_email || "";
+            document.getElementById("edit_remarks").value = item.remarks || "";
+            document.getElementById("announcement-edit-message").textContent = "";
+            document.getElementById("announcement-edit-modal").classList.remove("hidden");
+        }
+
+        async function saveAnnouncementEdit(event) {
+            event.preventDefault();
+
+            const noValue = Number(document.getElementById("edit_notice_no").value);
+            const payload = {
+                notice_date: document.getElementById("edit_notice_date").value,
+                start_time: document.getElementById("edit_start_time").value,
+                end_time: document.getElementById("edit_end_time").value,
+                title: document.getElementById("edit_notice_title").value.trim(),
+                content: document.getElementById("edit_notice_content").value.trim(),
+                owner_name: currentOwnerName || "未設定",
+                contact_phone: document.getElementById("edit_contact_phone").value.trim() || null,
+                contact_email: document.getElementById("edit_contact_email").value.trim() || null,
+                remarks: document.getElementById("edit_remarks").value.trim() || null,
+                updated_at: new Date().toISOString()
+            };
+
+            const editMessage = document.getElementById("announcement-edit-message");
+            if (!noValue || !payload.notice_date || !payload.start_time || !payload.end_time || !payload.title || !payload.content) {
+                editMessage.textContent = "必須項目を入力してください。";
+                return;
+            }
+
+            if (payload.start_time > payload.end_time) {
+                editMessage.textContent = "時間の入力を確認してください（開始時間 <= 終了時間）。";
+                return;
+            }
+
+            const { error } = await dbClient
+                .from("announcements")
+                .update(payload)
+                .eq("no", noValue);
+
+            if (error) {
+                editMessage.textContent = "更新失敗: " + error.message;
+                return;
+            }
+
+            closeEditModal();
+            document.getElementById("announcement-message").textContent = "修正しました。";
+            await loadAnnouncements();
+        }
+
         async function loadAnnouncements() {
             const tbody = document.getElementById("announcement-list");
             const message = document.getElementById("announcement-message");
             tbody.innerHTML = "";
             message.textContent = "";
+            announcementByNo.clear();
 
             const { data, error } = await dbClient
                 .from("announcements")
-                .select("notice_date,start_time,end_time,title,content,owner_name,no")
+                .select("notice_date,start_time,end_time,title,content,owner_name,contact_phone,contact_email,remarks,no")
                 .order("notice_date", { ascending: false })
                 .order("start_time", { ascending: false })
                 .order("no", { ascending: false });
 
             if (error) {
                 message.textContent = "一覧読込失敗: " + error.message;
-                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="5">データを表示できませんでした。</td></tr>';
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="6">データを表示できませんでした。</td></tr>';
                 return;
             }
 
             const rows = data || [];
             if (rows.length === 0) {
-                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="5">お知らせはありません。</td></tr>';
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="6">お知らせはありません。</td></tr>';
                 return;
             }
 
             rows.forEach((item) => {
+                announcementByNo.set(Number(item.no), item);
                 const tr = document.createElement("tr");
+                const canEdit = currentRole === "admin";
                 tr.innerHTML = `
                     <td class="p-2 border">${formatDate(item.notice_date)}</td>
                     <td class="p-2 border">${formatTimeRange(item.start_time, item.end_time)}</td>
-                    <td class="p-2 border">${item.title || ""}</td>
-                    <td class="p-2 border">${item.content || ""}</td>
-                    <td class="p-2 border">${item.owner_name || "未設定"}</td>
+                    <td class="p-2 border">${escapeHtml(item.title || "")}</td>
+                    <td class="p-2 border">${escapeHtml(item.content || "")}</td>
+                    <td class="p-2 border">${escapeHtml(item.owner_name || "未設定")}</td>
+                    <td class="p-2 border">
+                        ${canEdit
+                            ? `<button class="text-rose-700 hover:text-rose-900 font-semibold" data-edit-no="${item.no}">修正</button>`
+                            : `<span class="text-gray-400">-</span>`}
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
+
+            tbody.querySelectorAll("button[data-edit-no]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const noValue = Number(btn.getAttribute("data-edit-no"));
+                    const target = announcementByNo.get(noValue);
+                    if (!target) {
+                        return;
+                    }
+                    openEditModal(target);
+                });
+            });
         }
+
+        document.getElementById("announcement-edit-form").addEventListener("submit", saveAnnouncementEdit);
+        document.getElementById("announcement-edit-cancel").addEventListener("click", closeEditModal);
+        document.getElementById("announcement-edit-modal").addEventListener("click", (event) => {
+            if (event.target && event.target.id === "announcement-edit-modal") {
+                closeEditModal();
+            }
+        });
 
         portalAuth.init({
             requireAuth: true,
@@ -123,8 +284,13 @@
             authTargetId: "authArea",
             hideDisplayName: true,
             returnTo: "announcements.html",
-            onReady: async ({ client }) => {
+            onReady: async ({ client, role, session, profile }) => {
                 dbClient = client;
+                currentRole = role || "viewer";
+                currentOwnerName = resolveOwnerName(session, profile);
+                if (currentRole === "admin") {
+                    document.getElementById("announcement-edit-note").classList.remove("hidden");
+                }
                 await loadAnnouncements();
             }
         });
