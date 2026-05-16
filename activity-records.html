@@ -42,15 +42,21 @@
                             <th class="text-left p-2 border">活動タイトル</th>
                             <th class="text-left p-2 border">作成者</th>
                             <th class="text-left p-2 border">活動内容</th>
+                            <th class="text-left p-2 border">添付資料</th>
                             <th class="text-left p-2 border w-40">操作</th>
                         </tr>
                     </thead>
                     <tbody id="activity-list">
                         <tr>
-                            <td class="p-2 border text-gray-500" colspan="5">読み込み中です...</td>
+                            <td class="p-2 border text-gray-500" colspan="6">読み込み中です...</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+                <button id="activity-page-latest" type="button" class="bg-sky-500 hover:bg-sky-600 text-white px-3 py-1 rounded text-xs font-semibold">最新10件</button>
+                <button id="activity-page-next10" type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded text-xs font-semibold">11件目から表示</button>
+                <span id="activity-page-status" class="text-xs text-gray-500"></span>
             </div>
             <p id="activity-message" class="mt-3 text-sm text-gray-600"></p>
         </section>
@@ -87,6 +93,23 @@
         &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
     </footer>
 
+    <div id="attachment-preview-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-0">
+        <div class="bg-white w-screen h-screen overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between px-4 py-3 border-b">
+                <h3 class="text-base font-bold text-gray-800">添付資料プレビュー</h3>
+                <button id="close-attachment-preview" type="button" class="text-gray-600 hover:text-gray-900 text-sm font-semibold">閉じる</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-0 flex-1 min-h-0">
+                <div class="border-r overflow-y-auto">
+                    <ul id="attachment-preview-list" class="divide-y"></ul>
+                </div>
+                <div class="md:col-span-3 min-h-0">
+                    <iframe id="attachment-preview-frame" title="添付資料プレビュー" class="w-full h-full"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-config.js"></script>
     <script src="auth.js"></script>
@@ -96,6 +119,7 @@
         let currentUserEmail = "";
         let currentUserName = "";
         let editingRecordId = null;
+        let activityPageIndex = 0;
 
         function normalizeEmail(value) {
             return String(value || "").trim().toLowerCase();
@@ -118,6 +142,60 @@
                 openButton.textContent = "活動の記録";
                 submitButton.textContent = "保存";
             }
+        }
+
+        function setActivityPageButtons() {
+            const latestButton = document.getElementById("activity-page-latest");
+            const next10Button = document.getElementById("activity-page-next10");
+
+            if (activityPageIndex === 0) {
+                latestButton.className = "bg-sky-500 hover:bg-sky-600 text-white px-3 py-1 rounded text-xs font-semibold";
+                next10Button.className = "bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded text-xs font-semibold";
+            } else {
+                latestButton.className = "bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded text-xs font-semibold";
+                next10Button.className = "bg-sky-500 hover:bg-sky-600 text-white px-3 py-1 rounded text-xs font-semibold";
+            }
+        }
+
+        function openAttachmentPreviewModal(attachments) {
+            const modal = document.getElementById("attachment-preview-modal");
+            const list = document.getElementById("attachment-preview-list");
+            const frame = document.getElementById("attachment-preview-frame");
+            list.innerHTML = "";
+
+            const normalized = Array.isArray(attachments) ? attachments.filter((item) => item && item.url) : [];
+            if (normalized.length === 0) {
+                const li = document.createElement("li");
+                li.className = "p-3 text-sm text-gray-500";
+                li.textContent = "添付資料はありません。";
+                list.appendChild(li);
+                frame.src = "about:blank";
+            } else {
+                normalized.forEach((item, index) => {
+                    const li = document.createElement("li");
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "w-full text-left p-3 text-sm hover:bg-sky-50";
+                    button.textContent = item.name || `添付ファイル ${index + 1}`;
+                    button.addEventListener("click", () => {
+                        frame.src = item.url;
+                    });
+                    li.appendChild(button);
+                    list.appendChild(li);
+                });
+                frame.src = normalized[0].url;
+            }
+
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+
+        function closeAttachmentPreviewModal() {
+            const modal = document.getElementById("attachment-preview-modal");
+            const frame = document.getElementById("attachment-preview-frame");
+            frame.src = "about:blank";
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
         }
 
         function resetActivityFormState() {
@@ -178,39 +256,45 @@
                 return;
             }
 
-            const { data: recipientRows, error: recipientError } = await dbClient
-                .from("committee_activity_recipients")
-                .select("post_id,recipient_email");
-
-            if (recipientError) {
-                message.textContent = "活動記録の一部読込に失敗しました: " + recipientError.message;
-            }
-
-            const recipientPostIds = Array.from(new Set(
-                (recipientRows || [])
-                    .filter((row) => normalizeEmail(row.recipient_email) === currentUserEmail)
-                    .map((row) => row.post_id)
-                    .filter(Boolean)
-            ));
-
-            let postQuery = dbClient
+            const { data: visibleCommitteePosts, error: postError } = await dbClient
                 .from("committee_activity_posts")
-                .select("id,activity_date,title,activity_content,committee_name,created_by_name,created_by_email,created_at")
+                .select("id,activity_date,title,activity_content,committee_name,created_by_name,created_by_email,attachments,created_at")
                 .order("activity_date", { ascending: false })
                 .order("created_at", { ascending: false })
-                .limit(20);
-
-            if (recipientPostIds.length > 0) {
-                postQuery = postQuery.in("id", recipientPostIds);
-            } else {
-                postQuery = postQuery.limit(0);
-            }
-
-            const { data: relatedCommitteePosts, error: postError } = await postQuery;
+                .limit(200);
 
             if (postError) {
                 message.textContent = "活動記録の一部読込に失敗しました: " + postError.message;
             }
+
+            const visiblePostIds = Array.from(new Set((visibleCommitteePosts || []).map((row) => row.id).filter(Boolean)));
+
+            let recipientRows = [];
+            if (visiblePostIds.length > 0) {
+                const { data: recipientData, error: recipientError } = await dbClient
+                    .from("committee_activity_recipients")
+                    .select("post_id,recipient_email")
+                    .in("post_id", visiblePostIds);
+
+                if (recipientError) {
+                    message.textContent = "活動記録の一部読込に失敗しました: " + recipientError.message;
+                } else {
+                    recipientRows = recipientData || [];
+                }
+            }
+
+            const recipientPostIdSet = new Set(
+                recipientRows
+                    .filter((row) => normalizeEmail(row.recipient_email) === currentUserEmail)
+                    .map((row) => row.post_id)
+                    .filter(Boolean)
+            );
+
+            const relatedCommitteePosts = (visibleCommitteePosts || []).filter((item) => {
+                const isCreator = normalizeEmail(item.created_by_email) === currentUserEmail;
+                const isRecipient = recipientPostIdSet.has(item.id);
+                return isCreator || isRecipient;
+            });
 
             const mergedRows = [];
             (ownRecords || []).forEach((item) => {
@@ -221,6 +305,7 @@
                     raw_title: item.activity_title || "",
                     activity_content: item.activity_content || "",
                     creator_name: item.user_name || currentUserName || "自分",
+                    attachments: [],
                     created_at: item.created_at || null,
                     source: "activity"
                 });
@@ -234,12 +319,13 @@
                     raw_title: item.title || "",
                     activity_content: item.activity_content || "",
                     creator_name: item.created_by_name || item.created_by_email || "不明",
+                    attachments: Array.isArray(item.attachments) ? item.attachments : [],
                     created_at: item.created_at || null,
                     source: "committee"
                 });
             });
 
-            const rows = mergedRows
+            const sortedRows = mergedRows
                 .sort((a, b) => {
                     const dateA = Date.parse(`${a.activity_date || "1970-01-01"}T00:00:00`);
                     const dateB = Date.parse(`${b.activity_date || "1970-01-01"}T00:00:00`);
@@ -249,11 +335,21 @@
                     const createdA = a.created_at ? Date.parse(a.created_at) : 0;
                     const createdB = b.created_at ? Date.parse(b.created_at) : 0;
                     return createdB - createdA;
-                })
-                .slice(0, 10);
+                });
+
+            const pageSize = 10;
+            const offset = activityPageIndex * pageSize;
+            const rows = sortedRows.slice(offset, offset + pageSize);
+            const startNo = sortedRows.length === 0 ? 0 : offset + 1;
+            const endNo = offset + rows.length;
+            document.getElementById("activity-page-status").textContent = sortedRows.length === 0
+                ? "0件"
+                : `${startNo}件目〜${endNo}件目 / 全${sortedRows.length}件`;
+
+            setActivityPageButtons();
 
             if (rows.length === 0) {
-                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="5">記録はありません。</td></tr>';
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="6">記録はありません。</td></tr>';
                 return;
             }
 
@@ -275,6 +371,20 @@
                 const contentTd = document.createElement("td");
                 contentTd.className = "p-2 border whitespace-pre-wrap";
                 contentTd.textContent = item.activity_content || "";
+
+                const attachmentTd = document.createElement("td");
+                attachmentTd.className = "p-2 border";
+                if (item.attachments && item.attachments.length > 0) {
+                    const previewButton = document.createElement("button");
+                    previewButton.type = "button";
+                    previewButton.className = "bg-violet-500 hover:bg-violet-600 text-white px-3 py-1 rounded text-xs font-semibold";
+                    previewButton.textContent = `プレビュー (${item.attachments.length})`;
+                    previewButton.addEventListener("click", () => openAttachmentPreviewModal(item.attachments));
+                    attachmentTd.appendChild(previewButton);
+                } else {
+                    attachmentTd.textContent = "-";
+                    attachmentTd.classList.add("text-gray-500");
+                }
 
                 const actionTd = document.createElement("td");
                 actionTd.className = "p-2 border";
@@ -298,6 +408,7 @@
                 tr.appendChild(titleTd);
                 tr.appendChild(creatorTd);
                 tr.appendChild(contentTd);
+                tr.appendChild(attachmentTd);
                 tr.appendChild(actionTd);
                 tbody.appendChild(tr);
             });
@@ -356,6 +467,20 @@
         });
 
         document.getElementById("activity-form").addEventListener("submit", saveActivityRecord);
+        document.getElementById("activity-page-latest").addEventListener("click", async () => {
+            activityPageIndex = 0;
+            await loadActivityRecords();
+        });
+        document.getElementById("activity-page-next10").addEventListener("click", async () => {
+            activityPageIndex = 1;
+            await loadActivityRecords();
+        });
+        document.getElementById("close-attachment-preview").addEventListener("click", closeAttachmentPreviewModal);
+        document.getElementById("attachment-preview-modal").addEventListener("click", (event) => {
+            if (event.target && event.target.id === "attachment-preview-modal") {
+                closeAttachmentPreviewModal();
+            }
+        });
 
         portalAuth.init({
             requireAuth: true,
