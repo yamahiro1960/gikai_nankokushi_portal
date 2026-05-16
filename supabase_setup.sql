@@ -70,7 +70,7 @@ create table if not exists public.member_directory (
     position_name text,
     access_role text not null default '使用者' check (access_role in ('管理者', '使用者')),
     email text,
-    committee text check (committee in ('産業建設', '教育民生', '総務')),
+    committee text check (committee in ('総務委員会', '産業建設委員会', '教育民生委員会', '総務', '産業建設', '教育民生')),
     committee_role text check (committee_role in ('委員長', '副委員長', '委員')),
     is_giun boolean not null default false,
     is_editorial_committee boolean not null default false,

@@ -107,9 +107,9 @@
                     <label class="text-sm font-semibold text-gray-700">委員会</label>
                     <select id="committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="">未設定</option>
-                        <option value="産業建設">産業建設</option>
-                        <option value="教育民生">教育民生</option>
-                        <option value="総務">総務</option>
+                        <option value="総務委員会">総務委員会</option>
+                        <option value="産業建設委員会">産業建設委員会</option>
+                        <option value="教育民生委員会">教育民生委員会</option>
                     </select>
                 </div>
                 <div>
@@ -365,12 +365,12 @@
                 })
                 .map((item) => `${escapeHtml(item.position_name)}: ${escapeHtml(item.full_name)}${item.furigana ? ` (${escapeHtml(item.furigana)})` : ""}`);
 
-            const committeeOrder = ["産業建設", "教育民生", "総務"];
+            const committeeOrder = ["総務委員会", "産業建設委員会", "教育民生委員会"];
             const committeeRoleOrder = { "委員長": 0, "副委員長": 1, "委員": 2 };
             const committees = committeeOrder
                 .map((committeeName) => {
                     const members = rows
-                        .filter((item) => item.committee === committeeName)
+                        .filter((item) => normalizeCommitteeName(item.committee) === committeeName)
                         .sort((a, b) => {
                             const roleDiff = (committeeRoleOrder[a.committee_role] ?? 99) - (committeeRoleOrder[b.committee_role] ?? 99);
                             if (roleDiff !== 0) return roleDiff;
@@ -400,6 +400,15 @@
             const normalized = LEGACY_POSITION_MAP[positionName] || positionName || "未";
             const candidates = POSITION_OPTIONS[category] || POSITION_OPTIONS["議員"];
             return candidates.includes(normalized) ? normalized : "未";
+        }
+
+        function normalizeCommitteeName(value) {
+            const raw = String(value || "").trim();
+            if (!raw) return "";
+            if (raw === "総務") return "総務委員会";
+            if (raw === "産業建設") return "産業建設委員会";
+            if (raw === "教育民生") return "教育民生委員会";
+            return raw;
         }
 
         function renderPositionOptions(category, selectedValue = "未") {
@@ -467,7 +476,7 @@
             document.getElementById("access_role").value = item.access_role || "使用者";
             renderPositionOptions(item.category || "議員", item.position_name || "未");
             document.getElementById("email").value = item.email || "";
-            document.getElementById("committee").value = item.committee || "";
+            document.getElementById("committee").value = normalizeCommitteeName(item.committee);
             document.getElementById("committee_role").value = item.committee_role || "";
             document.getElementById("is_giun").value = item.is_giun ? "true" : "false";
             document.getElementById("is_editorial_committee").value = item.is_editorial_committee ? "true" : "false";
@@ -591,7 +600,7 @@
                 position_name: positionName,
                 access_role: accessRole,
                 email: normalizeEmail(document.getElementById("email").value) || null,
-                committee: document.getElementById("committee").value || null,
+                committee: normalizeCommitteeName(document.getElementById("committee").value) || null,
                 committee_role: document.getElementById("committee_role").value || null,
                 is_giun: document.getElementById("is_giun").value === "true",
                 is_editorial_committee: document.getElementById("is_editorial_committee").value === "true",

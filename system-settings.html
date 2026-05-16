@@ -161,9 +161,9 @@
                     <label class="text-sm font-semibold text-gray-700">委員会</label>
                     <select id="edit_committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="">未設定</option>
-                        <option value="産業建設">産業建設</option>
-                        <option value="教育民生">教育民生</option>
-                        <option value="総務">総務</option>
+                        <option value="総務委員会">総務委員会</option>
+                        <option value="産業建設委員会">産業建設委員会</option>
+                        <option value="教育民生委員会">教育民生委員会</option>
                     </select>
                 </div>
                 <div>
@@ -253,12 +253,12 @@
                 })
                 .map((item) => `${escapeHtml(item.position_name)}: ${escapeHtml(item.full_name)}${item.furigana ? ` (${escapeHtml(item.furigana)})` : ""}`);
 
-            const committeeOrder = ["産業建設", "教育民生", "総務"];
+            const committeeOrder = ["総務委員会", "産業建設委員会", "教育民生委員会"];
             const committeeRoleOrder = { "委員長": 0, "副委員長": 1, "委員": 2 };
             const committees = committeeOrder
                 .map((committeeName) => {
                     const members = rows
-                        .filter((item) => item.committee === committeeName)
+                        .filter((item) => normalizeCommitteeName(item.committee) === committeeName)
                         .sort((a, b) => {
                             const roleDiff = (committeeRoleOrder[a.committee_role] ?? 99) - (committeeRoleOrder[b.committee_role] ?? 99);
                             if (roleDiff !== 0) return roleDiff;
@@ -297,6 +297,15 @@
             return !!(currentUserEmail && rowEmail && rowEmail === currentUserEmail);
         }
 
+        function normalizeCommitteeName(value) {
+            const raw = String(value || "").trim();
+            if (!raw) return "";
+            if (raw === "総務") return "総務委員会";
+            if (raw === "産業建設") return "産業建設委員会";
+            if (raw === "教育民生") return "教育民生委員会";
+            return raw;
+        }
+
         function closeMemberEditModal() {
             document.getElementById("member-edit-modal").classList.add("hidden");
             document.getElementById("member-edit-message").textContent = "";
@@ -313,7 +322,7 @@
             document.getElementById("edit_mobile").value = item.mobile || "";
             document.getElementById("edit_position_name").value = item.position_name || "";
             document.getElementById("edit_email").value = item.email || "";
-            document.getElementById("edit_committee").value = item.committee || "";
+            document.getElementById("edit_committee").value = normalizeCommitteeName(item.committee);
             document.getElementById("edit_committee_role").value = item.committee_role || "";
             document.getElementById("edit_is_giun").value = item.is_giun ? "true" : "false";
             document.getElementById("edit_is_editorial_committee").value = item.is_editorial_committee ? "true" : "false";
@@ -405,7 +414,7 @@
             const mobile = document.getElementById("edit_mobile").value.trim();
             const positionName = document.getElementById("edit_position_name").value.trim();
             const email = normalizeEmail(document.getElementById("edit_email").value);
-            const committee = document.getElementById("edit_committee").value;
+            const committee = normalizeCommitteeName(document.getElementById("edit_committee").value);
             const committeeRole = document.getElementById("edit_committee_role").value;
             const isGiun = document.getElementById("edit_is_giun").value === "true";
             const isEditorialCommittee = document.getElementById("edit_is_editorial_committee").value === "true";
