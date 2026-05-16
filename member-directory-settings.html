@@ -57,11 +57,11 @@
                 </div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">ふりがな</label>
-                    <input id="furigana" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: なんこく たろう">
+                    <input id="furigana" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: なんこく たろう">
                 </div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">権限</label>
-                    <select id="access_role" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                    <select id="access_role" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="使用者" selected>使用者</option>
                         <option value="管理者">管理者</option>
                     </select>
@@ -402,7 +402,9 @@
             const { data, error } = await dbClient
                 .from("member_directory")
                 .select("member_id,full_name,furigana,is_current,access_role,category,position_name,committee,is_giun,is_editorial_committee")
-                .order("member_id", { ascending: true });
+                .order("category", { ascending: true })
+                .order("furigana", { ascending: true, nullsFirst: false })
+                .order("full_name", { ascending: true });
 
             const tbody = document.getElementById("member-list");
             tbody.innerHTML = "";
@@ -514,6 +516,12 @@
                 return;
             }
 
+            if (!payload.furigana || !payload.furigana.trim()) {
+                document.getElementById("form-message").textContent = "ふりがなを入力してください。";
+                showFlowMessage("保存できませんでした（ふりがなを入力してください）。", "error");
+                return;
+            }
+
             if (!/@gmail\.com$/i.test(payload.email)) {
                 document.getElementById("form-message").textContent = "Gmailアドレス（@gmail.com）を入力してください。";
                 showFlowMessage("保存できませんでした（メール形式を確認してください）。", "error");
@@ -523,6 +531,12 @@
             if (!payload.full_name || !payload.full_name.trim()) {
                 document.getElementById("form-message").textContent = "氏名を入力してください。";
                 showFlowMessage("保存できませんでした（氏名を入力してください）。", "error");
+                return;
+            }
+
+            if (payload.access_role === "管理者" && !accessRole) {
+                document.getElementById("form-message").textContent = "管理者の場合は権限を指定してください。";
+                showFlowMessage("保存できませんでした（権限を指定してください）。", "error");
                 return;
             }
 

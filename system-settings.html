@@ -265,8 +265,10 @@
 
             const { data, error } = await dbClient
                 .from("member_directory")
-                .select("member_id,full_name,furigana,postal_code,address,phone,mobile,position_name,email,committee,committee_role,is_giun,is_editorial_committee")
-                .order("member_id", { ascending: true });
+                .select("member_id,full_name,furigana,category,postal_code,address,phone,mobile,position_name,email,committee,committee_role,is_giun,is_editorial_committee")
+                .order("category", { ascending: true })
+                .order("furigana", { ascending: true, nullsFirst: false })
+                .order("full_name", { ascending: true });
 
             if (error) {
                 message.textContent = "メンバー一覧の読込に失敗しました: " + error.message;
