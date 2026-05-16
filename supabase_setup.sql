@@ -194,36 +194,72 @@ for delete using (
     exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
 );
 
--- announcements ポリシー
--- 現在の運用では「利用者選択ログイン（local session）」時に auth.uid() が null になるため、
--- anon ロールも許可して画面操作を継続できるようにする。
--- 将来 Supabase Auth 完全移行後は anon 許可部分を削除すること。
+-- announcements ポリシー（Supabase Auth運用）
+-- 読み取り: ログインユーザー全員
+-- 書き込み: 管理者のみ
+-- 管理者判定は profiles.role='admin' または member_directory.access_role='管理者' で判定
 drop policy if exists announcements_select_authenticated on public.announcements;
 create policy announcements_select_authenticated on public.announcements
-for select using (auth.role() in ('anon', 'authenticated') or auth.uid() is not null);
+for select using (auth.uid() is not null);
 
 drop policy if exists announcements_insert_admin on public.announcements;
 create policy announcements_insert_admin on public.announcements
 for insert with check (
-    auth.role() in ('anon', 'authenticated')
-    or exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+    auth.uid() is not null
+    and (
+        exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and m.access_role = '管理者'
+        )
+    )
 );
 
 drop policy if exists announcements_update_admin on public.announcements;
 create policy announcements_update_admin on public.announcements
 for update using (
-    auth.role() in ('anon', 'authenticated')
-    or exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+    auth.uid() is not null
+    and (
+        exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and m.access_role = '管理者'
+        )
+    )
 ) with check (
-    auth.role() in ('anon', 'authenticated')
-    or exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+    auth.uid() is not null
+    and (
+        exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and m.access_role = '管理者'
+        )
+    )
 );
 
 drop policy if exists announcements_delete_admin on public.announcements;
 create policy announcements_delete_admin on public.announcements
 for delete using (
-    auth.role() in ('anon', 'authenticated')
-    or exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+    auth.uid() is not null
+    and (
+        exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.role = 'admin')
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and m.access_role = '管理者'
+        )
+    )
 );
 
 -- ----------------------------------------------------------------------

@@ -95,6 +95,7 @@ window.portalAuth = (() => {
         return {
             email: member.email || "",
             userId: member.member_id,
+            authUserId: googleInfo && googleInfo.authUserId ? googleInfo.authUserId : null,
             memberId: member.member_id,
             displayName: member.full_name || member.email || "ユーザー",
             role: member.access_role === "管理者" ? "admin" : "viewer",
@@ -104,6 +105,53 @@ window.portalAuth = (() => {
             googleEmail: googleInfo && googleInfo.email ? googleInfo.email : null,
             googleAccessToken: googleInfo && googleInfo.accessToken ? googleInfo.accessToken : null,
             loginTime: new Date().toISOString()
+        };
+    }
+
+    async function buildAppContextFromAuthSession(authSession) {
+        if (!authSession || !authSession.user) {
+            return null;
+        }
+
+        const user = authSession.user;
+        const email = normalizeEmail(user.email);
+        if (!email) {
+            throw new Error("ログインユーザーのメールアドレスを取得できませんでした。");
+        }
+
+        const member = await findCurrentMemberByEmail(email);
+        if (!member) {
+            throw new Error("現職利用者として登録されているアカウントでログインしてください。");
+        }
+
+        const profile = await fetchProfile(user.id);
+        const roleFromProfile = profile && profile.role ? profile.role : null;
+        const role = roleFromProfile || (member.access_role === "管理者" ? "admin" : "viewer");
+
+        const appSession = createLocalSessionFromMember(member, {
+            email,
+            authUserId: user.id
+        });
+
+        appSession.role = role;
+        appSession.displayName = (profile && profile.display_name) || appSession.displayName;
+        appSession.email = email;
+
+        const mergedProfile = {
+            user_id: user.id,
+            email,
+            display_name: (profile && profile.display_name) || member.full_name || email,
+            role,
+            category: member.category || null,
+            access_role: member.access_role || null
+        };
+
+        localStorage.setItem("portalSession", JSON.stringify(appSession));
+
+        return {
+            appSession,
+            profile: mergedProfile,
+            role
         };
     }
 
@@ -146,43 +194,6 @@ window.portalAuth = (() => {
             onReady
         } = options;
 
-        // ローカルストレージからセッション情報を取得（パスワードなしログイン用）
-        const localSession = getSession();
-        if (localSession) {
-            const role = localSession.role || "viewer";
-            if (!(await canAccessWithBootstrap(minRole, role))) {
-                window.location.href = "access-denied.html";
-                return;
-            }
-
-            renderAuthBadge(
-                {
-                    role,
-                    email: localSession.email,
-                    display_name: localSession.displayName,
-                    access_role: localSession.accessRole || null
-                },
-                { email: localSession.email, accessRole: localSession.accessRole || null },
-                options
-            );
-
-            if (typeof onReady === "function") {
-                onReady({
-                    session: localSession,
-                    profile: {
-                        role,
-                        email: localSession.email,
-                        display_name: localSession.displayName,
-                        category: localSession.category || null,
-                        access_role: localSession.accessRole || null
-                    },
-                    role,
-                    client: supabase
-                });
-            }
-            return;
-        }
-
         if (isAuthPaused()) {
             // 無認証運用中は profiles テーブルを一切読まない（RLS無限再帰を防止）
             if (typeof onReady === "function") {
@@ -195,6 +206,7 @@ window.portalAuth = (() => {
         const session = data ? data.session : null;
 
         if (!session || !session.user) {
+            logout();
             if (requireAuth) {
                 toLogin(returnTo);
                 return;
@@ -202,9 +214,22 @@ window.portalAuth = (() => {
             return;
         }
 
-        // fetchProfile() は認証ユーザーのみ呼び出し
-        const profile = await fetchProfile(session.user.id);
-        const role = profile && profile.role ? profile.role : "viewer";
+        let context;
+        try {
+            context = await buildAppContextFromAuthSession(session);
+        } catch (error) {
+            await supabase.auth.signOut();
+            logout();
+            if (requireAuth) {
+                toLogin(returnTo);
+                return;
+            }
+            return;
+        }
+
+        const profile = context.profile;
+        const role = context.role;
+        const appSession = context.appSession;
 
         if (!(await canAccessWithBootstrap(minRole, role))) {
             window.location.href = "access-denied.html";
@@ -214,7 +239,7 @@ window.portalAuth = (() => {
         renderAuthBadge(profile, session.user, options);
 
         if (typeof onReady === "function") {
-            onReady({ session, profile, role, client: supabase });
+            onReady({ session: appSession, profile, role, client: supabase, authSession: session });
         }
     }
 
@@ -254,48 +279,7 @@ window.portalAuth = (() => {
     }
 
     async function memberSelectLogin(memberId) {
-        const supabase = ensureClient();
-
-        try {
-            // is_current/access_role カラムを含む完全クエリを試みる
-            let member = null;
-            const { data: memberFull, error: memberFullError } = await supabase
-                .from("member_directory")
-                .select("member_id,full_name,email,category,access_role,is_current")
-                .eq("member_id", memberId)
-                .eq("is_current", true)
-                .limit(1)
-                .maybeSingle();
-
-            if (!memberFullError) {
-                member = memberFull;
-            } else {
-                // DBマイグレーション未実施の場合は基本カラムのみでフォールバック
-                console.warn("memberSelectLogin: フォールバッククエリを使用します。", memberFullError);
-                const { data: memberBasic, error: memberBasicError } = await supabase
-                    .from("member_directory")
-                    .select("member_id,full_name,email,category")
-                    .eq("member_id", memberId)
-                    .limit(1)
-                    .maybeSingle();
-                if (memberBasicError && memberBasicError.code !== "PGRST116") {
-                    throw memberBasicError;
-                }
-                member = memberBasic ? { ...memberBasic, is_current: true, access_role: "使用者" } : null;
-            }
-
-            if (!member) {
-                throw new Error("選択した利用者でログインできません。");
-            }
-
-            const sessionData = createLocalSessionFromMember(member);
-
-            localStorage.setItem("portalSession", JSON.stringify(sessionData));
-            return sessionData;
-        } catch (error) {
-            console.error("ログインエラー:", error);
-            throw error;
-        }
+        throw new Error("代替ログインは廃止しました。Googleログインを利用してください。");
     }
 
     async function findCurrentMemberByEmail(email) {
@@ -333,72 +317,54 @@ window.portalAuth = (() => {
         return memberBasic ? { ...memberBasic, is_current: true, access_role: "使用者" } : null;
     }
 
-    async function googleLogin() {
+    async function googleLogin(options = {}) {
         if (!window.AUTH_CONFIG || !window.AUTH_CONFIG.googleEnabled) {
             throw new Error("Googleログインが無効です。auth-config.js を確認してください。");
         }
 
-        const clientId = (window.AUTH_CONFIG.googleClientId || "").trim();
-        if (!clientId) {
-            throw new Error("Google Client ID が未設定です。auth-config.js を確認してください。");
+        const supabase = ensureClient();
+        const callbackUrl = new URL(window.location.origin + window.location.pathname);
+        const returnTo = (options.returnTo || "").trim();
+        if (returnTo) {
+            callbackUrl.searchParams.set("returnTo", returnTo);
         }
 
-        if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-            throw new Error("Google Identity Services が読み込まれていません。");
-        }
-
-        const scopes = (window.AUTH_CONFIG.googleScopes || [
-            "openid",
-            "email",
-            "profile",
-            "https://www.googleapis.com/auth/calendar.readonly"
-        ]).join(" ");
-
-        const tokenResponse = await new Promise((resolve, reject) => {
-            const tokenClient = window.google.accounts.oauth2.initTokenClient({
-                client_id: clientId,
-                scope: scopes,
-                callback: (response) => {
-                    if (!response || response.error) {
-                        reject(new Error("Google認証に失敗しました。"));
-                        return;
-                    }
-                    resolve(response);
-                }
-            });
-
-            tokenClient.requestAccessToken({ prompt: "" });
-        });
-
-        const accessToken = tokenResponse.access_token;
-        const profileResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-            headers: {
-                Authorization: `Bearer ${accessToken}`
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+                redirectTo: callbackUrl.toString(),
+                scopes: (window.AUTH_CONFIG.googleScopes || [
+                    "openid",
+                    "email",
+                    "profile",
+                    "https://www.googleapis.com/auth/calendar.readonly"
+                ]).join(" ")
             }
         });
 
-        if (!profileResponse.ok) {
-            throw new Error("Googleプロフィールの取得に失敗しました。");
+        if (error) {
+            throw new Error("Googleログインの開始に失敗しました: " + error.message);
         }
 
-        const googleProfile = await profileResponse.json();
-        const email = normalizeEmail(googleProfile.email);
-        if (!email) {
-            throw new Error("Googleアカウントのメールアドレスが取得できませんでした。");
+        return null;
+    }
+
+    async function restoreSessionFromAuth() {
+        const supabase = ensureClient();
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+            throw error;
         }
 
-        const member = await findCurrentMemberByEmail(email);
-        if (!member) {
-            throw new Error("現職利用者として登録されている Google アカウントでログインしてください。");
+        const session = data ? data.session : null;
+        if (!session || !session.user) {
+            logout();
+            return null;
         }
 
-        const sessionData = createLocalSessionFromMember(member, {
-            email,
-            accessToken
-        });
-
-        localStorage.setItem("portalSession", JSON.stringify(sessionData));
-        return sessionData;
+        const context = await buildAppContextFromAuthSession(session);
+        return context ? context.appSession : null;
     }
 
     function getSession() {
@@ -410,6 +376,12 @@ window.portalAuth = (() => {
     }
 
     function logout() {
+        try {
+            const supabase = ensureClient();
+            supabase.auth.signOut();
+        } catch (_error) {
+            // no-op
+        }
         localStorage.removeItem("portalSession");
     }
 
@@ -431,6 +403,7 @@ window.portalAuth = (() => {
         getCurrentLoginMembers,
         memberSelectLogin,
         googleLogin,
+        restoreSessionFromAuth,
         getSession,
         logout,
         generateGreeting
