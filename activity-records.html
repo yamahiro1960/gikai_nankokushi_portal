@@ -113,6 +113,7 @@
     <script src="auth.js"></script>
     <script>
         let dbClient = null;
+        let currentUserId = null;
         let currentUserEmail = "";
         let currentUserName = "";
         let currentUserCommittee = "";
@@ -155,20 +156,72 @@
             tbody.innerHTML = "";
             message.textContent = "";
 
-            const { data, error } = await dbClient
+            const { data: ownRecords, error: ownError } = await dbClient
                 .from("activity_records")
-                .select("activity_date,activity_title,activity_content")
+                .select("activity_date,activity_title,activity_content,created_at")
                 .order("activity_date", { ascending: false })
                 .order("created_at", { ascending: false })
                 .limit(10);
 
-            if (error) {
-                message.textContent = "活動記録の読込に失敗しました: " + error.message;
+            if (ownError) {
+                message.textContent = "活動記録の読込に失敗しました: " + ownError.message;
                 tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="3">データを表示できませんでした。</td></tr>';
                 return;
             }
 
-            const rows = data || [];
+            let postQuery = dbClient
+                .from("committee_activity_posts")
+                .select("activity_date,title,activity_content,committee_name,created_at")
+                .order("activity_date", { ascending: false })
+                .order("created_at", { ascending: false })
+                .limit(20);
+
+            if (currentUserId) {
+                postQuery = postQuery.eq("created_by_user_id", currentUserId);
+            } else {
+                postQuery = postQuery.eq("created_by_email", currentUserEmail);
+            }
+
+            const { data: ownCommitteePosts, error: postError } = await postQuery;
+
+            if (postError) {
+                message.textContent = "活動記録の一部読込に失敗しました: " + postError.message;
+            }
+
+            const mergedRows = [];
+            (ownRecords || []).forEach((item) => {
+                mergedRows.push({
+                    activity_date: item.activity_date,
+                    activity_title: item.activity_title || "",
+                    activity_content: item.activity_content || "",
+                    created_at: item.created_at || null,
+                    source: "activity"
+                });
+            });
+
+            (ownCommitteePosts || []).forEach((item) => {
+                mergedRows.push({
+                    activity_date: item.activity_date,
+                    activity_title: `[委員会活動] ${item.title || ""}`,
+                    activity_content: item.activity_content || "",
+                    created_at: item.created_at || null,
+                    source: "committee"
+                });
+            });
+
+            const rows = mergedRows
+                .sort((a, b) => {
+                    const dateA = Date.parse(`${a.activity_date || "1970-01-01"}T00:00:00`);
+                    const dateB = Date.parse(`${b.activity_date || "1970-01-01"}T00:00:00`);
+                    if (dateA !== dateB) {
+                        return dateB - dateA;
+                    }
+                    const createdA = a.created_at ? Date.parse(a.created_at) : 0;
+                    const createdB = b.created_at ? Date.parse(b.created_at) : 0;
+                    return createdB - createdA;
+                })
+                .slice(0, 10);
+
             if (rows.length === 0) {
                 tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="3">記録はありません。</td></tr>';
                 return;
@@ -345,7 +398,9 @@
             returnTo: "activity-records.html",
             onReady: async ({ client, session, profile }) => {
                 dbClient = client;
-                currentUserEmail = normalizeEmail((session && session.email) || (profile && profile.email) || "");
+                const sessionUser = session && session.user ? session.user : null;
+                currentUserId = sessionUser && sessionUser.id ? sessionUser.id : null;
+                currentUserEmail = normalizeEmail((sessionUser && sessionUser.email) || (session && session.email) || (profile && profile.email) || "");
                 currentUserName = (session && session.displayName) || (profile && profile.display_name) || currentUserEmail || "未設定";
 
                 await resolveCurrentMemberCommittee();
