@@ -38,7 +38,7 @@
                     <thead class="bg-gray-100">
                         <tr>
                             <th class="text-left p-2 border">氏名</th>
-                            <th class="text-left p-2 border">電話番号</th>
+                            <th class="text-left p-2 border">携帯番号</th>
                         </tr>
                     </thead>
                     <tbody id="member-directory-list">
@@ -455,7 +455,7 @@
                 const tr = document.createElement("tr");
                 const canEdit = isOwnMemberRow(item);
                 const nameText = escapeHtml(item.full_name || "");
-                const phoneText = escapeHtml(item.phone || "-");
+                const mobileText = escapeHtml(item.mobile || "-");
 
                 tr.innerHTML = `
                     <td class="p-2 border">
@@ -463,7 +463,7 @@
                             ? `<button class="text-cyan-700 hover:text-cyan-900 underline" data-edit-self="${escapeHtml(item.member_id || "")}">${nameText}</button>`
                             : `<span>${nameText}</span>`}
                     </td>
-                    <td class="p-2 border">${phoneText}</td>
+                    <td class="p-2 border">${mobileText}</td>
                 `;
                 tbody.appendChild(tr);
             });
