@@ -182,6 +182,7 @@
                 <div class="md:col-span-2 flex gap-3">
                     <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white px-5 py-2 rounded-lg text-sm font-semibold">保存</button>
                     <button type="button" id="clear-form" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold">クリア</button>
+                    <button type="button" id="send-profile-mail" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-semibold">プロフィール情報を送る</button>
                 </div>
             </form>
             <p id="form-message" class="mt-3 text-sm text-gray-600"></p>
@@ -397,6 +398,85 @@
 
         function getGeminiSettingKey(memberId) {
             return `user_gemini_${memberId}`;
+        }
+
+        function getLoginUrl() {
+            const current = new URL(window.location.href);
+            const segments = current.pathname.split("/");
+            segments[segments.length - 1] = "login.html";
+            current.pathname = segments.join("/");
+            current.search = "";
+            current.hash = "";
+            return current.toString();
+        }
+
+        function buildProfileMailPayload(member, mode) {
+            const modeText = mode === "updated" ? "変更" : "登録";
+            const name = String(member.full_name || "").trim() || "ご利用者様";
+            const loginUrl = getLoginUrl();
+            const subject = `【南国市議会DXポータル】プロフィール情報${modeText}のお知らせ`;
+            const lines = [
+                `${name} 様`,
+                "",
+                `南国市議会DXポータルのプロフィール情報を${modeText}しました。`,
+                "ログインは以下のURLをご利用ください。",
+                loginUrl,
+                "",
+                "このメールはシステムから自動送信されています。"
+            ];
+            return {
+                toEmail: String(member.email || "").trim().toLowerCase(),
+                memberId: member.member_id || "",
+                memberName: name,
+                mode,
+                loginUrl,
+                subject,
+                body: lines.join("\n")
+            };
+        }
+
+        async function sendProfileInfoMail(member, mode) {
+            const payload = buildProfileMailPayload(member, mode);
+            const webhookUrl = (window.AUTH_CONFIG && window.AUTH_CONFIG.profileNotifyWebhookUrl)
+                ? String(window.AUTH_CONFIG.profileNotifyWebhookUrl).trim()
+                : "";
+
+            if (webhookUrl) {
+                const headers = {
+                    "Content-Type": "application/json"
+                };
+
+                if (dbClient && dbClient.auth) {
+                    const { data: sessionData } = await dbClient.auth.getSession();
+                    const accessToken = sessionData && sessionData.session ? sessionData.session.access_token : "";
+                    const anonKey = window.AUTH_CONFIG && window.AUTH_CONFIG.supabaseAnonKey
+                        ? String(window.AUTH_CONFIG.supabaseAnonKey).trim()
+                        : "";
+                    if (accessToken) {
+                        headers.Authorization = `Bearer ${accessToken}`;
+                    }
+                    if (anonKey) {
+                        headers.apikey = anonKey;
+                    }
+                }
+
+                const response = await fetch(webhookUrl, {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const bodyText = await response.text();
+                    throw new Error(`通知送信失敗: ${response.status} ${bodyText}`);
+                }
+
+                return { via: "webhook" };
+            }
+
+            const mailtoUrl = `mailto:${encodeURIComponent(payload.toEmail)}?subject=${encodeURIComponent(payload.subject)}&body=${encodeURIComponent(payload.body)}`;
+            window.open(mailtoUrl, "_blank", "noopener");
+            return { via: "mailto" };
         }
 
         function getPhotoPublicUrl(photoPath) {
@@ -844,6 +924,7 @@
             event.preventDefault();
 
             const currentMemberId = document.getElementById("member_id").value.trim();
+            const isUpdate = !!currentMemberId;
             const category = document.getElementById("category").value;
             const positionName = normalizePosition(category, document.getElementById("position_name").value);
             const accessRole = document.getElementById("access_role").value;
@@ -997,7 +1078,19 @@
                 await deleteMemberPhoto(oldPhotoPath);
             }
 
-            document.getElementById("form-message").textContent = "保存しました。";
+            let mailResultText = "";
+            try {
+                const result = await sendProfileInfoMail(payload, isUpdate ? "updated" : "created");
+                if (result.via === "webhook") {
+                    mailResultText = "プロフィール情報メールを送信しました。";
+                } else {
+                    mailResultText = "メール作成画面を開きました。送信を完了してください。";
+                }
+            } catch (mailError) {
+                mailResultText = `プロフィール情報メール送信に失敗: ${mailError.message}`;
+            }
+
+            document.getElementById("form-message").textContent = `保存しました。${mailResultText}`;
             showFlowMessage("登録内容を保存しました。", "success");
             clearForm();
             await loadMembers();
@@ -1030,6 +1123,29 @@
 
         document.getElementById("member-form").addEventListener("submit", saveMember);
         document.getElementById("clear-form").addEventListener("click", clearForm);
+        document.getElementById("send-profile-mail").addEventListener("click", async () => {
+            const fullName = document.getElementById("full_name").value.trim();
+            const email = normalizeEmail(document.getElementById("email").value);
+            if (!email || !/@gmail\.com$/i.test(email)) {
+                document.getElementById("form-message").textContent = "送信先のGmailアドレス（@gmail.com）を入力してください。";
+                return;
+            }
+
+            try {
+                const result = await sendProfileInfoMail({
+                    member_id: document.getElementById("member_id").value.trim() || "",
+                    full_name: fullName || "",
+                    email
+                }, "updated");
+                if (result.via === "webhook") {
+                    document.getElementById("form-message").textContent = "プロフィール情報メールを送信しました。";
+                } else {
+                    document.getElementById("form-message").textContent = "メール作成画面を開きました。内容を確認して送信してください。";
+                }
+            } catch (error) {
+                document.getElementById("form-message").textContent = "プロフィール情報メール送信に失敗しました: " + error.message;
+            }
+        });
         document.getElementById("member_photo_file").addEventListener("change", handlePhotoFileChange);
         document.getElementById("clear-member-photo").addEventListener("click", () => {
             selectedPhotoFile = null;

@@ -3,6 +3,10 @@ window.AUTH_CONFIG = {
     supabaseAnonKey: "sb_publishable__SRHapM6Zzz01tC--VG9YQ_-xN3re0Q",
     googleEnabled: true,
     authPaused: false,
+    // プロフィール通知メール送信用Webhook（任意）。
+    // 例: "https://example.com/webhooks/profile-notify"
+    // 未設定時は mailto でメール作成画面を開きます。
+    profileNotifyWebhookUrl: "",
     // 政務活動費アプリの本番公開URL（末尾スラッシュ不要）。
     // 例: "https://seimu.example.com"
     seimukatudouhiAppBaseUrl: "",
