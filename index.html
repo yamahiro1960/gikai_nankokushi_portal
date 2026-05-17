@@ -200,13 +200,33 @@
             });
         }
 
-        async function loadAnnouncements(client, userEmail) {
+        async function loadAnnouncements(client, userEmail, userRole) {
             if (!client) {
                 renderAnnouncements([]);
                 return;
             }
 
             const baseSelect = "no,notice_date,start_time,end_time,title,content,visibility";
+
+            // 管理者は配信対象に関係なく全件を確認できるようにする。
+            if (userRole === "admin") {
+                const { data: adminData, error: adminError } = await client
+                    .from("announcements")
+                    .select(baseSelect)
+                    .order("notice_date", { ascending: true })
+                    .order("start_time", { ascending: true })
+                    .order("no", { ascending: true })
+                    .limit(3);
+
+                if (adminError) {
+                    console.error("お知らせ読み込みエラー(管理者):", adminError);
+                    renderAnnouncements([]);
+                    return;
+                }
+
+                renderAnnouncements(adminData || []);
+                return;
+            }
 
             // 1) 全員配信を取得
             const { data: allData, error: allError } = await client
@@ -291,7 +311,7 @@
                 }
 
                 const userEmail = context.session?.email || context.profile?.email || "";
-                await loadAnnouncements(context.client, userEmail);
+                await loadAnnouncements(context.client, userEmail, context.role || "viewer");
             }
         });
 
