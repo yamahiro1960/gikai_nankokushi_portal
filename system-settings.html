@@ -37,13 +37,14 @@
                 <table class="w-full text-sm">
                     <thead class="bg-gray-100">
                         <tr>
+                            <th class="text-left p-2 border">顔写真</th>
                             <th class="text-left p-2 border">氏名</th>
                             <th class="text-left p-2 border">携帯番号</th>
                         </tr>
                     </thead>
                     <tbody id="member-directory-list">
                         <tr>
-                            <td class="p-2 border text-gray-500" colspan="2">読み込み中です...</td>
+                            <td class="p-2 border text-gray-500" colspan="3">読み込み中です...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -285,6 +286,7 @@
         let currentUserDisplayName = "";
         let memberRows = [];
         let detailMemberId = "";
+        const MEMBER_PHOTO_BUCKET = "gian";
 
         function normalizeEmail(value) {
             return String(value || "").trim().toLowerCase();
@@ -297,6 +299,14 @@
                 .replace(/>/g, "&gt;")
                 .replace(/\"/g, "&quot;")
                 .replace(/'/g, "&#39;");
+        }
+
+        function getPhotoPublicUrl(photoPath) {
+            if (!photoPath || !dbClient || !dbClient.storage) {
+                return "";
+            }
+            const result = dbClient.storage.from(MEMBER_PHOTO_BUCKET).getPublicUrl(photoPath);
+            return result && result.data ? result.data.publicUrl : "";
         }
 
         function renderSummaryList(targetId, lines, emptyText) {
@@ -525,7 +535,7 @@
 
             const { data, error } = await dbClient
                 .from("member_directory")
-                .select("member_id,full_name,furigana,seat_number,category,postal_code,address,phone,mobile,position_name,email,committee,committee_role,is_giun,giun_role,is_editorial_committee,editorial_role")
+                .select("member_id,full_name,photo_path,furigana,seat_number,category,postal_code,address,phone,mobile,position_name,email,committee,committee_role,is_giun,giun_role,is_editorial_committee,editorial_role")
                 .order("category", { ascending: true })
                 .order("seat_number", { ascending: true, nullsFirst: false })
                 .order("furigana", { ascending: true, nullsFirst: false })
@@ -533,7 +543,7 @@
 
             if (error) {
                 message.textContent = "メンバー一覧の読込に失敗しました: " + error.message;
-                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="2">データを表示できませんでした。</td></tr>';
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="3">データを表示できませんでした。</td></tr>';
                 renderMemberSummaries([]);
                 return;
             }
@@ -541,7 +551,7 @@
             memberRows = data || [];
 
             if (memberRows.length === 0) {
-                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="2">登録データがありません。</td></tr>';
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="3">登録データがありません。</td></tr>';
                 renderMemberSummaries([]);
                 return;
             }
@@ -552,8 +562,13 @@
                 const tr = document.createElement("tr");
                 const nameText = escapeHtml(item.full_name || "");
                 const mobileText = escapeHtml(item.mobile || "-");
+                const photoUrl = getPhotoPublicUrl(item.photo_path || "");
+                const photoCell = photoUrl
+                    ? `<img src="${escapeHtml(photoUrl)}" alt="${nameText}" class="h-10 w-10 rounded-full object-cover border border-gray-200">`
+                    : '<div class="h-10 w-10 rounded-full border border-dashed border-gray-300 text-gray-400 text-[10px] flex items-center justify-center">未設定</div>';
 
                 tr.innerHTML = `
+                    <td class="p-2 border">${photoCell}</td>
                     <td class="p-2 border">
                         <button class="text-cyan-700 hover:text-cyan-900 underline" data-view-member="${escapeHtml(item.member_id || "")}">${nameText}</button>
                     </td>
