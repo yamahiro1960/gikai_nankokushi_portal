@@ -139,9 +139,18 @@ create table if not exists public.announcements (
     contact_phone text,
     contact_email text,
     remarks text,
+    visibility text not null default 'all' check (visibility in ('all', 'specific')),
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint announcements_time_check check (start_time <= end_time)
+);
+
+create table if not exists public.announcement_recipients (
+    id bigserial primary key,
+    announcement_no bigint not null references public.announcements(no) on delete cascade,
+    recipient_email text not null,
+    recipient_name text,
+    assigned_at timestamptz not null default now()
 );
 
 create table if not exists public.activity_records (
@@ -192,6 +201,12 @@ create table if not exists public.committee_activity_recipients (
 
 create index if not exists announcements_notice_date_idx
 on public.announcements (notice_date desc, start_time asc);
+
+create index if not exists announcement_recipients_email_idx
+on public.announcement_recipients (recipient_email, assigned_at desc);
+
+create index if not exists announcement_recipients_announcement_idx
+on public.announcement_recipients (announcement_no);
 
 create index if not exists activity_records_user_date_idx
 on public.activity_records (user_email, activity_date desc, created_at desc);
@@ -260,6 +275,7 @@ alter table public.meeting_settings enable row level security;
 alter table public.member_positions_master enable row level security;
 alter table public.member_directory enable row level security;
 alter table public.announcements enable row level security;
+alter table public.announcement_recipients enable row level security;
 alter table public.activity_records enable row level security;
 alter table public.committee_materials enable row level security;
 alter table public.committee_activity_posts enable row level security;
@@ -381,13 +397,24 @@ create policy member_directory_delete_admin on public.member_directory
 for delete using (public.is_portal_admin());
 
 -- announcements ポリシー（Supabase Auth運用）
--- 読み取り: ログインユーザー全員
+-- 読み取り: 全員（visibility='all'）または配信対象者
 -- 書き込み: 管理者のみ
 -- 管理者判定は public.is_portal_admin() を利用
 
 drop policy if exists announcements_select_authenticated on public.announcements;
 create policy announcements_select_authenticated on public.announcements
-for select using (auth.uid() is not null);
+for select using (
+    auth.uid() is not null
+    and (
+        visibility = 'all'
+        or exists (
+            select 1
+            from public.announcement_recipients ar
+            where ar.announcement_no = announcements.no
+              and lower(trim(ar.recipient_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+        )
+    )
+);
 
 drop policy if exists announcements_insert_admin on public.announcements;
 create policy announcements_insert_admin on public.announcements
@@ -400,6 +427,22 @@ with check (public.is_portal_admin());
 
 drop policy if exists announcements_delete_admin on public.announcements;
 create policy announcements_delete_admin on public.announcements
+for delete using (public.is_portal_admin());
+
+-- announcement_recipients ポリシー
+drop policy if exists announcement_recipients_select_own_or_admin on public.announcement_recipients;
+create policy announcement_recipients_select_own_or_admin on public.announcement_recipients
+for select using (
+    public.is_portal_admin()
+    or lower(trim(recipient_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+);
+
+drop policy if exists announcement_recipients_insert_admin on public.announcement_recipients;
+create policy announcement_recipients_insert_admin on public.announcement_recipients
+for insert with check (public.is_portal_admin());
+
+drop policy if exists announcement_recipients_delete_admin on public.announcement_recipients;
+create policy announcement_recipients_delete_admin on public.announcement_recipients
 for delete using (public.is_portal_admin());
 
 -- activity_records ポリシー（本人データのみ読み書き可）

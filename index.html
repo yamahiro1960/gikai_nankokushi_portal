@@ -200,20 +200,23 @@
             });
         }
 
-        async function loadAnnouncements(client) {
+        async function loadAnnouncements(client, userEmail) {
             if (!client) {
                 renderAnnouncements([]);
                 return;
             }
 
+            // visibility='all' のお知らせと、自分が配信対象のお知らせを取得
             const { data, error } = await client
                 .from("announcements")
-                    .select("notice_date,start_time,end_time,title,content")
+                .select("notice_date,start_time,end_time,title,content,visibility")
+                .or(`visibility.eq.all,announcement_recipients(recipient_email).eq.${userEmail}`)
                 .order("notice_date", { ascending: true })
                 .order("start_time", { ascending: true })
                 .limit(3);
 
             if (error) {
+                console.error("お知らせ読み込みエラー:", error);
                 renderAnnouncements([]);
                 return;
             }
@@ -238,7 +241,8 @@
                     }
                 }
 
-                await loadAnnouncements(context.client);
+                const userEmail = context.session?.email || context.profile?.email || "";
+                await loadAnnouncements(context.client, userEmail);
             }
         });
 

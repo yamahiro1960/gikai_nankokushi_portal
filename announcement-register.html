@@ -71,6 +71,25 @@
                     <label class="text-sm font-semibold text-gray-700">備考</label>
                     <input id="remarks" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="補足事項があれば入力">
                 </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">配信対象</label>
+                    <div class="mt-2 space-y-2">
+                        <label class="flex items-center gap-2">
+                            <input id="visibility_all" type="radio" name="visibility" value="all" checked class="w-4 h-4">
+                            <span class="text-sm">全員に配信</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input id="visibility_specific" type="radio" name="visibility" value="specific" class="w-4 h-4">
+                            <span class="text-sm">特定のメンバーのみに配信</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="specific-members-section" class="md:col-span-2 hidden">
+                    <label class="text-sm font-semibold text-gray-700 block mb-2">配信対象メンバー</label>
+                    <div id="members-list" class="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto bg-gray-50">
+                        <p class="text-sm text-gray-500">メンバー読み込み中...</p>
+                    </div>
+                </div>
 
                 <div class="md:col-span-2 flex gap-3">
                     <button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 rounded-lg text-sm font-semibold">登録</button>
@@ -91,10 +110,14 @@
     <script>
         let dbClient = null;
         let currentOwnerName = "";
+        let allMembers = [];
 
         function clearForm() {
             document.getElementById("announcement-form").reset();
             document.getElementById("owner_name_display").value = currentOwnerName || "";
+            document.getElementById("visibility_all").checked = true;
+            document.getElementById("visibility_specific").checked = false;
+            document.getElementById("specific-members-section").classList.add("hidden");
         }
 
         function resolveOwnerName(session, profile) {
@@ -104,8 +127,51 @@
                 || "未設定";
         }
 
+        async function loadMembers() {
+            const { data, error } = await dbClient
+                .from("member_directory")
+                .select("email, full_name")
+                .eq("is_current", true)
+                .order("full_name");
+
+            if (error) {
+                console.error("メンバー読み込みエラー:", error);
+                return;
+            }
+
+            allMembers = data || [];
+            renderMembersList();
+        }
+
+        function renderMembersList() {
+            const container = document.getElementById("members-list");
+            if (allMembers.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500">メンバーがいません。</p>';
+                return;
+            }
+
+            container.innerHTML = allMembers.map((member, idx) => `
+                <label class="flex items-center gap-2 p-2 hover:bg-white rounded cursor-pointer">
+                    <input type="checkbox" value="${member.email}" class="member-checkbox w-4 h-4">
+                    <span class="text-sm">${member.full_name} (${member.email})</span>
+                </label>
+            `).join("");
+        }
+
         async function saveAnnouncement(event) {
             event.preventDefault();
+
+            const visibility = document.querySelector('input[name="visibility"]:checked').value;
+            let selectedMembers = [];
+            
+            if (visibility === "specific") {
+                const checkboxes = document.querySelectorAll(".member-checkbox:checked");
+                if (checkboxes.length === 0) {
+                    document.getElementById("announcement-message").textContent = "配信対象メンバーを選択してください。";
+                    return;
+                }
+                selectedMembers = Array.from(checkboxes).map(cb => cb.value);
+            }
 
             const payload = {
                 notice_date: document.getElementById("notice_date").value,
@@ -117,6 +183,7 @@
                 contact_phone: document.getElementById("contact_phone").value.trim() || null,
                 contact_email: document.getElementById("contact_email").value.trim() || null,
                 remarks: document.getElementById("remarks").value.trim() || null,
+                visibility: visibility,
                 updated_at: new Date().toISOString()
             };
 
@@ -130,18 +197,54 @@
                 return;
             }
 
-            const { error } = await dbClient
+            const { data, error } = await dbClient
                 .from("announcements")
-                .insert(payload);
+                .insert(payload)
+                .select();
 
             if (error) {
                 document.getElementById("announcement-message").textContent = "登録失敗: " + error.message;
                 return;
             }
 
+            const announcementNo = data[0]?.no;
+
+            // 配信対象を登録
+            if (visibility === "specific" && selectedMembers.length > 0) {
+                const recipients = selectedMembers.map(email => {
+                    const member = allMembers.find(m => m.email === email);
+                    return {
+                        announcement_no: announcementNo,
+                        recipient_email: email,
+                        recipient_name: member?.full_name || email
+                    };
+                });
+
+                const { error: recipientError } = await dbClient
+                    .from("announcement_recipients")
+                    .insert(recipients);
+
+                if (recipientError) {
+                    document.getElementById("announcement-message").textContent = "配信対象の保存に失敗しました: " + recipientError.message;
+                    return;
+                }
+            }
+
             document.getElementById("announcement-message").textContent = "登録しました。";
             clearForm();
         }
+
+        // 配信対象の表示・非表示切り替え
+        document.querySelectorAll('input[name="visibility"]').forEach(radio => {
+            radio.addEventListener("change", () => {
+                const section = document.getElementById("specific-members-section");
+                if (radio.value === "specific" && radio.checked) {
+                    section.classList.remove("hidden");
+                } else {
+                    section.classList.add("hidden");
+                }
+            });
+        });
 
         document.getElementById("announcement-form").addEventListener("submit", saveAnnouncement);
         document.getElementById("announcement-clear").addEventListener("click", clearForm);
@@ -156,6 +259,7 @@
                 dbClient = client;
                 currentOwnerName = resolveOwnerName(session, profile);
                 document.getElementById("owner_name_display").value = currentOwnerName;
+                await loadMembers();
             }
         });
     </script>

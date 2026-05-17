@@ -118,6 +118,7 @@
     <script>
         let dbClient = null;
         let currentRole = "viewer";
+        let currentUserEmail = "";
         let currentOwnerName = "未設定";
         const announcementByNo = new Map();
 
@@ -220,9 +221,16 @@
             message.textContent = "";
             announcementByNo.clear();
 
-            const { data, error } = await dbClient
+            let query = dbClient
                 .from("announcements")
-                .select("notice_date,start_time,end_time,title,content,owner_name,contact_phone,contact_email,remarks,no")
+                .select("notice_date,start_time,end_time,title,content,owner_name,contact_phone,contact_email,remarks,no,visibility");
+
+            // 管理者ではない場合、自分に配信されているお知らせのみを取得
+            if (currentRole !== "admin") {
+                query = query.or(`visibility.eq.all,announcement_recipients(recipient_email).eq.${currentUserEmail}`);
+            }
+
+            const { data, error } = await query
                 .order("notice_date", { ascending: false })
                 .order("start_time", { ascending: false })
                 .order("no", { ascending: false });
@@ -287,6 +295,7 @@
             onReady: async ({ client, role, session, profile }) => {
                 dbClient = client;
                 currentRole = role || "viewer";
+                currentUserEmail = session?.email || profile?.email || "";
                 currentOwnerName = resolveOwnerName(session, profile);
                 if (currentRole === "admin") {
                     document.getElementById("announcement-edit-note").classList.remove("hidden");
