@@ -161,6 +161,7 @@ create table if not exists public.activity_records (
     user_name text,
     activity_date date not null,
     activity_title text not null,
+    activity_status text check (activity_status in ('記録済', '未実施', '継続中', '保留中', '完了')),
     activity_content text not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -203,6 +204,7 @@ create table if not exists public.committee_activity_recipients (
 
 -- 既存テーブル向けカラム追加（CREATE TABLE IF NOT EXISTS では既存テーブルには反映されないため）
 alter table public.announcements add column if not exists visibility text not null default 'all' check (visibility in ('all', 'specific'));
+alter table public.activity_records add column if not exists activity_status text check (activity_status in ('記録済', '未実施', '継続中', '保留中', '完了'));
 
 create index if not exists announcements_notice_date_idx
 on public.announcements (notice_date desc, start_time asc);
