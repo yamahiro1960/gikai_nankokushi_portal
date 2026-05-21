@@ -278,11 +278,18 @@
 
         async function getGoogleProviderToken(client) {
             const { data, error } = await client.auth.getSession();
-            if (error || !data || !data.session) {
-                return null;
+            if (!error && data && data.session && data.session.provider_token) {
+                localStorage.setItem("portal_google_provider_token", data.session.provider_token);
+                return data.session.provider_token;
             }
 
-            return data.session.provider_token || null;
+            const { data: refreshedData, error: refreshError } = await client.auth.refreshSession();
+            if (!refreshError && refreshedData && refreshedData.session && refreshedData.session.provider_token) {
+                localStorage.setItem("portal_google_provider_token", refreshedData.session.provider_token);
+                return refreshedData.session.provider_token;
+            }
+
+            return localStorage.getItem("portal_google_provider_token") || null;
         }
 
         async function createGoogleCalendarInvite(client, payload, recipientEmails) {

@@ -362,7 +362,12 @@ window.portalAuth = (() => {
                     "openid",
                     "email",
                     "profile"
-                ]).join(" ")
+                ]).join(" "),
+                queryParams: {
+                    access_type: "offline",
+                    prompt: "consent",
+                    include_granted_scopes: "true"
+                }
             }
         });
 
