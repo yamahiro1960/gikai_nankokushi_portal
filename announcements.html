@@ -57,6 +57,37 @@
             <p id="announcement-edit-note" class="mt-2 text-xs text-gray-500 hidden">修正は管理者のみ可能です。</p>
             <p id="announcement-message" class="mt-3 text-sm text-gray-600"></p>
         </section>
+
+        <section id="attendance-admin-section" class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mt-6 hidden">
+            <h2 class="text-xl font-bold mb-2 text-gray-700">未回答者抽出（管理者）</h2>
+            <p class="text-sm text-gray-600 mb-4">出欠確認ありのお知らせを選ぶと、未回答者のみを表示します。</p>
+
+            <div class="flex flex-col md:flex-row md:items-end gap-3 mb-4">
+                <div class="flex-1">
+                    <label for="attendance-target-select" class="text-sm font-semibold text-gray-700">対象お知らせ</label>
+                    <select id="attendance-target-select" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+                </div>
+                <button id="attendance-refresh-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">再読み込み</button>
+            </div>
+
+            <p id="attendance-summary" class="text-sm text-gray-700 mb-3"></p>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-2 border">氏名</th>
+                            <th class="text-left p-2 border">メール</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-unanswered-list">
+                        <tr>
+                            <td class="p-2 border text-gray-500" colspan="2">対象を選択してください。</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </main>
 
     <div id="announcement-edit-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
@@ -160,6 +191,7 @@
         const myAttendanceByNo = new Map();
         const attendanceStatsByNo = new Map();
         const recipientsCountByNo = new Map();
+        let attendanceAnnouncements = [];
 
         const MEMBER_GROUPS = [
             { id: "leaders", label: "正副議長" },
@@ -243,6 +275,131 @@
             if (status === "absent") return "bg-rose-100 text-rose-700";
             if (status === "pending") return "bg-amber-100 text-amber-700";
             return "bg-gray-100 text-gray-600";
+        }
+
+        function getMembersWithEmail() {
+            const normalized = new Set();
+            const result = [];
+            allMembers.forEach((member) => {
+                const email = normalizeEmail(member.email);
+                if (!email || normalized.has(email)) {
+                    return;
+                }
+                normalized.add(email);
+                result.push({
+                    email,
+                    name: member.full_name || email
+                });
+            });
+            return result;
+        }
+
+        function buildAttendanceSelectLabel(item) {
+            const dateText = formatDate(item.notice_date);
+            const timeText = formatTimeRange(item.start_time, item.end_time);
+            return `${dateText} ${timeText} ${item.title || ""}`.trim();
+        }
+
+        async function loadUnansweredMembers(announcementNo) {
+            const tbody = document.getElementById("attendance-unanswered-list");
+            const summary = document.getElementById("attendance-summary");
+
+            tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="2">読み込み中です...</td></tr>';
+            summary.textContent = "";
+
+            const item = announcementByNo.get(Number(announcementNo));
+            if (!item || !item.attendance_required) {
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="2">対象のお知らせが見つかりません。</td></tr>';
+                return;
+            }
+
+            let targets = [];
+            if (item.visibility === "specific") {
+                const { data: recipients, error: recipientsError } = await dbClient
+                    .from("announcement_recipients")
+                    .select("recipient_email,recipient_name")
+                    .eq("announcement_no", item.no);
+
+                if (recipientsError) {
+                    tbody.innerHTML = `<tr><td class="p-2 border text-red-600" colspan="2">配信対象の取得に失敗しました: ${escapeHtml(recipientsError.message)}</td></tr>`;
+                    return;
+                }
+
+                targets = (recipients || []).map((row) => ({
+                    email: normalizeEmail(row.recipient_email),
+                    name: row.recipient_name || row.recipient_email
+                }));
+            } else {
+                targets = getMembersWithEmail();
+            }
+
+            const dedupMap = new Map();
+            targets.forEach((target) => {
+                if (!target.email || dedupMap.has(target.email)) {
+                    return;
+                }
+                dedupMap.set(target.email, target);
+            });
+            const dedupTargets = Array.from(dedupMap.values());
+
+            const { data: responses, error: responseError } = await dbClient
+                .from("announcement_attendance_responses")
+                .select("responder_email")
+                .eq("announcement_no", item.no);
+
+            if (responseError) {
+                tbody.innerHTML = `<tr><td class="p-2 border text-red-600" colspan="2">回答の取得に失敗しました: ${escapeHtml(responseError.message)}</td></tr>`;
+                return;
+            }
+
+            const answeredSet = new Set((responses || []).map((row) => normalizeEmail(row.responder_email)).filter(Boolean));
+            const unanswered = dedupTargets.filter((target) => !answeredSet.has(target.email));
+
+            const deadlineText = item.attendance_deadline ? ` / 回答期限: ${formatDateTime(item.attendance_deadline)}` : "";
+            summary.textContent = `対象: ${dedupTargets.length}名 / 回答済み: ${answeredSet.size}名 / 未回答: ${unanswered.length}名${deadlineText}`;
+
+            if (unanswered.length === 0) {
+                tbody.innerHTML = '<tr><td class="p-2 border text-emerald-700" colspan="2">未回答者はいません。</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = unanswered.map((row) => `
+                <tr>
+                    <td class="p-2 border">${escapeHtml(row.name || "-")}</td>
+                    <td class="p-2 border">${escapeHtml(row.email || "-")}</td>
+                </tr>
+            `).join("");
+        }
+
+        async function renderAttendanceAdminSection(rows) {
+            const section = document.getElementById("attendance-admin-section");
+            const select = document.getElementById("attendance-target-select");
+            const tbody = document.getElementById("attendance-unanswered-list");
+            const summary = document.getElementById("attendance-summary");
+
+            if (currentRole !== "admin") {
+                section.classList.add("hidden");
+                return;
+            }
+
+            section.classList.remove("hidden");
+            attendanceAnnouncements = (rows || []).filter((item) => Boolean(item.attendance_required));
+
+            if (attendanceAnnouncements.length === 0) {
+                select.innerHTML = '<option value="">出欠確認ありのお知らせはありません</option>';
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="2">出欠確認ありのお知らせを登録すると抽出できます。</td></tr>';
+                summary.textContent = "";
+                return;
+            }
+
+            const prevSelected = Number(select.value || "0");
+            select.innerHTML = attendanceAnnouncements.map((item) => {
+                return `<option value="${item.no}">${escapeHtml(buildAttendanceSelectLabel(item))}</option>`;
+            }).join("");
+
+            const target = attendanceAnnouncements.find((item) => Number(item.no) === prevSelected) || attendanceAnnouncements[0];
+            select.value = String(target.no);
+            await loadUnansweredMembers(target.no);
         }
 
         function normalizeText(value) {
@@ -620,6 +777,8 @@
                 tbody.appendChild(tr);
             });
 
+            await renderAttendanceAdminSection(rows);
+
             tbody.querySelectorAll("button[data-edit-no]").forEach((btn) => {
                 btn.addEventListener("click", () => {
                     const noValue = Number(btn.getAttribute("data-edit-no"));
@@ -696,6 +855,24 @@
             if (!isRequired) {
                 deadlineInput.value = "";
             }
+        });
+
+        document.getElementById("attendance-target-select").addEventListener("change", async (event) => {
+            const noValue = Number(event.target.value || "0");
+            if (!noValue) {
+                return;
+            }
+            await loadUnansweredMembers(noValue);
+        });
+
+        document.getElementById("attendance-refresh-btn").addEventListener("click", async () => {
+            const select = document.getElementById("attendance-target-select");
+            const noValue = Number(select.value || "0");
+            if (!noValue) {
+                await loadAnnouncements();
+                return;
+            }
+            await loadUnansweredMembers(noValue);
         });
 
         portalAuth.init({
