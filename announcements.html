@@ -43,12 +43,13 @@
                             <th class="text-left p-2 border">タイトル</th>
                             <th class="text-left p-2 border">内容</th>
                             <th class="text-left p-2 border">登録者</th>
+                            <th class="text-left p-2 border">出欠確認</th>
                             <th class="text-left p-2 border">操作</th>
                         </tr>
                     </thead>
                     <tbody id="announcement-list">
                         <tr>
-                            <td class="p-2 border text-gray-500" colspan="6">読み込み中です...</td>
+                            <td class="p-2 border text-gray-500" colspan="7">読み込み中です...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -100,6 +101,16 @@
                     <input id="edit_remarks" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                 </div>
                 <div class="md:col-span-2">
+                    <label class="flex items-center gap-2">
+                        <input id="edit_attendance_required" type="checkbox" class="w-4 h-4">
+                        <span class="text-sm font-semibold text-gray-700">このお知らせで出欠確認を行う</span>
+                    </label>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">回答期限（出欠確認ありの場合）</label>
+                    <input id="edit_attendance_deadline" type="datetime-local" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" disabled>
+                </div>
+                <div class="md:col-span-2">
                     <label class="text-sm font-semibold text-gray-700">配信対象</label>
                     <div class="mt-2 space-y-2">
                         <label class="flex items-center gap-2">
@@ -146,6 +157,9 @@
         let currentEditingAnnouncementNo = null;
         let currentOwnerName = "未設定";
         const announcementByNo = new Map();
+        const myAttendanceByNo = new Map();
+        const attendanceStatsByNo = new Map();
+        const recipientsCountByNo = new Map();
 
         const MEMBER_GROUPS = [
             { id: "leaders", label: "正副議長" },
@@ -203,6 +217,32 @@
                 || (profile && profile.display_name)
                 || (session && session.email)
                 || "未設定";
+        }
+
+        function formatDateTime(dateTimeValue) {
+            if (!dateTimeValue) return "未設定";
+            const dt = new Date(dateTimeValue);
+            if (Number.isNaN(dt.getTime())) return String(dateTimeValue);
+            const y = dt.getFullYear();
+            const m = String(dt.getMonth() + 1).padStart(2, "0");
+            const d = String(dt.getDate()).padStart(2, "0");
+            const hh = String(dt.getHours()).padStart(2, "0");
+            const mm = String(dt.getMinutes()).padStart(2, "0");
+            return `${y}/${m}/${d} ${hh}:${mm}`;
+        }
+
+        function attendanceStatusLabel(status) {
+            if (status === "attend") return "出席";
+            if (status === "absent") return "欠席";
+            if (status === "pending") return "未定";
+            return "未回答";
+        }
+
+        function attendanceStatusBadgeClass(status) {
+            if (status === "attend") return "bg-emerald-100 text-emerald-700";
+            if (status === "absent") return "bg-rose-100 text-rose-700";
+            if (status === "pending") return "bg-amber-100 text-amber-700";
+            return "bg-gray-100 text-gray-600";
         }
 
         function normalizeText(value) {
@@ -281,6 +321,11 @@
             document.getElementById("edit_contact_phone").value = item.contact_phone || "";
             document.getElementById("edit_contact_email").value = item.contact_email || "";
             document.getElementById("edit_remarks").value = item.remarks || "";
+            document.getElementById("edit_attendance_required").checked = Boolean(item.attendance_required);
+            document.getElementById("edit_attendance_deadline").value = item.attendance_deadline
+                ? new Date(item.attendance_deadline).toISOString().slice(0, 16)
+                : "";
+            document.getElementById("edit_attendance_deadline").disabled = !item.attendance_required;
             
             // 配信対象を設定
             const visibility = item.visibility || 'all';
@@ -327,6 +372,8 @@
                 contact_phone: document.getElementById("edit_contact_phone").value.trim() || null,
                 contact_email: document.getElementById("edit_contact_email").value.trim() || null,
                 remarks: document.getElementById("edit_remarks").value.trim() || null,
+                attendance_required: document.getElementById("edit_attendance_required").checked,
+                attendance_deadline: null,
                 visibility: visibility,
                 updated_at: new Date().toISOString()
             };
@@ -340,6 +387,19 @@
             if (payload.start_time > payload.end_time) {
                 editMessage.textContent = "時間の入力を確認してください（開始時間 <= 終了時間）。";
                 return;
+            }
+
+            if (payload.attendance_required) {
+                const deadlineInput = document.getElementById("edit_attendance_deadline").value;
+                if (!deadlineInput) {
+                    editMessage.textContent = "出欠確認を行う場合は回答期限を入力してください。";
+                    return;
+                }
+                payload.attendance_deadline = new Date(deadlineInput).toISOString();
+            }
+
+            if (!payload.attendance_required) {
+                payload.attendance_deadline = null;
             }
 
             const { error } = await dbClient
@@ -442,8 +502,11 @@
             tbody.innerHTML = "";
             message.textContent = "";
             announcementByNo.clear();
+            myAttendanceByNo.clear();
+            attendanceStatsByNo.clear();
+            recipientsCountByNo.clear();
 
-            const baseSelect = "notice_date,start_time,end_time,title,content,owner_name,contact_phone,contact_email,remarks,no,visibility";
+            const baseSelect = "notice_date,start_time,end_time,title,content,owner_name,contact_phone,contact_email,remarks,no,visibility,attendance_required,attendance_deadline";
             const { data, error } = await dbClient
                 .from("announcements")
                 .select(baseSelect)
@@ -453,28 +516,101 @@
 
             if (error) {
                 message.textContent = "一覧読込失敗: " + error.message;
-                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="6">データを表示できませんでした。</td></tr>';
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="7">データを表示できませんでした。</td></tr>';
                 return;
             }
 
             const rows = data || [];
 
             if (rows.length === 0) {
-                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="6">お知らせはありません。</td></tr>';
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="7">お知らせはありません。</td></tr>';
                 message.textContent = `表示対象が0件です（role: ${currentRole}, email: ${currentUserEmail || "未取得"}）。`;
                 return;
+            }
+
+            const announcementNos = rows.map((item) => Number(item.no)).filter((value) => Number.isFinite(value));
+
+            if (announcementNos.length > 0) {
+                const { data: myResponses } = await dbClient
+                    .from("announcement_attendance_responses")
+                    .select("announcement_no,status,responded_at")
+                    .in("announcement_no", announcementNos)
+                    .eq("responder_email", currentUserEmail);
+
+                (myResponses || []).forEach((item) => {
+                    myAttendanceByNo.set(Number(item.announcement_no), item);
+                });
+
+                if (currentRole === "admin") {
+                    const { data: allResponses } = await dbClient
+                        .from("announcement_attendance_responses")
+                        .select("announcement_no,status")
+                        .in("announcement_no", announcementNos);
+
+                    (allResponses || []).forEach((item) => {
+                        const noValue = Number(item.announcement_no);
+                        if (!attendanceStatsByNo.has(noValue)) {
+                            attendanceStatsByNo.set(noValue, { attend: 0, absent: 0, pending: 0 });
+                        }
+                        const bucket = attendanceStatsByNo.get(noValue);
+                        if (item.status === "attend") bucket.attend += 1;
+                        if (item.status === "absent") bucket.absent += 1;
+                        if (item.status === "pending") bucket.pending += 1;
+                    });
+
+                    const { data: recipients } = await dbClient
+                        .from("announcement_recipients")
+                        .select("announcement_no")
+                        .in("announcement_no", announcementNos);
+
+                    (recipients || []).forEach((item) => {
+                        const noValue = Number(item.announcement_no);
+                        recipientsCountByNo.set(noValue, (recipientsCountByNo.get(noValue) || 0) + 1);
+                    });
+                }
             }
 
             rows.forEach((item) => {
                 announcementByNo.set(Number(item.no), item);
                 const tr = document.createElement("tr");
                 const canEdit = currentRole === "admin";
+                const noValue = Number(item.no);
+                const myResponse = myAttendanceByNo.get(noValue);
+                const currentStatus = myResponse ? myResponse.status : "unanswered";
+                const required = Boolean(item.attendance_required);
+                const deadlineText = required
+                    ? `期限: ${formatDateTime(item.attendance_deadline)}`
+                    : "出欠確認なし";
+                let adminSummaryText = "";
+                if (required && currentRole === "admin") {
+                    const stats = attendanceStatsByNo.get(noValue) || { attend: 0, absent: 0, pending: 0 };
+                    const targetCount = item.visibility === "specific"
+                        ? (recipientsCountByNo.get(noValue) || 0)
+                        : allMembers.length;
+                    const answeredCount = stats.attend + stats.absent + stats.pending;
+                    const unansweredCount = Math.max(targetCount - answeredCount, 0);
+                    adminSummaryText = `集計: 出席 ${stats.attend} / 欠席 ${stats.absent} / 未定 ${stats.pending} / 未回答 ${unansweredCount}`;
+                }
                 tr.innerHTML = `
                     <td class="p-2 border">${formatDate(item.notice_date)}</td>
                     <td class="p-2 border">${formatTimeRange(item.start_time, item.end_time)}</td>
                     <td class="p-2 border">${escapeHtml(item.title || "")}</td>
                     <td class="p-2 border">${escapeHtml(item.content || "")}</td>
                     <td class="p-2 border">${escapeHtml(item.owner_name || "未設定")}</td>
+                    <td class="p-2 border">
+                        ${required
+                            ? `<div class="space-y-2">
+                                <p class="text-xs text-gray-600">${escapeHtml(deadlineText)}</p>
+                                <p><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${attendanceStatusBadgeClass(currentStatus)}">${attendanceStatusLabel(currentStatus)}</span></p>
+                                ${adminSummaryText ? `<p class="text-xs text-gray-600">${escapeHtml(adminSummaryText)}</p>` : ""}
+                                <div class="flex flex-wrap gap-1">
+                                    <button class="attendance-btn text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200" data-attendance-no="${item.no}" data-attendance-status="attend">出席</button>
+                                    <button class="attendance-btn text-xs px-2 py-1 rounded bg-rose-100 text-rose-700 hover:bg-rose-200" data-attendance-no="${item.no}" data-attendance-status="absent">欠席</button>
+                                    <button class="attendance-btn text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200" data-attendance-no="${item.no}" data-attendance-status="pending">未定</button>
+                                </div>
+                            </div>`
+                            : `<span class="text-gray-400">-</span>`}
+                    </td>
                     <td class="p-2 border">
                         ${canEdit
                             ? `<button class="text-rose-700 hover:text-rose-900 font-semibold" data-edit-no="${item.no}">修正</button>`
@@ -492,6 +628,37 @@
                         return;
                     }
                     openEditModal(target);
+                });
+            });
+
+            tbody.querySelectorAll("button.attendance-btn").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    const announcementNo = Number(btn.getAttribute("data-attendance-no"));
+                    const status = btn.getAttribute("data-attendance-status");
+                    if (!announcementNo || !status || !currentUserEmail) {
+                        return;
+                    }
+
+                    const payload = {
+                        announcement_no: announcementNo,
+                        responder_email: currentUserEmail,
+                        responder_name: currentOwnerName || currentUserEmail,
+                        status,
+                        responded_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+
+                    const { error: upsertError } = await dbClient
+                        .from("announcement_attendance_responses")
+                        .upsert(payload, { onConflict: "announcement_no,responder_email" });
+
+                    if (upsertError) {
+                        message.textContent = "出欠回答の保存に失敗しました: " + upsertError.message;
+                        return;
+                    }
+
+                    message.textContent = `出欠回答を保存しました（${attendanceStatusLabel(status)}）。`;
+                    await loadAnnouncements();
                 });
             });
         }
@@ -520,6 +687,15 @@
                     section.classList.add("hidden");
                 }
             });
+        });
+
+        document.getElementById("edit_attendance_required").addEventListener("change", (event) => {
+            const deadlineInput = document.getElementById("edit_attendance_deadline");
+            const isRequired = Boolean(event.target.checked);
+            deadlineInput.disabled = !isRequired;
+            if (!isRequired) {
+                deadlineInput.value = "";
+            }
         });
 
         portalAuth.init({

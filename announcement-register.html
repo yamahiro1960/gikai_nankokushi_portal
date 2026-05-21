@@ -84,6 +84,16 @@
                         </label>
                     </div>
                 </div>
+                <div class="md:col-span-2">
+                    <label class="flex items-center gap-2">
+                        <input id="attendance_required" type="checkbox" class="w-4 h-4">
+                        <span class="text-sm font-semibold text-gray-700">このお知らせで出欠確認を行う</span>
+                    </label>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">回答期限（出欠確認ありの場合）</label>
+                    <input id="attendance_deadline" type="datetime-local" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" disabled>
+                </div>
                 <div id="specific-members-section" class="md:col-span-2 hidden">
                     <label class="text-sm font-semibold text-gray-700 block mb-2">グループ選択（複数可）</label>
                     <div id="member-group-list" class="border border-gray-300 rounded-lg p-3 bg-gray-50 mb-3">
@@ -155,6 +165,9 @@
             document.getElementById("owner_name_display").value = currentOwnerName || "";
             document.getElementById("visibility_all").checked = true;
             document.getElementById("visibility_specific").checked = false;
+            document.getElementById("attendance_required").checked = false;
+            document.getElementById("attendance_deadline").value = "";
+            document.getElementById("attendance_deadline").disabled = true;
             document.getElementById("specific-members-section").classList.add("hidden");
             document.querySelectorAll("#member-group-list .member-group-checkbox").forEach((checkbox) => {
                 checkbox.checked = false;
@@ -285,6 +298,8 @@
                 contact_phone: document.getElementById("contact_phone").value.trim() || null,
                 contact_email: document.getElementById("contact_email").value.trim() || null,
                 remarks: document.getElementById("remarks").value.trim() || null,
+                attendance_required: document.getElementById("attendance_required").checked,
+                attendance_deadline: null,
                 visibility: visibility,
                 updated_at: new Date().toISOString()
             };
@@ -297,6 +312,15 @@
             if (payload.start_time > payload.end_time) {
                 document.getElementById("announcement-message").textContent = "時間の入力を確認してください（開始時間 <= 終了時間）。";
                 return;
+            }
+
+            if (payload.attendance_required) {
+                const deadlineInput = document.getElementById("attendance_deadline").value;
+                if (!deadlineInput) {
+                    document.getElementById("announcement-message").textContent = "出欠確認を行う場合は回答期限を入力してください。";
+                    return;
+                }
+                payload.attendance_deadline = new Date(deadlineInput).toISOString();
             }
 
             const { data, error } = await dbClient
@@ -348,6 +372,15 @@
                     section.classList.add("hidden");
                 }
             });
+        });
+
+        document.getElementById("attendance_required").addEventListener("change", (event) => {
+            const deadlineInput = document.getElementById("attendance_deadline");
+            const isRequired = Boolean(event.target.checked);
+            deadlineInput.disabled = !isRequired;
+            if (!isRequired) {
+                deadlineInput.value = "";
+            }
         });
 
         document.getElementById("announcement-form").addEventListener("submit", saveAnnouncement);

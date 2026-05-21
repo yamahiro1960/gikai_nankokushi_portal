@@ -155,6 +155,18 @@ create table if not exists public.announcement_recipients (
     assigned_at timestamptz not null default now()
 );
 
+create table if not exists public.announcement_attendance_responses (
+    id bigserial primary key,
+    announcement_no bigint not null references public.announcements(no) on delete cascade,
+    responder_email text not null,
+    responder_name text,
+    status text not null check (status in ('attend', 'absent', 'pending')),
+    comment text,
+    responded_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (announcement_no, responder_email)
+);
+
 create table if not exists public.activity_records (
     id bigserial primary key,
     user_email text not null,
@@ -204,6 +216,8 @@ create table if not exists public.committee_activity_recipients (
 
 -- 既存テーブル向けカラム追加（CREATE TABLE IF NOT EXISTS では既存テーブルには反映されないため）
 alter table public.announcements add column if not exists visibility text not null default 'all' check (visibility in ('all', 'specific'));
+alter table public.announcements add column if not exists attendance_required boolean not null default false;
+alter table public.announcements add column if not exists attendance_deadline timestamptz;
 alter table public.activity_records add column if not exists activity_status text check (activity_status in ('記録済', '未実施', '継続中', '保留中', '完了'));
 
 create index if not exists announcements_notice_date_idx
@@ -214,6 +228,12 @@ on public.announcement_recipients (recipient_email, assigned_at desc);
 
 create index if not exists announcement_recipients_announcement_idx
 on public.announcement_recipients (announcement_no);
+
+create index if not exists announcement_attendance_responses_announcement_idx
+on public.announcement_attendance_responses (announcement_no, responded_at desc);
+
+create index if not exists announcement_attendance_responses_email_idx
+on public.announcement_attendance_responses (responder_email, responded_at desc);
 
 create index if not exists activity_records_user_date_idx
 on public.activity_records (user_email, activity_date desc, created_at desc);
@@ -300,6 +320,7 @@ alter table public.member_positions_master enable row level security;
 alter table public.member_directory enable row level security;
 alter table public.announcements enable row level security;
 alter table public.announcement_recipients enable row level security;
+alter table public.announcement_attendance_responses enable row level security;
 alter table public.activity_records enable row level security;
 alter table public.committee_materials enable row level security;
 alter table public.committee_activity_posts enable row level security;
@@ -476,6 +497,100 @@ for insert with check (public.is_portal_admin());
 
 drop policy if exists announcement_recipients_delete_admin on public.announcement_recipients;
 create policy announcement_recipients_delete_admin on public.announcement_recipients
+for delete using (public.is_portal_admin());
+
+-- announcement_attendance_responses ポリシー
+drop policy if exists announcement_attendance_responses_select_own_or_admin on public.announcement_attendance_responses;
+create policy announcement_attendance_responses_select_own_or_admin on public.announcement_attendance_responses
+for select using (
+    public.is_portal_admin()
+    or (
+        lower(trim(responder_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+        and exists (
+            select 1
+            from public.announcements a
+            where a.no = announcement_attendance_responses.announcement_no
+              and (
+                  a.visibility = 'all'
+                  or exists (
+                      select 1
+                      from public.announcement_recipients ar
+                      where ar.announcement_no = a.no
+                        and lower(trim(ar.recipient_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+                  )
+              )
+        )
+    )
+);
+
+drop policy if exists announcement_attendance_responses_insert_own_or_admin on public.announcement_attendance_responses;
+create policy announcement_attendance_responses_insert_own_or_admin on public.announcement_attendance_responses
+for insert with check (
+    public.is_portal_admin()
+    or (
+        lower(trim(responder_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+        and exists (
+            select 1
+            from public.announcements a
+            where a.no = announcement_attendance_responses.announcement_no
+              and (
+                  a.visibility = 'all'
+                  or exists (
+                      select 1
+                      from public.announcement_recipients ar
+                      where ar.announcement_no = a.no
+                        and lower(trim(ar.recipient_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+                  )
+              )
+        )
+    )
+);
+
+drop policy if exists announcement_attendance_responses_update_own_or_admin on public.announcement_attendance_responses;
+create policy announcement_attendance_responses_update_own_or_admin on public.announcement_attendance_responses
+for update using (
+    public.is_portal_admin()
+    or (
+        lower(trim(responder_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+        and exists (
+            select 1
+            from public.announcements a
+            where a.no = announcement_attendance_responses.announcement_no
+              and (
+                  a.visibility = 'all'
+                  or exists (
+                      select 1
+                      from public.announcement_recipients ar
+                      where ar.announcement_no = a.no
+                        and lower(trim(ar.recipient_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+                  )
+              )
+        )
+    )
+)
+with check (
+    public.is_portal_admin()
+    or (
+        lower(trim(responder_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+        and exists (
+            select 1
+            from public.announcements a
+            where a.no = announcement_attendance_responses.announcement_no
+              and (
+                  a.visibility = 'all'
+                  or exists (
+                      select 1
+                      from public.announcement_recipients ar
+                      where ar.announcement_no = a.no
+                        and lower(trim(ar.recipient_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+                  )
+              )
+        )
+    )
+);
+
+drop policy if exists announcement_attendance_responses_delete_admin on public.announcement_attendance_responses;
+create policy announcement_attendance_responses_delete_admin on public.announcement_attendance_responses
 for delete using (public.is_portal_admin());
 
 -- activity_records ポリシー（本人データのみ読み書き可）
