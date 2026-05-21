@@ -131,6 +131,7 @@
     <script>
         let dbClient = null;
         let currentOwnerName = "";
+        let currentUserEmail = "";
         let allMembers = [];
 
             function escapeHtml(value) {
@@ -338,6 +339,21 @@
             };
         }
 
+        async function writeAuditLog(client, { actionType, targetEmail = "", beforeValue = "", afterValue = "", note = "" }) {
+            try {
+                await client.from("audit_log").insert({
+                    actor_email: currentUserEmail || "不明",
+                    target_email: targetEmail,
+                    action_type: actionType,
+                    before_value: beforeValue,
+                    after_value: afterValue,
+                    note
+                });
+            } catch (_err) {
+                // 監査ログ失敗は画面操作を止めない
+            }
+        }
+
         function renderGroupList() {
             const container = document.getElementById("member-group-list");
             container.innerHTML = MEMBER_GROUPS.map((group) => `
@@ -456,6 +472,13 @@
             if (useGoogleInvite) {
                 const recipientEmails = getRecipientEmails(visibility, selectedMembers);
                 if (recipientEmails.length === 0) {
+                    await writeAuditLog(dbClient, {
+                        actionType: "Google招待同期失敗",
+                        targetEmail: currentUserEmail || "",
+                        beforeValue: `announcement_no=${announcementNo || "none"}; mode=create; event_id=none`,
+                        afterValue: "failed",
+                        note: "recipient_count=0"
+                    });
                     document.getElementById("announcement-message").textContent = "登録しました（Google招待対象メールが0件のため、カレンダー招待は送信していません）。";
                     clearForm();
                     return;
@@ -463,6 +486,13 @@
 
                 const inviteResult = await createGoogleCalendarInvite(dbClient, payload, recipientEmails);
                 if (!inviteResult.ok) {
+                    await writeAuditLog(dbClient, {
+                        actionType: "Google招待同期失敗",
+                        targetEmail: currentUserEmail || "",
+                        beforeValue: `announcement_no=${announcementNo || "none"}; mode=create; event_id=none`,
+                        afterValue: "failed",
+                        note: inviteResult.reason || "unknown"
+                    });
                     document.getElementById("announcement-message").textContent = `登録しました（Google招待に失敗: ${inviteResult.reason}）`;
                     clearForm();
                     return;
@@ -479,11 +509,26 @@
                         .eq("no", announcementNo);
 
                     if (calendarUpdateError) {
+                        await writeAuditLog(dbClient, {
+                            actionType: "Google招待同期失敗",
+                            targetEmail: currentUserEmail || "",
+                            beforeValue: `announcement_no=${announcementNo}; mode=create; event_id=none`,
+                            afterValue: "calendar_synced_but_db_save_failed",
+                            note: calendarUpdateError.message || "db save failed"
+                        });
                         document.getElementById("announcement-message").textContent = `登録とGoogle招待は完了しましたが、連携情報の保存に失敗しました: ${calendarUpdateError.message}`;
                         clearForm();
                         return;
                     }
                 }
+
+                await writeAuditLog(dbClient, {
+                    actionType: "Google招待同期",
+                    targetEmail: currentUserEmail || "",
+                    beforeValue: `announcement_no=${announcementNo || "none"}; mode=create; event_id=none`,
+                    afterValue: `event_id=${inviteResult.eventId || "none"}`,
+                    note: `recipient_count=${recipientEmails.length}`
+                });
 
                 document.getElementById("announcement-message").textContent = `登録しました。Google招待も送信しました（${recipientEmails.length}名）。`;
                 clearForm();
@@ -527,6 +572,7 @@
             onReady: async ({ client, session, profile }) => {
                 dbClient = client;
                 currentOwnerName = resolveOwnerName(session, profile);
+                currentUserEmail = (session && session.email) || (profile && profile.email) || "";
                 document.getElementById("owner_name_display").value = currentOwnerName;
                 await loadMembers();
             }
