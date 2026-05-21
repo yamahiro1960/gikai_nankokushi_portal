@@ -203,6 +203,7 @@
         let currentOwnerName = "未設定";
         const announcementByNo = new Map();
         const myAttendanceByNo = new Map();
+        const googleAttendanceByNo = new Map();
         const attendanceStatsByNo = new Map();
         const recipientsCountByNo = new Map();
         const inviteTargetCountByNo = new Map();
@@ -290,6 +291,44 @@
             if (status === "absent") return "bg-rose-100 text-rose-700";
             if (status === "pending") return "bg-amber-100 text-amber-700";
             return "bg-gray-100 text-gray-600";
+        }
+
+        function mapGoogleResponseStatus(responseStatus) {
+            if (responseStatus === "accepted") return "attend";
+            if (responseStatus === "declined") return "absent";
+            if (responseStatus === "tentative") return "pending";
+            return "unanswered";
+        }
+
+        async function fetchGoogleAttendanceStatus(client, eventId, userEmail) {
+            const providerToken = await getGoogleProviderToken(client);
+            if (!providerToken || !eventId || !userEmail) {
+                return null;
+            }
+
+            const response = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}?maxAttendees=2000`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${providerToken}`
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                return null;
+            }
+
+            const eventData = await response.json();
+            const attendees = Array.isArray(eventData.attendees) ? eventData.attendees : [];
+            const normalizedEmail = normalizeEmail(userEmail);
+            const mine = attendees.find((attendee) => normalizeEmail(attendee.email) === normalizedEmail);
+            if (!mine) {
+                return "unanswered";
+            }
+
+            return mapGoogleResponseStatus(mine.responseStatus || "needsAction");
         }
 
         function buildCalendarDateTime(dateValue, timeValue) {
@@ -1037,6 +1076,7 @@
             message.textContent = "";
             announcementByNo.clear();
             myAttendanceByNo.clear();
+            googleAttendanceByNo.clear();
             attendanceStatsByNo.clear();
             recipientsCountByNo.clear();
             inviteTargetCountByNo.clear();
@@ -1086,6 +1126,48 @@
                     myAttendanceByNo.set(Number(item.announcement_no), item);
                 });
 
+                const googleLinkedRows = rows.filter((item) => {
+                    return Boolean(item.attendance_required) && Boolean(item.google_calendar_event_id);
+                });
+
+                for (const item of googleLinkedRows) {
+                    const noValue = Number(item.no);
+                    const googleStatus = await fetchGoogleAttendanceStatus(dbClient, item.google_calendar_event_id, currentUserEmail);
+                    if (!googleStatus) {
+                        continue;
+                    }
+
+                    googleAttendanceByNo.set(noValue, googleStatus);
+
+                    if (googleStatus === "unanswered") {
+                        continue;
+                    }
+
+                    const current = myAttendanceByNo.get(noValue);
+                    const currentStatus = current ? current.status : "unanswered";
+                    if (currentStatus === googleStatus) {
+                        continue;
+                    }
+
+                    const nowIso = new Date().toISOString();
+                    const payload = {
+                        announcement_no: noValue,
+                        responder_email: currentUserEmail,
+                        responder_name: currentOwnerName || currentUserEmail,
+                        status: googleStatus,
+                        responded_at: nowIso,
+                        updated_at: nowIso
+                    };
+
+                    const { error: upsertError } = await dbClient
+                        .from("announcement_attendance_responses")
+                        .upsert(payload, { onConflict: "announcement_no,responder_email" });
+
+                    if (!upsertError) {
+                        myAttendanceByNo.set(noValue, { announcement_no: noValue, status: googleStatus, responded_at: nowIso });
+                    }
+                }
+
                 if (currentRole === "admin") {
                     const { data: allResponses } = await dbClient
                         .from("announcement_attendance_responses")
@@ -1122,8 +1204,10 @@
                 const canEdit = currentRole === "admin";
                 const noValue = Number(item.no);
                 const myResponse = myAttendanceByNo.get(noValue);
-                const currentStatus = myResponse ? myResponse.status : "unanswered";
+                const googleSyncedStatus = googleAttendanceByNo.get(noValue);
+                const currentStatus = googleSyncedStatus || (myResponse ? myResponse.status : "unanswered");
                 const required = Boolean(item.attendance_required);
+                const useGoogleAttendance = required && Boolean(item.google_calendar_event_id);
                 const deadlineText = required
                     ? `期限: ${formatDateTime(item.attendance_deadline)}`
                     : "出欠確認なし";
@@ -1170,11 +1254,13 @@
                                 <p class="text-xs text-gray-600">${escapeHtml(deadlineText)}</p>
                                 <p><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${attendanceStatusBadgeClass(currentStatus)}">${attendanceStatusLabel(currentStatus)}</span></p>
                                 ${adminSummaryText ? `<p class="text-xs text-gray-600">${escapeHtml(adminSummaryText)}</p>` : ""}
-                                <div class="flex flex-wrap gap-1">
-                                    <button class="attendance-btn text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200" data-attendance-no="${item.no}" data-attendance-status="attend">出席</button>
-                                    <button class="attendance-btn text-xs px-2 py-1 rounded bg-rose-100 text-rose-700 hover:bg-rose-200" data-attendance-no="${item.no}" data-attendance-status="absent">欠席</button>
-                                    <button class="attendance-btn text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200" data-attendance-no="${item.no}" data-attendance-status="pending">未定</button>
-                                </div>
+                                ${useGoogleAttendance
+                                    ? `<p class="text-xs text-indigo-700">Googleカレンダーの回答と同期しています（回答はGoogle側で実施）。</p>`
+                                    : `<div class="flex flex-wrap gap-1">
+                                        <button class="attendance-btn text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200" data-attendance-no="${item.no}" data-attendance-status="attend">出席</button>
+                                        <button class="attendance-btn text-xs px-2 py-1 rounded bg-rose-100 text-rose-700 hover:bg-rose-200" data-attendance-no="${item.no}" data-attendance-status="absent">欠席</button>
+                                        <button class="attendance-btn text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200" data-attendance-no="${item.no}" data-attendance-status="pending">未定</button>
+                                    </div>`}
                             </div>`
                             : `<span class="text-gray-400">-</span>`}
                     </td>
