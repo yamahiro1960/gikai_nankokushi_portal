@@ -166,11 +166,17 @@
             if (!target) return;
 
             const now = new Date();
+            const [y, m, d] = getTodayDateString().split("-");
+            const week = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
+            target.textContent = `${y}/${m}/${d}(${week})`;
+        }
+
+        function getTodayDateString() {
+            const now = new Date();
             const y = now.getFullYear();
             const m = String(now.getMonth() + 1).padStart(2, "0");
             const d = String(now.getDate()).padStart(2, "0");
-            const week = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
-            target.textContent = `${y}/${m}/${d}(${week})`;
+            return `${y}-${m}-${d}`;
         }
 
         function renderAnnouncements(items) {
@@ -210,13 +216,15 @@
                 return;
             }
 
+            const today = getTodayDateString();
             const baseSelect = "no,notice_date,start_time,end_time,title,content,visibility";
             const { data, error } = await client
                 .from("announcements")
                 .select(baseSelect)
-                .order("notice_date", { ascending: false })
-                .order("start_time", { ascending: false })
-                .order("no", { ascending: false })
+                .gte("notice_date", today)
+                .order("notice_date", { ascending: true })
+                .order("start_time", { ascending: true, nullsFirst: false })
+                .order("no", { ascending: true })
                 .limit(3);
 
             if (error) {
