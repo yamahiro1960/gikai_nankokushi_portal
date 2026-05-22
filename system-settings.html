@@ -455,7 +455,17 @@
             return normalized === null ? Number.MAX_SAFE_INTEGER : normalized;
         }
 
+        function categorySortValue(item) {
+            const category = String((item && item.category) || "").trim();
+            if (category === "議員") return 1;
+            if (category === "職員") return 2;
+            return 3;
+        }
+
         function compareMembersBySeat(a, b) {
+            const categoryDiff = categorySortValue(a) - categorySortValue(b);
+            if (categoryDiff !== 0) return categoryDiff;
+
             const seatDiff = seatSortValue(a) - seatSortValue(b);
             if (seatDiff !== 0) return seatDiff;
             const furiganaDiff = String(a.furigana || "").localeCompare(String(b.furigana || ""), "ja");
@@ -536,10 +546,7 @@
             const { data, error } = await dbClient
                 .from("member_directory")
                 .select("member_id,full_name,photo_path,furigana,seat_number,category,postal_code,address,phone,mobile,position_name,email,committee,committee_role,is_giun,giun_role,is_editorial_committee,editorial_role")
-                .order("category", { ascending: true })
-                .order("seat_number", { ascending: true, nullsFirst: false })
-                .order("furigana", { ascending: true, nullsFirst: false })
-                .order("full_name", { ascending: true });
+                .order("member_id", { ascending: true });
 
             if (error) {
                 message.textContent = "メンバー一覧の読込に失敗しました: " + error.message;
@@ -548,7 +555,7 @@
                 return;
             }
 
-            memberRows = data || [];
+            memberRows = (data || []).slice().sort(compareMembersBySeat);
 
             if (memberRows.length === 0) {
                 tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="3">登録データがありません。</td></tr>';

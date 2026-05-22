@@ -193,7 +193,7 @@
         async function loadMembers() {
             const { data, error } = await dbClient
                 .from("member_directory")
-                .select("email, full_name, seat_number, position_name, committee, is_giun, is_editorial_committee")
+                .select("email, full_name, seat_number, category, position_name, committee, is_giun, is_editorial_committee")
                 .eq("is_current", true)
                 .order("seat_number", { ascending: true, nullsFirst: false })
                 .order("full_name", { ascending: true });
@@ -203,13 +203,45 @@
                 return;
             }
 
-            allMembers = data || [];
+            allMembers = (data || []).slice().sort(compareMembersForDisplay);
             renderGroupList();
             renderMembersList();
         }
 
         function normalizeText(value) {
             return String(value || "").replace(/\s+/g, "").trim();
+        }
+
+        function normalizeSeatNumber(value) {
+            if (value === null || value === undefined || value === "") {
+                return null;
+            }
+            const n = Number(value);
+            if (!Number.isInteger(n) || n <= 0) {
+                return null;
+            }
+            return n;
+        }
+
+        function categorySortValue(member) {
+            const category = String((member && member.category) || "").trim();
+            if (category === "議員") return 1;
+            if (category === "職員") return 2;
+            return 3;
+        }
+
+        function compareMembersForDisplay(a, b) {
+            const categoryDiff = categorySortValue(a) - categorySortValue(b);
+            if (categoryDiff !== 0) return categoryDiff;
+
+            const seatA = normalizeSeatNumber(a && a.seat_number);
+            const seatB = normalizeSeatNumber(b && b.seat_number);
+            const seatValueA = seatA === null ? Number.MAX_SAFE_INTEGER : seatA;
+            const seatValueB = seatB === null ? Number.MAX_SAFE_INTEGER : seatB;
+            const seatDiff = seatValueA - seatValueB;
+            if (seatDiff !== 0) return seatDiff;
+
+            return String(a && a.full_name ? a.full_name : "").localeCompare(String(b && b.full_name ? b.full_name : ""), "ja");
         }
 
         function memberBelongsToGroup(member, groupId) {
