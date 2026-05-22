@@ -98,6 +98,35 @@
         </section>
     </main>
 
+    <div id="attendance-status-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h2 id="attendance-status-modal-title" class="text-lg font-bold text-gray-800">出欠対象一覧</h2>
+                    <p id="attendance-status-modal-summary" class="mt-1 text-sm text-gray-600"></p>
+                </div>
+                <button type="button" id="attendance-status-modal-close" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold">閉じる</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-2 border">氏名</th>
+                            <th class="text-left p-2 border">携帯電話</th>
+                            <th class="text-left p-2 border">出欠状態</th>
+                            <th class="text-left p-2 border">回答日時</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-status-modal-list">
+                        <tr>
+                            <td class="p-2 border text-gray-500" colspan="4">対象を読み込み中です...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div id="announcement-edit-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h2 class="text-lg font-bold text-gray-800 mb-4">お知らせを修正</h2>
@@ -857,6 +886,140 @@
             return `${dateText} ${timeText} ${item.title || ""}`.trim();
         }
 
+        function closeAttendanceStatusModal() {
+            document.getElementById("attendance-status-modal").classList.add("hidden");
+        }
+
+        function openAttendanceStatusModal() {
+            document.getElementById("attendance-status-modal").classList.remove("hidden");
+        }
+
+        function buildAttendanceStatusBadgeHtml(status) {
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${attendanceStatusBadgeClass(status)}">${escapeHtml(attendanceStatusLabel(status))}</span>`;
+        }
+
+        async function getAttendanceTargets(item) {
+            let targets = [];
+
+            if (item.visibility === "specific") {
+                const { data: recipients, error: recipientsError } = await dbClient
+                    .from("announcement_recipients")
+                    .select("recipient_email,recipient_name")
+                    .eq("announcement_no", item.no);
+
+                if (recipientsError) {
+                    throw new Error("配信対象の取得に失敗しました: " + recipientsError.message);
+                }
+
+                targets = (recipients || []).map((row) => {
+                    const email = normalizeEmail(row.recipient_email);
+                    const member = allMembers.find((entry) => normalizeEmail(entry.email) === email) || null;
+                    return {
+                        email,
+                        name: row.recipient_name || member?.full_name || row.recipient_email,
+                        mobile: member?.mobile || "",
+                        sortSource: member || { full_name: row.recipient_name || row.recipient_email, category: "", seat_number: null }
+                    };
+                });
+            } else {
+                targets = getMembersWithEmail().map((target) => {
+                    const member = allMembers.find((entry) => normalizeEmail(entry.email) === target.email) || null;
+                    return {
+                        email: target.email,
+                        name: target.name,
+                        mobile: member?.mobile || "",
+                        sortSource: member || { full_name: target.name, category: "", seat_number: null }
+                    };
+                });
+            }
+
+            const dedupMap = new Map();
+            targets.forEach((target) => {
+                if (!target.email || dedupMap.has(target.email)) {
+                    return;
+                }
+                dedupMap.set(target.email, target);
+            });
+
+            return Array.from(dedupMap.values()).sort((a, b) => compareMembersForDisplay(a.sortSource, b.sortSource));
+        }
+
+        async function loadAttendanceStatusMembers(announcementNo) {
+            const title = document.getElementById("attendance-status-modal-title");
+            const summary = document.getElementById("attendance-status-modal-summary");
+            const tbody = document.getElementById("attendance-status-modal-list");
+
+            tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="4">読み込み中です...</td></tr>';
+            summary.textContent = "";
+
+            const item = announcementByNo.get(Number(announcementNo));
+            if (!item || !item.attendance_required) {
+                title.textContent = "出欠対象一覧";
+                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="4">対象のお知らせが見つかりません。</td></tr>';
+                return;
+            }
+
+            title.textContent = `出欠対象一覧: ${buildAttendanceSelectLabel(item)}`;
+
+            try {
+                const targets = await getAttendanceTargets(item);
+                const { data: responses, error: responseError } = await dbClient
+                    .from("announcement_attendance_responses")
+                    .select("responder_email,responder_name,status,responded_at")
+                    .eq("announcement_no", item.no);
+
+                if (responseError) {
+                    throw new Error("回答の取得に失敗しました: " + responseError.message);
+                }
+
+                const responseByEmail = new Map();
+                (responses || []).forEach((row) => {
+                    const email = normalizeEmail(row.responder_email);
+                    if (!email) {
+                        return;
+                    }
+                    responseByEmail.set(email, row);
+                });
+
+                const rows = targets.map((target) => {
+                    const response = responseByEmail.get(target.email);
+                    return {
+                        name: target.name,
+                        mobile: target.mobile || "",
+                        status: response?.status || "unanswered",
+                        respondedAt: response?.responded_at || ""
+                    };
+                });
+
+                const stats = rows.reduce((acc, row) => {
+                    if (row.status === "attend") acc.attend += 1;
+                    else if (row.status === "absent") acc.absent += 1;
+                    else if (row.status === "pending") acc.pending += 1;
+                    else acc.unanswered += 1;
+                    return acc;
+                }, { attend: 0, absent: 0, pending: 0, unanswered: 0 });
+
+                const deadlineText = item.attendance_deadline ? ` / 回答期限: ${formatDateTime(item.attendance_deadline)}` : "";
+                summary.textContent = `対象 ${rows.length}名 / 出席 ${stats.attend}名 / 欠席 ${stats.absent}名 / 未定 ${stats.pending}名 / 未回答 ${stats.unanswered}名${deadlineText}`;
+
+                if (rows.length === 0) {
+                    tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="4">対象者はいません。</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = rows.map((row) => `
+                    <tr>
+                        <td class="p-2 border">${escapeHtml(row.name || "-")}</td>
+                        <td class="p-2 border">${row.mobile ? escapeHtml(row.mobile) : '<span class="text-gray-400">-</span>'}</td>
+                        <td class="p-2 border">${buildAttendanceStatusBadgeHtml(row.status)}</td>
+                        <td class="p-2 border">${row.respondedAt ? escapeHtml(formatDateTime(row.respondedAt)) : '<span class="text-gray-400">-</span>'}</td>
+                    </tr>
+                `).join("");
+            } catch (error) {
+                tbody.innerHTML = `<tr><td class="p-2 border text-red-600" colspan="4">${escapeHtml(error && error.message ? error.message : "出欠対象一覧の取得に失敗しました。")}</td></tr>`;
+            }
+        }
+
         async function loadUnansweredMembers(announcementNo) {
             const tbody = document.getElementById("attendance-unanswered-list");
             const summary = document.getElementById("attendance-summary");
@@ -933,33 +1096,8 @@
 
         async function renderAttendanceAdminSection(rows) {
             const section = document.getElementById("attendance-admin-section");
-            const select = document.getElementById("attendance-target-select");
-            const tbody = document.getElementById("attendance-unanswered-list");
-            const summary = document.getElementById("attendance-summary");
-
-            if (currentRole !== "admin") {
-                section.classList.add("hidden");
-                return;
-            }
-
-            section.classList.remove("hidden");
             attendanceAnnouncements = (rows || []).filter((item) => Boolean(item.attendance_required));
-
-            if (attendanceAnnouncements.length === 0) {
-                select.innerHTML = '<option value="">出欠確認ありのお知らせはありません</option>';
-                tbody.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="2">出欠確認ありのお知らせを登録すると抽出できます。</td></tr>';
-                summary.textContent = "";
-                return;
-            }
-
-            const prevSelected = Number(select.value || "0");
-            select.innerHTML = attendanceAnnouncements.map((item) => {
-                return `<option value="${item.no}">${escapeHtml(buildAttendanceSelectLabel(item))}</option>`;
-            }).join("");
-
-            const target = attendanceAnnouncements.find((item) => Number(item.no) === prevSelected) || attendanceAnnouncements[0];
-            select.value = String(target.no);
-            await loadUnansweredMembers(target.no);
+            section.classList.add("hidden");
         }
 
         function normalizeText(value) {
@@ -1531,7 +1669,7 @@
                     <td class="p-2 border">${googleStatusHtml}${personalSyncAlertHtml}</td>
                     <td class="p-2 border">
                         ${isCanceled
-                            ? `<span class="text-xs text-gray-500">取消済みのため回答不可</span>`
+                            ? `<div class="space-y-2"><span class="text-xs text-gray-500">取消済みのため回答不可</span>${required ? `<button class="attendance-members-btn text-xs px-2 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200" data-attendance-members-no="${item.no}">対象者一覧</button>` : ""}</div>`
                             : required
                             ? `<div class="space-y-2">
                                 <p class="text-xs text-gray-600">${escapeHtml(deadlineText)}</p>
@@ -1542,6 +1680,7 @@
                                     <button class="attendance-btn text-xs px-2 py-1 rounded bg-rose-100 text-rose-700 hover:bg-rose-200" data-attendance-no="${item.no}" data-attendance-status="absent">欠席</button>
                                     <button class="attendance-btn text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200" data-attendance-no="${item.no}" data-attendance-status="pending">未定</button>
                                 </div>
+                                <button class="attendance-members-btn text-xs px-2 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200" data-attendance-members-no="${item.no}">対象者一覧</button>
                                 <button class="personal-calendar-btn text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200" data-personal-calendar-no="${item.no}">${personalCalendarButtonLabel}</button>
                             </div>`
                             : `<span class="text-gray-400">-</span>`}
@@ -1615,6 +1754,18 @@
 
                     message.textContent = `出欠回答を保存しました（${attendanceStatusLabel(status)}）。`;
                     await loadAnnouncements();
+                });
+            });
+
+            tbody.querySelectorAll("button.attendance-members-btn").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    const noValue = Number(btn.getAttribute("data-attendance-members-no"));
+                    if (!noValue) {
+                        return;
+                    }
+
+                    openAttendanceStatusModal();
+                    await loadAttendanceStatusMembers(noValue);
                 });
             });
 
@@ -1726,6 +1877,12 @@
                 closeEditModal();
             }
         });
+        document.getElementById("attendance-status-modal-close").addEventListener("click", closeAttendanceStatusModal);
+        document.getElementById("attendance-status-modal").addEventListener("click", (event) => {
+            if (event.target && event.target.id === "attendance-status-modal") {
+                closeAttendanceStatusModal();
+            }
+        });
 
         // 編集画面の配信対象の表示・非表示切り替え
         document.querySelectorAll('input[name="edit_visibility"]').forEach(radio => {
@@ -1795,7 +1952,7 @@
                 // メンバーを読み込む
                 const { data: members } = await dbClient
                     .from("member_directory")
-                    .select("email, full_name, seat_number, category, position_name, committee, is_giun, is_editorial_committee")
+                    .select("email, full_name, mobile, seat_number, category, position_name, committee, is_giun, is_editorial_committee")
                     .eq("is_current", true)
                     .order("seat_number", { ascending: true, nullsFirst: false })
                     .order("full_name", { ascending: true });
