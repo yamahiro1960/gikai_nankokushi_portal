@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>システム要望 | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-indigo-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <div class="text-right">
+                <span class="text-sm">システム要望</span>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6 flex flex-wrap gap-3">
+            <a href="index.html" class="text-indigo-700 hover:text-indigo-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>ポータルに戻る
+            </a>
+        </div>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-fuchsia-500 mb-6">
+            <h1 class="text-2xl font-bold mb-2 text-gray-700">システム要望</h1>
+            <p class="text-sm text-gray-600 mb-5">ログイン中の利用者は全員、要望の登録と修正ができます。記事は自由記述です。</p>
+
+            <form id="system-request-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input id="request_id" type="hidden">
+
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">件名</label>
+                    <input id="request_title" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 添付ファイルの一括アップロード対応" maxlength="200">
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">対応フラグ</label>
+                    <select id="response_flag" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="pending">未判定</option>
+                        <option value="accepted">対応する</option>
+                        <option value="rejected">対応しない</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">記事（自由記述）</label>
+                    <textarea id="request_body" rows="6" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="要望の背景、必要機能、改善案などを自由に記載してください。"></textarea>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="flex items-center gap-2">
+                        <input id="is_completed" type="checkbox" class="w-4 h-4">
+                        <span class="text-sm font-semibold text-gray-700">対応完了マークを付ける</span>
+                    </label>
+                </div>
+
+                <div class="md:col-span-2 text-xs text-gray-500">
+                    <p id="editing-meta">新規登録モードです。</p>
+                </div>
+
+                <div class="md:col-span-2 flex gap-3">
+                    <button type="submit" id="save-button" class="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-5 py-2 rounded-lg text-sm font-semibold">登録する</button>
+                    <button type="button" id="clear-button" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold">入力をクリア</button>
+                </div>
+            </form>
+            <p id="form-message" class="mt-3 text-sm text-gray-600"></p>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-indigo-500 mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-end gap-3 mb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-700">要望一覧</h2>
+                    <p class="text-sm text-gray-600">行をクリックすると編集できます。</p>
+                </div>
+                <div class="sm:ml-auto w-full sm:w-64">
+                    <label for="status-filter" class="text-sm font-semibold text-gray-700">表示フィルタ</label>
+                    <select id="status-filter" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="all">すべて</option>
+                        <option value="open">未完了のみ</option>
+                        <option value="completed">完了のみ</option>
+                        <option value="accepted">対応するのみ</option>
+                        <option value="rejected">対応しないのみ</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-2 border">状態</th>
+                            <th class="text-left p-2 border">件名</th>
+                            <th class="text-left p-2 border">記事</th>
+                            <th class="text-left p-2 border">登録者</th>
+                            <th class="text-left p-2 border">更新者</th>
+                            <th class="text-left p-2 border">更新日時</th>
+                        </tr>
+                    </thead>
+                    <tbody id="system-request-list">
+                        <tr>
+                            <td class="p-2 border text-gray-500" colspan="6">読み込み中です...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-slate-500">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-700">ログ管理</h2>
+                    <p class="text-sm text-gray-600">システム要望の登録・更新履歴を表示します。</p>
+                </div>
+                <button id="reload-log" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold">再読み込み</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-2 border">日時</th>
+                            <th class="text-left p-2 border">実行者</th>
+                            <th class="text-left p-2 border">操作</th>
+                            <th class="text-left p-2 border">対象</th>
+                            <th class="text-left p-2 border">内容</th>
+                        </tr>
+                    </thead>
+                    <tbody id="system-request-log-list">
+                        <tr>
+                            <td class="p-2 border text-gray-500" colspan="5">読み込み中です...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        let dbClient = null;
+        let currentUserEmail = "";
+        let currentUserName = "";
+        let requestRows = [];
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function normalizeEmail(value) {
+            return String(value || "").trim().toLowerCase();
+        }
+
+        function resolveDisplayName(session, profile) {
+            return (session && session.displayName)
+                || (profile && profile.display_name)
+                || (session && session.email)
+                || "未設定";
+        }
+
+        function formatDateTime(dateTimeValue) {
+            if (!dateTimeValue) return "";
+            const dt = new Date(dateTimeValue);
+            if (Number.isNaN(dt.getTime())) return String(dateTimeValue);
+            return dt.toLocaleString("ja-JP", {
+                timeZone: "Asia/Tokyo",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        function statusBadge(flag, isCompleted) {
+            if (isCompleted) {
+                return '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">完了</span>';
+            }
+            if (flag === "accepted") {
+                return '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">対応する</span>';
+            }
+            if (flag === "rejected") {
+                return '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">対応しない</span>';
+            }
+            return '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">未判定</span>';
+        }
+
+        function setFormMessage(text, isError = false) {
+            const target = document.getElementById("form-message");
+            target.textContent = text || "";
+            target.className = `mt-3 text-sm ${isError ? "text-rose-600 font-semibold" : "text-gray-600"}`;
+        }
+
+        function buildMissingTableMessage() {
+            return "システム要望テーブル(public.system_requests)が未反映です。Supabase SQL Editor で supabase_setup.sql を実行後、NOTIFY pgrst, 'reload schema'; を実行してください。";
+        }
+
+        function isSystemRequestsTableMissing(error) {
+            const message = String(error && error.message ? error.message : "").toLowerCase();
+            const details = String(error && error.details ? error.details : "").toLowerCase();
+            return (
+                message.includes("public.system_requests")
+                || details.includes("public.system_requests")
+                || message.includes("relation \"public.system_requests\" does not exist")
+            );
+        }
+
+        function resetForm() {
+            document.getElementById("request_id").value = "";
+            document.getElementById("request_title").value = "";
+            document.getElementById("response_flag").value = "pending";
+            document.getElementById("request_body").value = "";
+            document.getElementById("is_completed").checked = false;
+            document.getElementById("editing-meta").textContent = "新規登録モードです。";
+            document.getElementById("save-button").textContent = "登録する";
+        }
+
+        function populateForm(row) {
+            document.getElementById("request_id").value = String(row.id || "");
+            document.getElementById("request_title").value = row.title || "";
+            document.getElementById("response_flag").value = row.response_flag || "pending";
+            document.getElementById("request_body").value = row.body || "";
+            document.getElementById("is_completed").checked = !!row.is_completed;
+            document.getElementById("editing-meta").textContent = `編集中: ID ${row.id} / 登録: ${escapeHtml(row.created_by_name || row.created_by_email || "未設定")} / 更新: ${formatDateTime(row.updated_at)}`;
+            document.getElementById("save-button").textContent = "更新する";
+        }
+
+        function filteredRows() {
+            const filter = document.getElementById("status-filter").value;
+            if (filter === "all") {
+                return requestRows.slice();
+            }
+            return requestRows.filter((row) => {
+                if (filter === "open") {
+                    return !row.is_completed;
+                }
+                if (filter === "completed") {
+                    return !!row.is_completed;
+                }
+                if (filter === "accepted") {
+                    return row.response_flag === "accepted";
+                }
+                if (filter === "rejected") {
+                    return row.response_flag === "rejected";
+                }
+                return true;
+            });
+        }
+
+        function renderRequestList() {
+            const list = document.getElementById("system-request-list");
+            const rows = filteredRows();
+
+            if (rows.length === 0) {
+                list.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="6">表示できるデータがありません。</td></tr>';
+                return;
+            }
+
+            list.innerHTML = rows.map((row) => {
+                const preview = String(row.body || "").replace(/\s+/g, " ").trim();
+                const bodyDisplay = preview.length > 120 ? `${escapeHtml(preview.slice(0, 120))}...` : escapeHtml(preview);
+                const title = row.title ? escapeHtml(row.title) : "(件名なし)";
+                const creator = escapeHtml(row.created_by_name || row.created_by_email || "未設定");
+                const updater = escapeHtml(row.updated_by_name || row.updated_by_email || "未設定");
+                return `
+                    <tr class="hover:bg-gray-50 cursor-pointer" data-request-id="${row.id}">
+                        <td class="p-2 border">${statusBadge(row.response_flag, row.is_completed)}</td>
+                        <td class="p-2 border font-semibold text-gray-800">${title}</td>
+                        <td class="p-2 border text-gray-700">${bodyDisplay}</td>
+                        <td class="p-2 border text-gray-700">${creator}</td>
+                        <td class="p-2 border text-gray-700">${updater}</td>
+                        <td class="p-2 border text-gray-500 whitespace-nowrap">${escapeHtml(formatDateTime(row.updated_at))}</td>
+                    </tr>
+                `;
+            }).join("");
+
+            list.querySelectorAll("tr[data-request-id]").forEach((tr) => {
+                tr.addEventListener("click", () => {
+                    const id = Number(tr.getAttribute("data-request-id"));
+                    const row = requestRows.find((item) => Number(item.id) === id);
+                    if (!row) return;
+                    populateForm(row);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+            });
+        }
+
+        async function loadRequests() {
+            const list = document.getElementById("system-request-list");
+            const { data, error } = await dbClient
+                .from("system_requests")
+                .select("id,title,body,response_flag,is_completed,completed_at,created_by_email,created_by_name,updated_by_email,updated_by_name,created_at,updated_at")
+                .order("is_completed", { ascending: true })
+                .order("updated_at", { ascending: false });
+
+            if (error) {
+                console.error("システム要望読み込みエラー:", error);
+                if (isSystemRequestsTableMissing(error)) {
+                    list.innerHTML = `<tr><td class="p-2 border text-rose-700" colspan="6">${escapeHtml(buildMissingTableMessage())}</td></tr>`;
+                    return;
+                }
+                list.innerHTML = `<tr><td class="p-2 border text-rose-700" colspan="6">読み込みに失敗しました: ${escapeHtml(error.message || "不明なエラー")}</td></tr>`;
+                return;
+            }
+
+            requestRows = data || [];
+            renderRequestList();
+        }
+
+        async function writeAuditLog(actionType, targetEmail, beforeValue, afterValue, note) {
+            try {
+                await dbClient.from("audit_log").insert({
+                    actor_email: currentUserEmail || "不明",
+                    target_email: targetEmail || "",
+                    action_type: actionType,
+                    before_value: beforeValue || "",
+                    after_value: afterValue || "",
+                    note: note || ""
+                });
+            } catch (_err) {
+                // 監査ログ失敗は画面操作を止めない
+            }
+        }
+
+        function rowSummary(row) {
+            return JSON.stringify({
+                id: row.id,
+                title: row.title || "",
+                response_flag: row.response_flag,
+                is_completed: row.is_completed,
+                updated_by_email: row.updated_by_email || ""
+            });
+        }
+
+        function responseFlagLabel(flag) {
+            if (flag === "accepted") return "対応する";
+            if (flag === "rejected") return "対応しない";
+            return "未判定";
+        }
+
+        function completedLabel(isCompleted) {
+            return isCompleted ? "完了" : "未完了";
+        }
+
+        function parseSummaryJson(value) {
+            const text = String(value || "").trim();
+            if (!text) return null;
+            try {
+                const parsed = JSON.parse(text);
+                if (!parsed || typeof parsed !== "object") {
+                    return null;
+                }
+                return parsed;
+            } catch (_err) {
+                return null;
+            }
+        }
+
+        function summarizeRecordForLog(value) {
+            const parsed = parseSummaryJson(value);
+            if (!parsed) {
+                return String(value || "").trim();
+            }
+
+            const id = parsed.id ? `ID:${parsed.id}` : "";
+            const title = parsed.title ? `件名:${parsed.title}` : "件名:(未設定)";
+            const responseFlag = `判定:${responseFlagLabel(parsed.response_flag)}`;
+            const completed = `状態:${completedLabel(!!parsed.is_completed)}`;
+            const updater = parsed.updated_by_email ? `更新者:${parsed.updated_by_email}` : "";
+
+            return [id, title, responseFlag, completed, updater].filter(Boolean).join(" / ");
+        }
+
+        function summarizeLogNote(noteValue) {
+            const note = String(noteValue || "").trim();
+            if (!note) return "";
+            const match = note.match(/^system_request_id=(\d+)$/);
+            if (match) {
+                return `対象ID:${match[1]}`;
+            }
+            return note;
+        }
+
+        function formatLogContent(row) {
+            const before = summarizeRecordForLog(row.before_value);
+            const after = summarizeRecordForLog(row.after_value);
+            const note = summarizeLogNote(row.note);
+            const action = String(row.action_type || "");
+
+            if (action === "system_request_create") {
+                return ["登録", after, note].filter(Boolean).join(" / ");
+            }
+
+            if (action === "system_request_update") {
+                const segments = [];
+                if (before) segments.push(`変更前: ${before}`);
+                if (after) segments.push(`変更後: ${after}`);
+                if (note) segments.push(note);
+                return segments.join(" / ");
+            }
+
+            return [before, after, note].filter(Boolean).join(" / ");
+        }
+
+        async function saveRequest(event) {
+            event.preventDefault();
+            setFormMessage("");
+
+            const idText = document.getElementById("request_id").value;
+            const requestId = idText ? Number(idText) : null;
+            const title = document.getElementById("request_title").value.trim();
+            const body = document.getElementById("request_body").value.trim();
+            const responseFlag = document.getElementById("response_flag").value;
+            const isCompleted = document.getElementById("is_completed").checked;
+            const nowIso = new Date().toISOString();
+
+            if (!body) {
+                setFormMessage("記事（自由記述）を入力してください。", true);
+                return;
+            }
+
+            const basePayload = {
+                title: title || null,
+                body,
+                response_flag: responseFlag,
+                is_completed: isCompleted,
+                completed_at: isCompleted ? nowIso : null,
+                updated_by_email: currentUserEmail || null,
+                updated_by_name: currentUserName || null,
+                updated_at: nowIso
+            };
+
+            if (!requestId) {
+                const payload = {
+                    ...basePayload,
+                    created_by_email: currentUserEmail || null,
+                    created_by_name: currentUserName || null
+                };
+
+                const { data, error } = await dbClient
+                    .from("system_requests")
+                    .insert(payload)
+                    .select("id,title,body,response_flag,is_completed,updated_by_email")
+                    .single();
+
+                if (error) {
+                    if (isSystemRequestsTableMissing(error)) {
+                        setFormMessage(buildMissingTableMessage(), true);
+                        return;
+                    }
+                    setFormMessage(`登録に失敗しました: ${error.message || "不明なエラー"}`, true);
+                    return;
+                }
+
+                await writeAuditLog(
+                    "system_request_create",
+                    currentUserEmail,
+                    "",
+                    rowSummary(data || payload),
+                    `system_request_id=${data && data.id ? data.id : ""}`
+                );
+
+                setFormMessage("システム要望を登録しました。");
+                resetForm();
+                await loadRequests();
+                await loadLogs();
+                return;
+            }
+
+            const beforeRow = requestRows.find((row) => Number(row.id) === requestId) || null;
+            const { data, error } = await dbClient
+                .from("system_requests")
+                .update(basePayload)
+                .eq("id", requestId)
+                .select("id,title,body,response_flag,is_completed,updated_by_email")
+                .single();
+
+            if (error) {
+                if (isSystemRequestsTableMissing(error)) {
+                    setFormMessage(buildMissingTableMessage(), true);
+                    return;
+                }
+                setFormMessage(`更新に失敗しました: ${error.message || "不明なエラー"}`, true);
+                return;
+            }
+
+            await writeAuditLog(
+                "system_request_update",
+                currentUserEmail,
+                rowSummary(beforeRow || { id: requestId }),
+                rowSummary(data || basePayload),
+                `system_request_id=${requestId}`
+            );
+
+            setFormMessage("システム要望を更新しました。");
+            resetForm();
+            await loadRequests();
+            await loadLogs();
+        }
+
+        async function loadLogs() {
+            const list = document.getElementById("system-request-log-list");
+            const { data, error } = await dbClient
+                .from("audit_log")
+                .select("created_at,actor_email,target_email,action_type,before_value,after_value,note")
+                .in("action_type", ["system_request_create", "system_request_update"])
+                .order("created_at", { ascending: false })
+                .limit(100);
+
+            if (error) {
+                list.innerHTML = `<tr><td class="p-2 border text-rose-700" colspan="5">ログ読み込みに失敗しました: ${escapeHtml(error.message || "不明なエラー")}</td></tr>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                list.innerHTML = '<tr><td class="p-2 border text-gray-500" colspan="5">ログはありません。</td></tr>';
+                return;
+            }
+
+            list.innerHTML = data.map((row) => {
+                const content = formatLogContent(row);
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-2 border whitespace-nowrap">${escapeHtml(formatDateTime(row.created_at))}</td>
+                        <td class="p-2 border">${escapeHtml(row.actor_email || "")}</td>
+                        <td class="p-2 border font-semibold text-indigo-700">${escapeHtml(row.action_type || "")}</td>
+                        <td class="p-2 border">${escapeHtml(row.target_email || "")}</td>
+                        <td class="p-2 border text-slate-600">${escapeHtml(content)}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function setupEvents() {
+            document.getElementById("system-request-form").addEventListener("submit", saveRequest);
+            document.getElementById("clear-button").addEventListener("click", () => {
+                resetForm();
+                setFormMessage("");
+            });
+            document.getElementById("status-filter").addEventListener("change", renderRequestList);
+            document.getElementById("reload-log").addEventListener("click", loadLogs);
+        }
+
+        window.portalAuth.init({
+            requireAuth: true,
+            minRole: "viewer",
+            returnTo: "system-requests.html",
+            onReady: async ({ session, profile, client }) => {
+                dbClient = client;
+                currentUserEmail = normalizeEmail((session && session.email) || (profile && profile.email) || "");
+                currentUserName = resolveDisplayName(session, profile);
+                setupEvents();
+                resetForm();
+                await loadRequests();
+                await loadLogs();
+            }
+        });
+    </script>
+</body>
+</html>

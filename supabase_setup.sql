@@ -155,6 +155,21 @@ create table if not exists public.announcements (
     constraint announcements_time_check check (start_time <= end_time)
 );
 
+create table if not exists public.system_requests (
+    id bigserial primary key,
+    title text,
+    body text not null,
+    response_flag text not null default 'pending' check (response_flag in ('pending', 'accepted', 'rejected')),
+    is_completed boolean not null default false,
+    completed_at timestamptz,
+    created_by_email text,
+    created_by_name text,
+    updated_by_email text,
+    updated_by_name text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
 create table if not exists public.announcement_recipients (
     id bigserial primary key,
     announcement_no bigint not null references public.announcements(no) on delete cascade,
@@ -248,6 +263,17 @@ alter table public.announcements add column if not exists canceled_at timestampt
 alter table public.announcements add column if not exists canceled_by_email text;
 alter table public.announcements add column if not exists cancel_note text;
 alter table public.activity_records add column if not exists activity_status text check (activity_status in ('記録済', '未実施', '継続中', '保留中', '完了'));
+alter table public.system_requests add column if not exists title text;
+alter table public.system_requests add column if not exists body text;
+alter table public.system_requests add column if not exists response_flag text not null default 'pending' check (response_flag in ('pending', 'accepted', 'rejected'));
+alter table public.system_requests add column if not exists is_completed boolean not null default false;
+alter table public.system_requests add column if not exists completed_at timestamptz;
+alter table public.system_requests add column if not exists created_by_email text;
+alter table public.system_requests add column if not exists created_by_name text;
+alter table public.system_requests add column if not exists updated_by_email text;
+alter table public.system_requests add column if not exists updated_by_name text;
+alter table public.system_requests add column if not exists created_at timestamptz not null default now();
+alter table public.system_requests add column if not exists updated_at timestamptz not null default now();
 
 create index if not exists announcements_notice_date_idx
 on public.announcements (notice_date desc, start_time asc);
@@ -266,6 +292,12 @@ on public.announcement_attendance_responses (responder_email, responded_at desc)
 
 create index if not exists announcements_lifecycle_status_idx
 on public.announcements (lifecycle_status, notice_date desc, start_time asc);
+
+create index if not exists system_requests_updated_at_idx
+on public.system_requests (is_completed, updated_at desc);
+
+create index if not exists system_requests_response_flag_idx
+on public.system_requests (response_flag, updated_at desc);
 
 create index if not exists announcement_calendar_links_member_idx
 on public.announcement_calendar_links (member_email, updated_at desc);
@@ -364,6 +396,7 @@ alter table public.activity_records enable row level security;
 alter table public.committee_materials enable row level security;
 alter table public.committee_activity_posts enable row level security;
 alter table public.committee_activity_recipients enable row level security;
+alter table public.system_requests enable row level security;
 
 -- profiles ポリシー: 認証ユーザー向けのみ
 drop policy if exists profiles_select_own_or_admin on public.profiles;
@@ -529,6 +562,20 @@ for select using (
     public.is_portal_admin()
     or lower(trim(recipient_email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
 );
+
+-- system_requests ポリシー（ログインユーザー全員が閲覧・登録・更新可能）
+drop policy if exists system_requests_select_authenticated on public.system_requests;
+create policy system_requests_select_authenticated on public.system_requests
+for select using (auth.uid() is not null);
+
+drop policy if exists system_requests_insert_authenticated on public.system_requests;
+create policy system_requests_insert_authenticated on public.system_requests
+for insert with check (auth.uid() is not null);
+
+drop policy if exists system_requests_update_authenticated on public.system_requests;
+create policy system_requests_update_authenticated on public.system_requests
+for update using (auth.uid() is not null)
+with check (auth.uid() is not null);
 
 drop policy if exists announcement_recipients_insert_admin on public.announcement_recipients;
 create policy announcement_recipients_insert_admin on public.announcement_recipients
