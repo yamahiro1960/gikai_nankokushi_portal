@@ -97,6 +97,63 @@ create table if not exists public.meeting_settings (
     updated_by uuid
 );
 
+create table if not exists public.mail_notices (
+    id uuid primary key default gen_random_uuid(),
+    subject text not null,
+    greeting text,
+    purpose text,
+    notice_datetime_text text,
+    link_url text,
+    sender_info text,
+    target_type text not null default 'all' check (target_type in ('all', 'specific')),
+    requires_response boolean not null default false,
+    response_deadline_text text,
+    attachments jsonb not null default '[]'::jsonb,
+    status text not null default 'saved' check (status in ('saved', 'sent')),
+    sent_at timestamptz,
+    created_by_user_id uuid,
+    created_by_email text,
+    created_by_name text,
+    updated_by_user_id uuid,
+    updated_by_email text,
+    updated_by_name text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists public.mail_notice_recipients (
+    id bigserial primary key,
+    notice_id uuid not null references public.mail_notices(id) on delete cascade,
+    recipient_member_id text,
+    recipient_email text,
+    recipient_name text,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists public.mail_notice_templates (
+    id uuid primary key default gen_random_uuid(),
+    template_type text not null check (template_type in ('greeting', 'sender')),
+    template_name text not null,
+    template_body text not null,
+    created_by_user_id uuid,
+    created_by_email text,
+    created_by_name text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create index if not exists mail_notices_status_updated_idx
+on public.mail_notices (status, updated_at desc);
+
+create index if not exists mail_notice_recipients_notice_idx
+on public.mail_notice_recipients (notice_id);
+
+create index if not exists mail_notice_recipients_email_idx
+on public.mail_notice_recipients (recipient_email);
+
+create index if not exists mail_notice_templates_type_updated_idx
+on public.mail_notice_templates (template_type, updated_at desc);
+
 create table if not exists public.member_positions_master (
     position_name text primary key,
     sort_order int not null default 100,
@@ -386,6 +443,9 @@ end $$;
 
 alter table public.profiles enable row level security;
 alter table public.meeting_settings enable row level security;
+alter table public.mail_notices enable row level security;
+alter table public.mail_notice_recipients enable row level security;
+alter table public.mail_notice_templates enable row level security;
 alter table public.member_positions_master enable row level security;
 alter table public.member_directory enable row level security;
 alter table public.announcements enable row level security;
@@ -424,18 +484,90 @@ for select using (auth.uid() is not null);
 drop policy if exists meeting_settings_upsert_editor_or_admin on public.meeting_settings;
 create policy meeting_settings_upsert_editor_or_admin on public.meeting_settings
 for insert with check (
-    exists (
-        select 1 from public.profiles p
-        where p.user_id = auth.uid() and p.role in ('editor', 'admin')
+    auth.uid() is not null
+    and (
+        exists (
+            select 1
+            from public.profiles p
+            where p.user_id = auth.uid()
+              and p.role in ('editor', 'admin')
+        )
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and m.access_role = '管理者'
+        )
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and (
+                  setting_key = ('user_gemini_' || m.member_id)
+                  or setting_key = ('user_general_question_draft_' || m.member_id)
+              )
+        )
     )
 );
 
 drop policy if exists meeting_settings_update_editor_or_admin on public.meeting_settings;
 create policy meeting_settings_update_editor_or_admin on public.meeting_settings
 for update using (
-    exists (
-        select 1 from public.profiles p
-        where p.user_id = auth.uid() and p.role in ('editor', 'admin')
+    auth.uid() is not null
+    and (
+        exists (
+            select 1
+            from public.profiles p
+            where p.user_id = auth.uid()
+              and p.role in ('editor', 'admin')
+        )
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and m.access_role = '管理者'
+        )
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and (
+                  setting_key = ('user_gemini_' || m.member_id)
+                  or setting_key = ('user_general_question_draft_' || m.member_id)
+              )
+        )
+    )
+)
+with check (
+    auth.uid() is not null
+    and (
+        exists (
+            select 1
+            from public.profiles p
+            where p.user_id = auth.uid()
+              and p.role in ('editor', 'admin')
+        )
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and m.access_role = '管理者'
+        )
+        or exists (
+            select 1
+            from public.member_directory m
+            where lower(trim(m.email)) = lower(trim(coalesce(auth.jwt()->>'email', '')))
+              and m.is_current = true
+              and (
+                  setting_key = ('user_gemini_' || m.member_id)
+                  or setting_key = ('user_general_question_draft_' || m.member_id)
+              )
+        )
     )
 );
 
@@ -469,6 +601,60 @@ $$;
 revoke all on function public.is_portal_admin() from public;
 grant execute on function public.is_portal_admin() to authenticated;
 grant execute on function public.is_portal_admin() to service_role;
+
+-- mail_notices ポリシー
+drop policy if exists mail_notices_select_admin on public.mail_notices;
+create policy mail_notices_select_admin on public.mail_notices
+for select using (public.is_portal_admin());
+
+drop policy if exists mail_notices_insert_admin on public.mail_notices;
+create policy mail_notices_insert_admin on public.mail_notices
+for insert with check (public.is_portal_admin());
+
+drop policy if exists mail_notices_update_admin on public.mail_notices;
+create policy mail_notices_update_admin on public.mail_notices
+for update using (public.is_portal_admin())
+with check (public.is_portal_admin());
+
+drop policy if exists mail_notices_delete_admin on public.mail_notices;
+create policy mail_notices_delete_admin on public.mail_notices
+for delete using (public.is_portal_admin());
+
+-- mail_notice_recipients ポリシー
+drop policy if exists mail_notice_recipients_select_admin on public.mail_notice_recipients;
+create policy mail_notice_recipients_select_admin on public.mail_notice_recipients
+for select using (public.is_portal_admin());
+
+drop policy if exists mail_notice_recipients_insert_admin on public.mail_notice_recipients;
+create policy mail_notice_recipients_insert_admin on public.mail_notice_recipients
+for insert with check (public.is_portal_admin());
+
+drop policy if exists mail_notice_recipients_update_admin on public.mail_notice_recipients;
+create policy mail_notice_recipients_update_admin on public.mail_notice_recipients
+for update using (public.is_portal_admin())
+with check (public.is_portal_admin());
+
+drop policy if exists mail_notice_recipients_delete_admin on public.mail_notice_recipients;
+create policy mail_notice_recipients_delete_admin on public.mail_notice_recipients
+for delete using (public.is_portal_admin());
+
+-- mail_notice_templates ポリシー
+drop policy if exists mail_notice_templates_select_admin on public.mail_notice_templates;
+create policy mail_notice_templates_select_admin on public.mail_notice_templates
+for select using (public.is_portal_admin());
+
+drop policy if exists mail_notice_templates_insert_admin on public.mail_notice_templates;
+create policy mail_notice_templates_insert_admin on public.mail_notice_templates
+for insert with check (public.is_portal_admin());
+
+drop policy if exists mail_notice_templates_update_admin on public.mail_notice_templates;
+create policy mail_notice_templates_update_admin on public.mail_notice_templates
+for update using (public.is_portal_admin())
+with check (public.is_portal_admin());
+
+drop policy if exists mail_notice_templates_delete_admin on public.mail_notice_templates;
+create policy mail_notice_templates_delete_admin on public.mail_notice_templates
+for delete using (public.is_portal_admin());
 
 -- ----------------------------------------------------------------------
 -- member_positions_master ポリシー（認証ユーザー全員が読み取り可、管理者のみ書き込み）

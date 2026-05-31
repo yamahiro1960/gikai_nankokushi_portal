@@ -165,13 +165,10 @@
     <script src="auth-config.js"></script>
     <script src="auth.js"></script>
     <script>
-        const RECORDS_SETTING_KEY = "mail_notice_records_v1";
-        const GREETING_SAMPLES_SETTING_KEY = "mail_notice_greeting_samples_v1";
-        const SENDER_SAMPLES_SETTING_KEY = "mail_notice_sender_samples_v1";
-
         let dbClient = null;
         let currentUserName = "";
         let currentUserEmail = "";
+        let currentUserId = null;
         let memberRows = [];
         let records = [];
         let greetingSamples = [];
@@ -209,33 +206,6 @@
             target.className = "mt-3 text-sm text-gray-600";
         }
 
-        async function readSetting(key, fallbackValue) {
-            const { data, error } = await dbClient
-                .from("meeting_settings")
-                .select("setting_payload")
-                .eq("setting_key", key)
-                .maybeSingle();
-
-            if (error || !data || !data.setting_payload) {
-                return fallbackValue;
-            }
-
-            return data.setting_payload;
-        }
-
-        async function writeSetting(key, payload) {
-            const { error } = await dbClient
-                .from("meeting_settings")
-                .upsert({
-                    setting_key: key,
-                    setting_payload: payload
-                }, { onConflict: "setting_key" });
-
-            if (error) {
-                throw error;
-            }
-        }
-
         async function loadMembers() {
             const { data, error } = await dbClient
                 .from("member_directory")
@@ -249,6 +219,119 @@
 
             memberRows = (data || []).filter((item) => normalizeEmail(item.email));
             renderSpecificTargetOptions();
+        }
+
+        async function loadTemplates() {
+            const { data, error } = await dbClient
+                .from("mail_notice_templates")
+                .select("id,template_type,template_name,template_body")
+                .order("updated_at", { ascending: false });
+
+            if (error) {
+                throw error;
+            }
+
+            const rows = data || [];
+            greetingSamples = rows
+                .filter((item) => item.template_type === "greeting")
+                .map((item) => ({ id: item.id, name: item.template_name, body: item.template_body }));
+            senderSamples = rows
+                .filter((item) => item.template_type === "sender")
+                .map((item) => ({ id: item.id, name: item.template_name, body: item.template_body }));
+        }
+
+        async function ensureDefaultTemplates() {
+            const inserts = [];
+            if (greetingSamples.length === 0) {
+                inserts.push({
+                    template_type: "greeting",
+                    template_name: "標準あいさつ",
+                    template_body: "いつもお世話になっております。",
+                    created_by_user_id: currentUserId,
+                    created_by_email: currentUserEmail || null,
+                    created_by_name: currentUserName || null
+                });
+            }
+            if (senderSamples.length === 0) {
+                inserts.push({
+                    template_type: "sender",
+                    template_name: "議会事務局",
+                    template_body: "南国市議会事務局\nTEL: 088-000-0000",
+                    created_by_user_id: currentUserId,
+                    created_by_email: currentUserEmail || null,
+                    created_by_name: currentUserName || null
+                });
+            }
+
+            if (inserts.length === 0) {
+                return;
+            }
+
+            const { error } = await dbClient
+                .from("mail_notice_templates")
+                .insert(inserts);
+
+            if (error) {
+                throw error;
+            }
+
+            await loadTemplates();
+        }
+
+        async function loadRecords() {
+            const { data, error } = await dbClient
+                .from("mail_notices")
+                .select("id,subject,greeting,purpose,notice_datetime_text,link_url,sender_info,target_type,requires_response,response_deadline_text,attachments,status,sent_at,created_at,updated_at")
+                .order("updated_at", { ascending: false });
+
+            if (error) {
+                throw error;
+            }
+
+            const noticeRows = data || [];
+            const noticeIds = noticeRows.map((row) => row.id).filter(Boolean);
+            let recipientsByNotice = {};
+
+            if (noticeIds.length > 0) {
+                const { data: recipientRows, error: recipientError } = await dbClient
+                    .from("mail_notice_recipients")
+                    .select("notice_id,recipient_member_id")
+                    .in("notice_id", noticeIds);
+
+                if (recipientError) {
+                    throw recipientError;
+                }
+
+                recipientsByNotice = (recipientRows || []).reduce((acc, row) => {
+                    const key = String(row.notice_id || "");
+                    if (!acc[key]) {
+                        acc[key] = [];
+                    }
+                    if (row.recipient_member_id) {
+                        acc[key].push(String(row.recipient_member_id));
+                    }
+                    return acc;
+                }, {});
+            }
+
+            records = noticeRows.map((row) => ({
+                id: row.id,
+                subject: row.subject || "",
+                greeting: row.greeting || "",
+                purpose: row.purpose || "",
+                noticeDateTime: row.notice_datetime_text || "",
+                linkUrl: row.link_url || "",
+                senderInfo: row.sender_info || "",
+                targetType: row.target_type || "all",
+                specificMemberIds: recipientsByNotice[String(row.id)] || [],
+                requiresResponse: !!row.requires_response,
+                responseDeadline: row.response_deadline_text || "",
+                attachments: Array.isArray(row.attachments) ? row.attachments : [],
+                status: row.status || "saved",
+                createdAt: row.created_at || "",
+                updatedAt: row.updated_at || "",
+                sentAt: row.sent_at || null
+            }));
         }
 
         function renderSpecificTargetOptions(selectedIds = []) {
@@ -301,9 +384,8 @@
             }
 
             const items = Array.isArray(samples) ? samples : [];
-            select.innerHTML = '<option value="">サンプルを選択</option>' + items.map((item, idx) => {
-                const label = (item && item.name) ? item.name : `サンプル${idx + 1}`;
-                return `<option value="${idx}">${escapeHtml(label)}</option>`;
+            select.innerHTML = '<option value="">サンプルを選択</option>' + items.map((item) => {
+                return `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name || "サンプル")}</option>`;
             }).join("");
         }
 
@@ -331,69 +413,6 @@
                 return;
             }
             summary.textContent = "添付なし";
-        }
-
-        function buildRecordPayload(status) {
-            const id = document.getElementById("record_id").value.trim() || crypto.randomUUID();
-            const subject = document.getElementById("notice_subject").value.trim();
-            const greeting = document.getElementById("notice_greeting").value.trim();
-            const purpose = document.getElementById("notice_purpose").value.trim();
-            const noticeDateTime = document.getElementById("notice_datetime").value.trim();
-            const linkUrl = document.getElementById("notice_link").value.trim();
-            const senderInfo = document.getElementById("notice_sender_info").value.trim();
-            const targetType = getSelectedTargetType();
-            const specificMemberIds = targetType === "specific" ? getSpecificSelectedMemberIds() : [];
-            const requiresResponse = document.getElementById("requires_response").checked;
-            const responseDeadline = document.getElementById("response_deadline").value || "";
-            const attachmentMeta = readAttachmentMetaFromInput();
-
-            if (!subject) {
-                throw new Error("件名を入力してください。");
-            }
-
-            if (targetType === "specific" && specificMemberIds.length === 0) {
-                throw new Error("特定配信を選んだ場合は送信先を1名以上選択してください。");
-            }
-
-            const existing = records.find((item) => item.id === id);
-            if (existing && existing.status === "sent") {
-                throw new Error("保存+送信済みのデータは編集できません。");
-            }
-
-            return {
-                id,
-                subject,
-                greeting,
-                purpose,
-                noticeDateTime,
-                linkUrl,
-                senderInfo,
-                targetType,
-                specificMemberIds,
-                requiresResponse,
-                responseDeadline,
-                attachments: attachmentMeta,
-                status,
-                createdAt: existing ? existing.createdAt : nowIso(),
-                updatedAt: nowIso(),
-                sentAt: status === "sent" ? nowIso() : (existing ? existing.sentAt || null : null),
-                updatedBy: currentUserName || currentUserEmail || "unknown"
-            };
-        }
-
-        function mergeRecord(record) {
-            const next = records.filter((item) => item.id !== record.id);
-            next.push(record);
-            next.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
-            records = next;
-        }
-
-        async function persistRecords() {
-            await writeSetting(RECORDS_SETTING_KEY, {
-                records,
-                updatedAt: nowIso(),
-                updatedBy: currentUserName || currentUserEmail || "unknown"
-            });
         }
 
         function formatDateTime(value) {
@@ -534,11 +553,153 @@
             window.location.href = `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${subject}&body=${body}`;
         }
 
+        function buildRecordPayload(status) {
+            const id = document.getElementById("record_id").value.trim() || crypto.randomUUID();
+            const subject = document.getElementById("notice_subject").value.trim();
+            const greeting = document.getElementById("notice_greeting").value.trim();
+            const purpose = document.getElementById("notice_purpose").value.trim();
+            const noticeDateTime = document.getElementById("notice_datetime").value.trim();
+            const linkUrl = document.getElementById("notice_link").value.trim();
+            const senderInfo = document.getElementById("notice_sender_info").value.trim();
+            const targetType = getSelectedTargetType();
+            const specificMemberIds = targetType === "specific" ? getSpecificSelectedMemberIds() : [];
+            const requiresResponse = document.getElementById("requires_response").checked;
+            const responseDeadline = document.getElementById("response_deadline").value || "";
+            const attachments = readAttachmentMetaFromInput();
+
+            if (!subject) {
+                throw new Error("件名を入力してください。");
+            }
+
+            if (targetType === "specific" && specificMemberIds.length === 0) {
+                throw new Error("特定配信を選んだ場合は送信先を1名以上選択してください。");
+            }
+
+            const existing = records.find((item) => item.id === id);
+            if (existing && existing.status === "sent") {
+                throw new Error("保存+送信済みのデータは編集できません。");
+            }
+
+            return {
+                id,
+                subject,
+                greeting,
+                purpose,
+                noticeDateTime,
+                linkUrl,
+                senderInfo,
+                targetType,
+                specificMemberIds,
+                requiresResponse,
+                responseDeadline,
+                attachments,
+                status,
+                existing
+            };
+        }
+
+        async function saveNoticeRecordToDb(payload) {
+            const now = nowIso();
+            const targetStatus = payload.status;
+            const sentAt = targetStatus === "sent"
+                ? now
+                : (payload.existing && payload.existing.sentAt ? payload.existing.sentAt : null);
+
+            if (payload.existing) {
+                const { error: updateError } = await dbClient
+                    .from("mail_notices")
+                    .update({
+                        subject: payload.subject,
+                        greeting: payload.greeting || null,
+                        purpose: payload.purpose || null,
+                        notice_datetime_text: payload.noticeDateTime || null,
+                        link_url: payload.linkUrl || null,
+                        sender_info: payload.senderInfo || null,
+                        target_type: payload.targetType,
+                        requires_response: payload.requiresResponse,
+                        response_deadline_text: payload.responseDeadline || null,
+                        attachments: payload.attachments,
+                        status: targetStatus,
+                        sent_at: sentAt,
+                        updated_by_user_id: currentUserId,
+                        updated_by_email: currentUserEmail || null,
+                        updated_by_name: currentUserName || null,
+                        updated_at: now
+                    })
+                    .eq("id", payload.id);
+
+                if (updateError) {
+                    throw updateError;
+                }
+            } else {
+                const { error: insertError } = await dbClient
+                    .from("mail_notices")
+                    .insert({
+                        id: payload.id,
+                        subject: payload.subject,
+                        greeting: payload.greeting || null,
+                        purpose: payload.purpose || null,
+                        notice_datetime_text: payload.noticeDateTime || null,
+                        link_url: payload.linkUrl || null,
+                        sender_info: payload.senderInfo || null,
+                        target_type: payload.targetType,
+                        requires_response: payload.requiresResponse,
+                        response_deadline_text: payload.responseDeadline || null,
+                        attachments: payload.attachments,
+                        status: targetStatus,
+                        sent_at: sentAt,
+                        created_by_user_id: currentUserId,
+                        created_by_email: currentUserEmail || null,
+                        created_by_name: currentUserName || null,
+                        updated_by_user_id: currentUserId,
+                        updated_by_email: currentUserEmail || null,
+                        updated_by_name: currentUserName || null,
+                        created_at: now,
+                        updated_at: now
+                    });
+
+                if (insertError) {
+                    throw insertError;
+                }
+            }
+
+            const { error: deleteRecipientsError } = await dbClient
+                .from("mail_notice_recipients")
+                .delete()
+                .eq("notice_id", payload.id);
+
+            if (deleteRecipientsError) {
+                throw deleteRecipientsError;
+            }
+
+            if (payload.targetType === "specific" && payload.specificMemberIds.length > 0) {
+                const idSet = new Set(payload.specificMemberIds.map((id) => String(id)));
+                const recipients = memberRows
+                    .filter((member) => idSet.has(String(member.member_id || "")))
+                    .map((member) => ({
+                        notice_id: payload.id,
+                        recipient_member_id: String(member.member_id || ""),
+                        recipient_email: member.email || null,
+                        recipient_name: member.full_name || null
+                    }));
+
+                if (recipients.length > 0) {
+                    const { error: insertRecipientsError } = await dbClient
+                        .from("mail_notice_recipients")
+                        .insert(recipients);
+
+                    if (insertRecipientsError) {
+                        throw insertRecipientsError;
+                    }
+                }
+            }
+        }
+
         async function saveRecord(status) {
             try {
                 const payload = buildRecordPayload(status);
-                mergeRecord(payload);
-                await persistRecords();
+                await saveNoticeRecordToDb(payload);
+                await loadRecords();
                 renderRecordsTable();
 
                 if (status === "sent") {
@@ -567,51 +728,66 @@
                 return;
             }
 
-            const sample = { id: crypto.randomUUID(), name: String(name).trim(), body: value };
-            if (type === "greeting") {
-                greetingSamples.push(sample);
-                await writeSetting(GREETING_SAMPLES_SETTING_KEY, { samples: greetingSamples, updatedAt: nowIso() });
-                renderSamples("greeting_sample_select", greetingSamples);
-            } else {
-                senderSamples.push(sample);
-                await writeSetting(SENDER_SAMPLES_SETTING_KEY, { samples: senderSamples, updatedAt: nowIso() });
-                renderSamples("sender_sample_select", senderSamples);
+            const { error } = await dbClient
+                .from("mail_notice_templates")
+                .insert({
+                    template_type: type,
+                    template_name: String(name).trim(),
+                    template_body: value,
+                    created_by_user_id: currentUserId,
+                    created_by_email: currentUserEmail || null,
+                    created_by_name: currentUserName || null
+                });
+
+            if (error) {
+                showMessage("サンプルの保存に失敗しました: " + error.message, "error");
+                return;
             }
+
+            await loadTemplates();
+            renderSamples("greeting_sample_select", greetingSamples);
+            renderSamples("sender_sample_select", senderSamples);
             showMessage("サンプルを保存しました。", "success");
         }
 
         async function deleteSample(type) {
             const selectId = type === "greeting" ? "greeting_sample_select" : "sender_sample_select";
-            const idx = Number(document.getElementById(selectId).value);
-            if (!Number.isInteger(idx) || idx < 0) {
+            const sampleId = String(document.getElementById(selectId).value || "").trim();
+            if (!sampleId) {
                 showMessage("削除するサンプルを選択してください。", "error");
                 return;
             }
 
-            if (type === "greeting") {
-                greetingSamples.splice(idx, 1);
-                await writeSetting(GREETING_SAMPLES_SETTING_KEY, { samples: greetingSamples, updatedAt: nowIso() });
-                renderSamples("greeting_sample_select", greetingSamples);
-            } else {
-                senderSamples.splice(idx, 1);
-                await writeSetting(SENDER_SAMPLES_SETTING_KEY, { samples: senderSamples, updatedAt: nowIso() });
-                renderSamples("sender_sample_select", senderSamples);
+            const { error } = await dbClient
+                .from("mail_notice_templates")
+                .delete()
+                .eq("id", sampleId)
+                .eq("template_type", type);
+
+            if (error) {
+                showMessage("サンプルの削除に失敗しました: " + error.message, "error");
+                return;
             }
+
+            await loadTemplates();
+            renderSamples("greeting_sample_select", greetingSamples);
+            renderSamples("sender_sample_select", senderSamples);
             showMessage("サンプルを削除しました。", "success");
         }
 
         function applySample(type) {
             const selectId = type === "greeting" ? "greeting_sample_select" : "sender_sample_select";
             const textareaId = type === "greeting" ? "notice_greeting" : "notice_sender_info";
-            const idx = Number(document.getElementById(selectId).value);
+            const sampleId = String(document.getElementById(selectId).value || "").trim();
             const samples = type === "greeting" ? greetingSamples : senderSamples;
+            const sample = samples.find((item) => String(item.id) === sampleId);
 
-            if (!Number.isInteger(idx) || idx < 0 || !samples[idx]) {
+            if (!sample) {
                 showMessage("呼び出すサンプルを選択してください。", "error");
                 return;
             }
 
-            document.getElementById(textareaId).value = samples[idx].body || "";
+            document.getElementById(textareaId).value = sample.body || "";
             showMessage("サンプルを呼び出しました。", "success");
         }
 
@@ -619,21 +795,12 @@
             dbClient = client;
             currentUserName = (profile && profile.display_name) || (session && session.displayName) || "";
             currentUserEmail = normalizeEmail((session && session.email) || (profile && profile.email) || "");
+            currentUserId = session && session.authUserId ? session.authUserId : null;
 
-            const [membersResult, recordsResult, greetingResult, senderResult] = await Promise.all([
-                loadMembers(),
-                readSetting(RECORDS_SETTING_KEY, { records: [] }),
-                readSetting(GREETING_SAMPLES_SETTING_KEY, { samples: [
-                    { id: crypto.randomUUID(), name: "標準あいさつ", body: "いつもお世話になっております。" }
-                ] }),
-                readSetting(SENDER_SAMPLES_SETTING_KEY, { samples: [
-                    { id: crypto.randomUUID(), name: "議会事務局", body: "南国市議会事務局\nTEL: 088-000-0000" }
-                ] })
-            ]);
-
-            records = Array.isArray(recordsResult.records) ? recordsResult.records : [];
-            greetingSamples = Array.isArray(greetingResult.samples) ? greetingResult.samples : [];
-            senderSamples = Array.isArray(senderResult.samples) ? senderResult.samples : [];
+            await loadMembers();
+            await loadTemplates();
+            await ensureDefaultTemplates();
+            await loadRecords();
 
             renderSamples("greeting_sample_select", greetingSamples);
             renderSamples("sender_sample_select", senderSamples);
@@ -685,7 +852,12 @@
                 try {
                     await initializePage(client, session, profile);
                 } catch (error) {
-                    showMessage("初期化に失敗しました: " + error.message, "error");
+                    const message = String(error && error.message ? error.message : "初期化に失敗しました。");
+                    if (message.includes("mail_notices") || message.includes("mail_notice_templates") || message.includes("mail_notice_recipients")) {
+                        showMessage("メールお知らせ用テーブルが未作成です。SQL_MAIL_NOTICE_TABLES.sql を実行してください。", "error");
+                        return;
+                    }
+                    showMessage("初期化に失敗しました: " + message, "error");
                 }
             }
         });
