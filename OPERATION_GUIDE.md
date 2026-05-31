@@ -28,8 +28,8 @@
 | ホスティング | GitHub Pages（静的Webサイト） |
 | データベース | Supabase（PostgreSQL） |
 | 認証 | Supabase Auth + Google OAuth |
-| リポジトリ | yamahiro1960/gikai_nankokushi_portal |
-| 公開URL | https://yamahiro1960.github.io/gikai_nankokushi_portal/ |
+| リポジトリ | nankokushigikai/gikai_nankokushi_portal |
+| 公開URL | https://nankokushigikai.github.io/gikai_nankokushi_portal/ |
 
 ### ファイル構成（主要）
 
@@ -373,7 +373,7 @@ Supabase SQL Editor で実行してください。
 - お持ちのGmailアカウント（ポータルに登録済みのもの）
 
 **手順**
-1. ポータルのURL（https://yamahiro1960.github.io/gikai_nankokushi_portal/）にアクセス
+1. ポータルのURL（https://nankokushigikai.github.io/gikai_nankokushi_portal/）にアクセス
 2. 「Googleでログイン」ボタンをクリック
 3. お持ちのGmailアカウントを選択
 4. **初回のみ**: 「このアプリはGoogleで確認されていません」と表示される場合は  

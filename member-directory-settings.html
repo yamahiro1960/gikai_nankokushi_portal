@@ -110,6 +110,7 @@
                     <label class="text-sm font-semibold text-gray-700">Gmailアドレス（必須）</label>
                     <input id="email" type="email" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="example@gmail.com">
                 </div>
+                <div class="hidden md:block"></div>
                 <div>
                     <label class="text-sm font-semibold text-gray-700">委員会</label>
                     <select id="committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
@@ -129,7 +130,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">議運メンバーですか？</label>
+                    <label class="text-sm font-semibold text-gray-700">議運メンバー</label>
                     <select id="is_giun" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="true">YES</option>
                         <option value="false" selected>NO</option>
@@ -140,21 +141,23 @@
                     <select id="giun_role" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="">未設定</option>
                         <option value="委員長">委員長</option>
+                        <option value="副委員長">副委員長</option>
                         <option value="委員">委員</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">編集委員会メンバーですか？</label>
+                    <label class="text-sm font-semibold text-gray-700">編集委員</label>
                     <select id="is_editorial_committee" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="true">YES</option>
                         <option value="false" selected>NO</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700">編集委員会の役職</label>
+                    <label class="text-sm font-semibold text-gray-700">編集委員の役職</label>
                     <select id="editorial_role" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="">未設定</option>
                         <option value="委員長">委員長</option>
+                        <option value="副委員長">副委員長</option>
                         <option value="委員">委員</option>
                     </select>
                 </div>
@@ -222,10 +225,10 @@
                             <th class="text-left p-2 border">区分</th>
                             <th class="text-left p-2 border">役職</th>
                             <th class="text-left p-2 border">委員会</th>
-                            <th class="text-left p-2 border">議運メンバーですか？</th>
+                            <th class="text-left p-2 border">議運メンバー</th>
                             <th class="text-left p-2 border">議運役職</th>
-                            <th class="text-left p-2 border">編集委員ですか？</th>
-                            <th class="text-left p-2 border">編集委員会役職</th>
+                            <th class="text-left p-2 border">編集委員</th>
+                            <th class="text-left p-2 border">編集委員の役職</th>
                             <th class="text-left p-2 border">操作</th>
                         </tr>
                     </thead>
@@ -806,7 +809,7 @@
 
         function normalizeMemberRole(value) {
             const raw = String(value || "").trim();
-            if (raw === "委員長" || raw === "委員") {
+            if (raw === "委員長" || raw === "副委員長" || raw === "委員") {
                 return raw;
             }
             return "";

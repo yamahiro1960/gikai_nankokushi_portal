@@ -1,6 +1,9 @@
 window.AUTH_CONFIG = {
     supabaseUrl: "https://gnnfzimhfizbfhvwuzbf.supabase.co",
     supabaseAnonKey: "sb_publishable__SRHapM6Zzz01tC--VG9YQ_-xN3re0Q",
+    // ポータルの正規公開URL（末尾スラッシュ不要）。
+    // OAuth の戻り先をこのURL基準で固定します。
+    portalBaseUrl: "https://nankokushigikai.github.io/gikai_nankokushi_portal",
     googleEnabled: true,
     authPaused: false,
     // プロフィール通知メール送信用Webhook（任意）。

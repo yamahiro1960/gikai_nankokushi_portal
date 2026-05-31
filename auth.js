@@ -348,8 +348,15 @@ window.portalAuth = (() => {
         }
 
         const supabase = ensureClient();
-        const callbackUrl = new URL(window.location.origin + window.location.pathname);
-        const returnTo = (options.returnTo || "").trim();
+        const configuredBaseUrl = String((window.AUTH_CONFIG && window.AUTH_CONFIG.portalBaseUrl) || "").trim();
+        const callbackUrl = configuredBaseUrl
+            ? new URL(`${configuredBaseUrl.replace(/\/+$/, "")}/login.html`)
+            : new URL(window.location.origin + window.location.pathname);
+
+        const returnToRaw = (options.returnTo || "").trim();
+        const returnTo = /^https?:\/\//i.test(returnToRaw) || returnToRaw.startsWith("//")
+            ? ""
+            : returnToRaw;
         if (returnTo) {
             callbackUrl.searchParams.set("returnTo", returnTo);
         }
