@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メールでお知らせ | 南国市議会DXポータル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-amber-700 text-white shadow-lg p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-lg font-bold font-sans tracking-wider hover:text-gray-200">
+                <i class="fas fa-laptop-code mr-2"></i>南国市議会DXポータル
+            </a>
+            <div class="text-right">
+                <span class="text-sm">メールでお知らせ</span>
+                <div id="authArea"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+        <div class="mb-6 flex flex-wrap items-center gap-4">
+            <a href="system-settings.html" class="text-amber-700 hover:text-amber-900 text-sm font-semibold">
+                <i class="fas fa-chevron-left mr-1"></i>システム設定へ戻る
+            </a>
+            <span class="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">保存+送信済みは編集不可</span>
+        </div>
+
+        <section class="rounded-2xl p-6 md:p-8 bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold mb-2">メールでお知らせ</h1>
+            <p class="text-amber-50 text-sm md:text-base">件名・本文・配信対象を設定し、下書き保存または保存+送信を実行できます。</p>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-amber-500 mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <h2 class="text-xl font-bold text-gray-700">作成・編集</h2>
+                <button type="button" id="new-record" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold">新規作成</button>
+            </div>
+
+            <form id="mail-notice-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input id="record_id" type="hidden">
+
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">件名</label>
+                    <input id="notice_subject" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="件名を入力">
+                </div>
+
+                <div class="md:col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div class="flex flex-col md:flex-row md:items-end gap-3">
+                        <div class="flex-1">
+                            <label class="text-sm font-semibold text-gray-700">内容: あいさつ文</label>
+                            <select id="greeting_sample_select" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" id="greeting_apply" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-2 rounded-lg text-sm font-semibold">呼び出し</button>
+                            <button type="button" id="greeting_save" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">サンプル保存</button>
+                            <button type="button" id="greeting_delete" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-2 rounded-lg text-sm font-semibold">サンプル削除</button>
+                        </div>
+                    </div>
+                    <textarea id="notice_greeting" rows="3" class="mt-3 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: いつもお世話になっております。"></textarea>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">内容: 趣旨や説明</label>
+                    <textarea id="notice_purpose" rows="4" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="趣旨・背景・依頼内容などを入力"></textarea>
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">内容: 日付と時間</label>
+                    <input id="notice_datetime" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 6月10日 14:00">
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-gray-700">内容: リンク先 (URL等)</label>
+                    <input id="notice_link" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="https://..."></input>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-gray-700">内容: ファイル添付</label>
+                    <input id="notice_attachments" type="file" multiple class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                    <p id="attachments_summary" class="mt-2 text-xs text-gray-500">添付なし</p>
+                </div>
+
+                <div class="md:col-span-2 bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <div class="flex flex-col md:flex-row md:items-end gap-3">
+                        <div class="flex-1">
+                            <label class="text-sm font-semibold text-gray-700">内容: 送信者情報</label>
+                            <select id="sender_sample_select" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" id="sender_apply" class="bg-slate-100 hover:bg-slate-200 text-slate-900 px-3 py-2 rounded-lg text-sm font-semibold">呼び出し</button>
+                            <button type="button" id="sender_save" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-sm font-semibold">サンプル保存</button>
+                            <button type="button" id="sender_delete" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-2 rounded-lg text-sm font-semibold">サンプル削除</button>
+                        </div>
+                    </div>
+                    <textarea id="notice_sender_info" rows="3" class="mt-3 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="例: 南国市議会事務局 088-000-0000"></textarea>
+                </div>
+
+                <div class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <label class="text-sm font-semibold text-gray-700">送信先の選択</label>
+                    <div class="mt-2 space-y-2">
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                            <input type="radio" name="target_type" value="all" checked class="h-4 w-4 text-amber-600 border-gray-300">
+                            全員に配信
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700 ml-0 md:ml-4">
+                            <input type="radio" name="target_type" value="specific" class="h-4 w-4 text-amber-600 border-gray-300">
+                            特定のメンバーのみに配信
+                        </label>
+                    </div>
+
+                    <div id="specific-target-panel" class="hidden mt-3 bg-white border border-gray-200 rounded-lg p-3 max-h-52 overflow-y-auto"></div>
+
+                    <div class="mt-4 flex flex-wrap items-center gap-3">
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" id="requires_response" class="h-4 w-4 text-amber-600 border-gray-300">
+                            このお知らせで出欠確認を行う
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-700">回答期限 (表示のみ)</span>
+                            <input type="datetime-local" id="response_deadline" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 flex flex-wrap gap-3">
+                    <button type="submit" id="save-record" class="bg-amber-700 hover:bg-amber-800 text-white px-5 py-2 rounded-lg text-sm font-semibold">保存</button>
+                    <button type="button" id="save-and-send" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-semibold">保存+送信</button>
+                </div>
+            </form>
+
+            <p id="form-message" class="mt-3 text-sm text-gray-600"></p>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-slate-500">
+            <h2 class="text-xl font-bold mb-4 text-gray-700">保存データ一覧</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left p-2 border">状態</th>
+                            <th class="text-left p-2 border">件名</th>
+                            <th class="text-left p-2 border">送信先</th>
+                            <th class="text-left p-2 border">更新日時</th>
+                            <th class="text-left p-2 border">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-table-body">
+                        <tr>
+                            <td colspan="5" class="p-2 border text-gray-500">読み込み中です...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-12 py-6 text-center text-gray-400 text-xs">
+        &copy; 2026 南国市議会DX推進プロジェクト - 未来の自治体をつくる
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        const RECORDS_SETTING_KEY = "mail_notice_records_v1";
+        const GREETING_SAMPLES_SETTING_KEY = "mail_notice_greeting_samples_v1";
+        const SENDER_SAMPLES_SETTING_KEY = "mail_notice_sender_samples_v1";
+
+        let dbClient = null;
+        let currentUserName = "";
+        let currentUserEmail = "";
+        let memberRows = [];
+        let records = [];
+        let greetingSamples = [];
+        let senderSamples = [];
+        let currentAttachmentMeta = [];
+
+        function normalizeEmail(value) {
+            return String(value || "").trim().toLowerCase();
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function nowIso() {
+            return new Date().toISOString();
+        }
+
+        function showMessage(message, tone = "info") {
+            const target = document.getElementById("form-message");
+            target.textContent = message;
+            if (tone === "error") {
+                target.className = "mt-3 text-sm text-red-700";
+                return;
+            }
+            if (tone === "success") {
+                target.className = "mt-3 text-sm text-emerald-700";
+                return;
+            }
+            target.className = "mt-3 text-sm text-gray-600";
+        }
+
+        async function readSetting(key, fallbackValue) {
+            const { data, error } = await dbClient
+                .from("meeting_settings")
+                .select("setting_payload")
+                .eq("setting_key", key)
+                .maybeSingle();
+
+            if (error || !data || !data.setting_payload) {
+                return fallbackValue;
+            }
+
+            return data.setting_payload;
+        }
+
+        async function writeSetting(key, payload) {
+            const { error } = await dbClient
+                .from("meeting_settings")
+                .upsert({
+                    setting_key: key,
+                    setting_payload: payload
+                }, { onConflict: "setting_key" });
+
+            if (error) {
+                throw error;
+            }
+        }
+
+        async function loadMembers() {
+            const { data, error } = await dbClient
+                .from("member_directory")
+                .select("member_id,full_name,email,is_current")
+                .eq("is_current", true)
+                .order("full_name", { ascending: true });
+
+            if (error) {
+                throw error;
+            }
+
+            memberRows = (data || []).filter((item) => normalizeEmail(item.email));
+            renderSpecificTargetOptions();
+        }
+
+        function renderSpecificTargetOptions(selectedIds = []) {
+            const panel = document.getElementById("specific-target-panel");
+            if (!panel) {
+                return;
+            }
+
+            if (!memberRows.length) {
+                panel.innerHTML = '<p class="text-sm text-gray-500">送信先候補がありません。</p>';
+                return;
+            }
+
+            const selectedSet = new Set((selectedIds || []).map((id) => String(id)));
+            panel.innerHTML = memberRows.map((item) => {
+                const memberId = String(item.member_id || "");
+                const checked = selectedSet.has(memberId) ? "checked" : "";
+                return `
+                    <label class="flex items-center gap-2 py-1 text-sm text-gray-700">
+                        <input type="checkbox" class="specific-member-checkbox h-4 w-4 text-amber-600 border-gray-300" value="${escapeHtml(memberId)}" ${checked}>
+                        <span>${escapeHtml(item.full_name || "")}</span>
+                        <span class="text-xs text-gray-500">${escapeHtml(item.email || "")}</span>
+                    </label>
+                `;
+            }).join("");
+        }
+
+        function getSelectedTargetType() {
+            const selected = document.querySelector('input[name="target_type"]:checked');
+            return selected ? selected.value : "all";
+        }
+
+        function getSpecificSelectedMemberIds() {
+            return Array.from(document.querySelectorAll(".specific-member-checkbox:checked")).map((input) => String(input.value || ""));
+        }
+
+        function toggleSpecificTargetPanel() {
+            const targetType = getSelectedTargetType();
+            const panel = document.getElementById("specific-target-panel");
+            if (!panel) {
+                return;
+            }
+            panel.classList.toggle("hidden", targetType !== "specific");
+        }
+
+        function renderSamples(selectId, samples) {
+            const select = document.getElementById(selectId);
+            if (!select) {
+                return;
+            }
+
+            const items = Array.isArray(samples) ? samples : [];
+            select.innerHTML = '<option value="">サンプルを選択</option>' + items.map((item, idx) => {
+                const label = (item && item.name) ? item.name : `サンプル${idx + 1}`;
+                return `<option value="${idx}">${escapeHtml(label)}</option>`;
+            }).join("");
+        }
+
+        function readAttachmentMetaFromInput() {
+            const files = Array.from(document.getElementById("notice_attachments").files || []);
+            if (!files.length) {
+                return currentAttachmentMeta.slice();
+            }
+            return files.map((file) => ({
+                name: file.name,
+                size: file.size,
+                type: file.type || ""
+            }));
+        }
+
+        function renderAttachmentSummary() {
+            const files = Array.from(document.getElementById("notice_attachments").files || []);
+            const summary = document.getElementById("attachments_summary");
+            if (files.length > 0) {
+                summary.textContent = `新規添付: ${files.map((f) => f.name).join(" / ")}`;
+                return;
+            }
+            if (currentAttachmentMeta.length > 0) {
+                summary.textContent = `保存済み添付情報: ${currentAttachmentMeta.map((f) => f.name).join(" / ")}`;
+                return;
+            }
+            summary.textContent = "添付なし";
+        }
+
+        function buildRecordPayload(status) {
+            const id = document.getElementById("record_id").value.trim() || crypto.randomUUID();
+            const subject = document.getElementById("notice_subject").value.trim();
+            const greeting = document.getElementById("notice_greeting").value.trim();
+            const purpose = document.getElementById("notice_purpose").value.trim();
+            const noticeDateTime = document.getElementById("notice_datetime").value.trim();
+            const linkUrl = document.getElementById("notice_link").value.trim();
+            const senderInfo = document.getElementById("notice_sender_info").value.trim();
+            const targetType = getSelectedTargetType();
+            const specificMemberIds = targetType === "specific" ? getSpecificSelectedMemberIds() : [];
+            const requiresResponse = document.getElementById("requires_response").checked;
+            const responseDeadline = document.getElementById("response_deadline").value || "";
+            const attachmentMeta = readAttachmentMetaFromInput();
+
+            if (!subject) {
+                throw new Error("件名を入力してください。");
+            }
+
+            if (targetType === "specific" && specificMemberIds.length === 0) {
+                throw new Error("特定配信を選んだ場合は送信先を1名以上選択してください。");
+            }
+
+            const existing = records.find((item) => item.id === id);
+            if (existing && existing.status === "sent") {
+                throw new Error("保存+送信済みのデータは編集できません。");
+            }
+
+            return {
+                id,
+                subject,
+                greeting,
+                purpose,
+                noticeDateTime,
+                linkUrl,
+                senderInfo,
+                targetType,
+                specificMemberIds,
+                requiresResponse,
+                responseDeadline,
+                attachments: attachmentMeta,
+                status,
+                createdAt: existing ? existing.createdAt : nowIso(),
+                updatedAt: nowIso(),
+                sentAt: status === "sent" ? nowIso() : (existing ? existing.sentAt || null : null),
+                updatedBy: currentUserName || currentUserEmail || "unknown"
+            };
+        }
+
+        function mergeRecord(record) {
+            const next = records.filter((item) => item.id !== record.id);
+            next.push(record);
+            next.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+            records = next;
+        }
+
+        async function persistRecords() {
+            await writeSetting(RECORDS_SETTING_KEY, {
+                records,
+                updatedAt: nowIso(),
+                updatedBy: currentUserName || currentUserEmail || "unknown"
+            });
+        }
+
+        function formatDateTime(value) {
+            if (!value) {
+                return "-";
+            }
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) {
+                return value;
+            }
+            return d.toLocaleString("ja-JP");
+        }
+
+        function getTargetLabel(item) {
+            if (item.targetType === "all") {
+                return "全員";
+            }
+            const ids = Array.isArray(item.specificMemberIds) ? item.specificMemberIds : [];
+            return `特定(${ids.length}名)`;
+        }
+
+        function renderRecordsTable() {
+            const tbody = document.getElementById("records-table-body");
+            if (!records.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-2 border text-gray-500">保存データがありません。</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = records.map((item) => {
+                const stateBadge = item.status === "sent"
+                    ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">保存+送信</span>'
+                    : '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">保存</span>';
+                const isLocked = item.status === "sent";
+                const editLabel = isLocked ? "編集不可" : "編集";
+                const editClass = isLocked
+                    ? "bg-gray-100 text-gray-400 px-3 py-1 rounded text-xs font-semibold cursor-not-allowed"
+                    : "bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded text-xs font-semibold hover:bg-amber-100";
+
+                return `
+                    <tr>
+                        <td class="p-2 border">${stateBadge}</td>
+                        <td class="p-2 border">${escapeHtml(item.subject || "")}</td>
+                        <td class="p-2 border">${escapeHtml(getTargetLabel(item))}</td>
+                        <td class="p-2 border">${escapeHtml(formatDateTime(item.updatedAt))}</td>
+                        <td class="p-2 border">
+                            <button type="button" data-edit-id="${escapeHtml(item.id)}" ${isLocked ? "disabled" : ""} class="${editClass}">${editLabel}</button>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+
+            tbody.querySelectorAll("button[data-edit-id]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const id = String(btn.getAttribute("data-edit-id") || "");
+                    const target = records.find((item) => item.id === id);
+                    if (!target || target.status === "sent") {
+                        showMessage("保存+送信済みのデータは編集できません。", "error");
+                        return;
+                    }
+                    fillForm(target);
+                    showMessage("保存データを編集モードで読み込みました。", "info");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+            });
+        }
+
+        function fillForm(item) {
+            document.getElementById("record_id").value = item.id || "";
+            document.getElementById("notice_subject").value = item.subject || "";
+            document.getElementById("notice_greeting").value = item.greeting || "";
+            document.getElementById("notice_purpose").value = item.purpose || "";
+            document.getElementById("notice_datetime").value = item.noticeDateTime || "";
+            document.getElementById("notice_link").value = item.linkUrl || "";
+            document.getElementById("notice_sender_info").value = item.senderInfo || "";
+            document.getElementById("requires_response").checked = !!item.requiresResponse;
+            document.getElementById("response_deadline").value = item.responseDeadline || "";
+
+            const targetType = item.targetType === "specific" ? "specific" : "all";
+            document.querySelectorAll('input[name="target_type"]').forEach((input) => {
+                input.checked = input.value === targetType;
+            });
+            renderSpecificTargetOptions(item.specificMemberIds || []);
+            toggleSpecificTargetPanel();
+
+            currentAttachmentMeta = Array.isArray(item.attachments) ? item.attachments.slice() : [];
+            const fileInput = document.getElementById("notice_attachments");
+            fileInput.value = "";
+            renderAttachmentSummary();
+        }
+
+        function resetForm() {
+            document.getElementById("record_id").value = "";
+            document.getElementById("mail-notice-form").reset();
+            document.querySelector('input[name="target_type"][value="all"]').checked = true;
+            renderSpecificTargetOptions([]);
+            toggleSpecificTargetPanel();
+            currentAttachmentMeta = [];
+            renderAttachmentSummary();
+        }
+
+        function buildRecipientList(targetType, specificMemberIds) {
+            const idSet = new Set((specificMemberIds || []).map((id) => String(id)));
+            return memberRows
+                .filter((item) => targetType === "all" ? true : idSet.has(String(item.member_id || "")))
+                .map((item) => normalizeEmail(item.email))
+                .filter(Boolean);
+        }
+
+        function buildMailBody(record) {
+            const lines = [];
+            if (record.greeting) lines.push(record.greeting, "");
+            if (record.purpose) lines.push(record.purpose, "");
+            if (record.noticeDateTime) lines.push("日付と時間: " + record.noticeDateTime);
+            if (record.linkUrl) lines.push("リンク先: " + record.linkUrl);
+            if (record.requiresResponse) {
+                lines.push("出欠確認: あり");
+                if (record.responseDeadline) {
+                    lines.push("回答期限: " + record.responseDeadline);
+                }
+            }
+            if (record.attachments && record.attachments.length) {
+                lines.push("添付ファイル:");
+                record.attachments.forEach((f) => lines.push("- " + (f.name || "")));
+            }
+            if (record.senderInfo) lines.push("", record.senderInfo);
+            return lines.join("\n");
+        }
+
+        function openMailClient(record) {
+            const recipients = buildRecipientList(record.targetType, record.specificMemberIds);
+            if (!recipients.length) {
+                throw new Error("送信先メールアドレスが見つかりません。メンバー情報を確認してください。");
+            }
+
+            const bcc = recipients.join(",");
+            const subject = encodeURIComponent(record.subject || "お知らせ");
+            const body = encodeURIComponent(buildMailBody(record));
+            window.location.href = `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${subject}&body=${body}`;
+        }
+
+        async function saveRecord(status) {
+            try {
+                const payload = buildRecordPayload(status);
+                mergeRecord(payload);
+                await persistRecords();
+                renderRecordsTable();
+
+                if (status === "sent") {
+                    openMailClient(payload);
+                    showMessage("保存+送信を実行しました。メール作成画面を開きました。", "success");
+                } else {
+                    showMessage("保存しました。", "success");
+                }
+
+                resetForm();
+            } catch (error) {
+                showMessage(error.message || "保存に失敗しました。", "error");
+            }
+        }
+
+        async function saveSample(type) {
+            const textareaId = type === "greeting" ? "notice_greeting" : "notice_sender_info";
+            const value = document.getElementById(textareaId).value.trim();
+            if (!value) {
+                showMessage("保存する内容を入力してください。", "error");
+                return;
+            }
+
+            const name = window.prompt("サンプル名を入力してください", "サンプル");
+            if (!name) {
+                return;
+            }
+
+            const sample = { id: crypto.randomUUID(), name: String(name).trim(), body: value };
+            if (type === "greeting") {
+                greetingSamples.push(sample);
+                await writeSetting(GREETING_SAMPLES_SETTING_KEY, { samples: greetingSamples, updatedAt: nowIso() });
+                renderSamples("greeting_sample_select", greetingSamples);
+            } else {
+                senderSamples.push(sample);
+                await writeSetting(SENDER_SAMPLES_SETTING_KEY, { samples: senderSamples, updatedAt: nowIso() });
+                renderSamples("sender_sample_select", senderSamples);
+            }
+            showMessage("サンプルを保存しました。", "success");
+        }
+
+        async function deleteSample(type) {
+            const selectId = type === "greeting" ? "greeting_sample_select" : "sender_sample_select";
+            const idx = Number(document.getElementById(selectId).value);
+            if (!Number.isInteger(idx) || idx < 0) {
+                showMessage("削除するサンプルを選択してください。", "error");
+                return;
+            }
+
+            if (type === "greeting") {
+                greetingSamples.splice(idx, 1);
+                await writeSetting(GREETING_SAMPLES_SETTING_KEY, { samples: greetingSamples, updatedAt: nowIso() });
+                renderSamples("greeting_sample_select", greetingSamples);
+            } else {
+                senderSamples.splice(idx, 1);
+                await writeSetting(SENDER_SAMPLES_SETTING_KEY, { samples: senderSamples, updatedAt: nowIso() });
+                renderSamples("sender_sample_select", senderSamples);
+            }
+            showMessage("サンプルを削除しました。", "success");
+        }
+
+        function applySample(type) {
+            const selectId = type === "greeting" ? "greeting_sample_select" : "sender_sample_select";
+            const textareaId = type === "greeting" ? "notice_greeting" : "notice_sender_info";
+            const idx = Number(document.getElementById(selectId).value);
+            const samples = type === "greeting" ? greetingSamples : senderSamples;
+
+            if (!Number.isInteger(idx) || idx < 0 || !samples[idx]) {
+                showMessage("呼び出すサンプルを選択してください。", "error");
+                return;
+            }
+
+            document.getElementById(textareaId).value = samples[idx].body || "";
+            showMessage("サンプルを呼び出しました。", "success");
+        }
+
+        async function initializePage(client, session, profile) {
+            dbClient = client;
+            currentUserName = (profile && profile.display_name) || (session && session.displayName) || "";
+            currentUserEmail = normalizeEmail((session && session.email) || (profile && profile.email) || "");
+
+            const [membersResult, recordsResult, greetingResult, senderResult] = await Promise.all([
+                loadMembers(),
+                readSetting(RECORDS_SETTING_KEY, { records: [] }),
+                readSetting(GREETING_SAMPLES_SETTING_KEY, { samples: [
+                    { id: crypto.randomUUID(), name: "標準あいさつ", body: "いつもお世話になっております。" }
+                ] }),
+                readSetting(SENDER_SAMPLES_SETTING_KEY, { samples: [
+                    { id: crypto.randomUUID(), name: "議会事務局", body: "南国市議会事務局\nTEL: 088-000-0000" }
+                ] })
+            ]);
+
+            records = Array.isArray(recordsResult.records) ? recordsResult.records : [];
+            greetingSamples = Array.isArray(greetingResult.samples) ? greetingResult.samples : [];
+            senderSamples = Array.isArray(senderResult.samples) ? senderResult.samples : [];
+
+            renderSamples("greeting_sample_select", greetingSamples);
+            renderSamples("sender_sample_select", senderSamples);
+            renderRecordsTable();
+            resetForm();
+            showMessage("準備完了です。", "info");
+        }
+
+        document.getElementById("mail-notice-form").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            await saveRecord("saved");
+        });
+
+        document.getElementById("save-and-send").addEventListener("click", async () => {
+            if (!window.confirm("保存+送信を実行します。実行後はこのデータを編集できません。続けますか?")) {
+                return;
+            }
+            await saveRecord("sent");
+        });
+
+        document.getElementById("new-record").addEventListener("click", () => {
+            resetForm();
+            showMessage("新規作成モードに切り替えました。", "info");
+        });
+
+        document.getElementById("notice_attachments").addEventListener("change", () => {
+            currentAttachmentMeta = readAttachmentMetaFromInput();
+            renderAttachmentSummary();
+        });
+
+        document.getElementById("greeting_apply").addEventListener("click", () => applySample("greeting"));
+        document.getElementById("greeting_save").addEventListener("click", async () => saveSample("greeting"));
+        document.getElementById("greeting_delete").addEventListener("click", async () => deleteSample("greeting"));
+
+        document.getElementById("sender_apply").addEventListener("click", () => applySample("sender"));
+        document.getElementById("sender_save").addEventListener("click", async () => saveSample("sender"));
+        document.getElementById("sender_delete").addEventListener("click", async () => deleteSample("sender"));
+
+        document.querySelectorAll('input[name="target_type"]').forEach((input) => {
+            input.addEventListener("change", toggleSpecificTargetPanel);
+        });
+
+        portalAuth.init({
+            requireAuth: true,
+            minRole: "admin",
+            authTargetId: "authArea",
+            returnTo: "mail-notice-settings.html",
+            onReady: async ({ client, session, profile }) => {
+                try {
+                    await initializePage(client, session, profile);
+                } catch (error) {
+                    showMessage("初期化に失敗しました: " + error.message, "error");
+                }
+            }
+        });
+    </script>
+</body>
+</html>
