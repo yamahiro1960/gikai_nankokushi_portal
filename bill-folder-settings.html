@@ -330,6 +330,19 @@
             document.getElementById("upload-progress").classList.add("hidden");
         }
 
+        function isMeetingSettingsRlsError(err) {
+            const message = String(err && err.message ? err.message : "").toLowerCase();
+            return message.includes("row-level security") && message.includes("meeting_settings");
+        }
+
+        function toUploadErrorMessage(err) {
+            if (isMeetingSettingsRlsError(err)) {
+                return "meeting_settings の書き込み権限がありません。\nSupabase 側で SQL_MEETING_SETTINGS_RLS_FIX.sql を実行し、ログイン中ユーザーが管理者扱いになる設定（profiles.role または member_directory.access_role）を確認してください。";
+            }
+
+            return `エラーが発生しました: ${err.message}`;
+        }
+
         async function executeUpload() {
             if (selectedFiles.length === 0 || !folderName) {
                 showUploadMessage("ファイルが選択されていません", "error");
@@ -353,6 +366,26 @@
                 const session = parts[0]; // 446
                 const year = parts[1];    // 2026
                 const month = parts[2];   // 03
+                const settingKey = `uploaded_documents_${session}_${folderName}`;
+
+                // 先に権限チェックを行い、RLSで失敗する場合はStorageアップロード前に停止する。
+                const { error: preflightError } = await supabase
+                    .from("meeting_settings")
+                    .upsert({
+                        setting_key: settingKey,
+                        setting_payload: {
+                            folderName: folderName,
+                            session: session,
+                            year: year,
+                            month: month,
+                            status: "uploading",
+                            startedAt: new Date().toISOString()
+                        }
+                    }, { onConflict: "setting_key" });
+
+                if (preflightError) {
+                    throw preflightError;
+                }
 
                 // Supabase Storageにアップロード
                 const storageBasePath = folderName;
@@ -410,7 +443,7 @@
                 const { error: dbError } = await supabase
                     .from("meeting_settings")
                     .upsert({
-                        setting_key: `uploaded_documents_${session}_${folderName}`,
+                        setting_key: settingKey,
                         setting_payload: {
                             folderName: folderName,
                             session: session,
@@ -432,7 +465,7 @@
             } catch (err) {
                 console.error("Upload error:", err);
                 progressSection.classList.add("hidden");
-                showUploadMessage(`エラーが発生しました: ${err.message}`, "error");
+                showUploadMessage(toUploadErrorMessage(err), "error");
             } finally {
                 uploadBtn.disabled = false;
             }
