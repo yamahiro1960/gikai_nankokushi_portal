@@ -325,8 +325,9 @@
 
                 const deleteResult = await deletePersonalCalendarEvent(client, link.google_event_id);
                 if (!deleteResult.ok) {
-                    setAnnouncementTileMessage("Google予定の削除に失敗しました。", true);
-                    setAnnouncementDetailMessage("Google予定の削除に失敗しました。", true);
+                    const reason = deleteResult.reason || "不明なエラー";
+                    setAnnouncementTileMessage(`Google予定の削除に失敗しました: ${reason}`, true);
+                    setAnnouncementDetailMessage(`Google予定の削除に失敗しました: ${reason}`, true);
                     return;
                 }
 
@@ -358,8 +359,9 @@
             const existingEventId = link && link.google_event_id ? String(link.google_event_id) : "";
             const syncResult = await upsertPersonalCalendarEvent(client, item, reminder1Input, reminder2Input, existingEventId);
             if (!syncResult.ok) {
-                setAnnouncementTileMessage("Googleカレンダー連携に失敗しました。再ログイン後に再実行してください。", true);
-                setAnnouncementDetailMessage("Googleカレンダー連携に失敗しました。再ログイン後に再実行してください。", true);
+                const reason = syncResult.reason || "不明なエラー";
+                setAnnouncementTileMessage(`Googleカレンダー連携に失敗しました: ${reason}`, true);
+                setAnnouncementDetailMessage(`Googleカレンダー連携に失敗しました: ${reason}`, true);
                 return;
             }
 
@@ -419,6 +421,35 @@
             }
 
             return localStorage.getItem("portal_google_provider_token") || null;
+        }
+
+        function buildFriendlyGoogleError(detailText) {
+            const raw = String(detailText || "").trim();
+            let parsed = null;
+            try {
+                parsed = JSON.parse(raw);
+            } catch (_error) {
+                parsed = null;
+            }
+
+            const err = parsed && parsed.error ? parsed.error : null;
+            const reason = (err && err.errors && err.errors[0] && err.errors[0].reason) || "";
+            const status = (err && err.status) || "";
+            const message = (err && err.message) || raw;
+
+            if (status === "PERMISSION_DENIED" || reason === "accessNotConfigured") {
+                return "Google Calendar API が未有効の可能性があります。管理者が Google Cloud 側の設定を確認してください。";
+            }
+
+            if (reason === "insufficientPermissions" || reason === "forbidden" || /insufficient.*scope/i.test(message)) {
+                return "このアプリにGoogleカレンダー権限が不足しています。ポータルからGoogle再ログインして権限同意を更新してください。";
+            }
+
+            if (reason === "authError" || /invalid credentials|unauthenticated/i.test(message)) {
+                return "アプリ側のGoogle認証トークンが無効です。ブラウザのログイン状態とは別管理のため、ポータルで再ログインしてください。";
+            }
+
+            return message || "Google Calendar APIエラー";
         }
 
         function buildCalendarDateTime(dateValue, timeValue) {
@@ -487,7 +518,7 @@
 
             if (!response.ok) {
                 const detail = await response.text();
-                return { ok: false, reason: detail || `HTTP ${response.status}` };
+                return { ok: false, reason: buildFriendlyGoogleError(detail) || `HTTP ${response.status}` };
             }
 
             const eventData = await response.json();
@@ -512,7 +543,7 @@
             }
 
             const detail = await response.text();
-            return { ok: false, reason: detail || `HTTP ${response.status}` };
+            return { ok: false, reason: buildFriendlyGoogleError(detail) || `HTTP ${response.status}` };
         }
 
         async function upsertAnnouncementCalendarLink(client, payload) {
