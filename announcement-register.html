@@ -362,6 +362,69 @@
             return message || "Google Calendar APIエラー";
         }
 
+        async function extractFunctionErrorDetail(functionError) {
+            const fallback = String(functionError?.message || "").trim();
+            const context = functionError && functionError.context;
+
+            if (!context) {
+                return fallback;
+            }
+
+            try {
+                const cloned = typeof context.clone === "function" ? context.clone() : context;
+                const json = cloned && typeof cloned.json === "function" ? await cloned.json() : null;
+                if (json) {
+                    const errorText = String(json.error || "").trim();
+                    const detailText = String(json.detail || "").trim();
+                    const combined = `${errorText} ${detailText}`.trim();
+                    if (combined) {
+                        return combined;
+                    }
+                }
+            } catch (_jsonError) {
+                // ignore and fallback to text
+            }
+
+            try {
+                const cloned = typeof context.clone === "function" ? context.clone() : context;
+                const text = cloned && typeof cloned.text === "function" ? await cloned.text() : "";
+                if (String(text || "").trim()) {
+                    return String(text || "").trim();
+                }
+            } catch (_textError) {
+                // ignore and fallback
+            }
+
+            return fallback;
+        }
+
+        function buildFriendlyMailError(detailText) {
+            const raw = String(detailText || "").trim();
+            const lower = raw.toLowerCase();
+
+            if (!raw) {
+                return "メール送信エラー（詳細不明）";
+            }
+
+            if (lower.includes("failed to send a request to the edge function") || lower.includes("non-2xx status code") || lower.includes("404")) {
+                return "mail-notice-send が未デプロイ、または参照先プロジェクトが異なります。Supabaseで関数デプロイ状態を確認してください。";
+            }
+
+            if (lower.includes("missing environment variable") || lower.includes("missing environment variables")) {
+                return "Gmail送信に必要な環境変数が未設定です。GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN / GMAIL_FROM_EMAIL を Supabase Secrets に設定してください。";
+            }
+
+            if (lower.includes("gmail token refresh error") || lower.includes("invalid_grant") || lower.includes("expired or revoked")) {
+                return "Gmail認証トークンの更新に失敗しました。GMAIL_REFRESH_TOKEN の再発行と再設定を行ってください。";
+            }
+
+            if (lower.includes("gmail api error") && (lower.includes("insufficient permissions") || lower.includes("forbidden") || lower.includes("insufficient authentication scopes"))) {
+                return "Gmail API権限が不足しています。gmail.send スコープで取得した refresh token を設定してください。";
+            }
+
+            return `メール送信エラー: ${raw}`;
+        }
+
         async function writeAuditLog(client, { actionType, targetEmail = "", beforeValue = "", afterValue = "", note = "" }) {
             try {
                 await client.from("audit_log").insert({
@@ -520,16 +583,20 @@
                     });
 
                     if (mailError) {
-                        console.warn("メール送信エラー:", mailError.message);
+                        const detail = await extractFunctionErrorDetail(mailError);
+                        const friendly = buildFriendlyMailError(detail);
+                        console.warn("メール送信エラー:", detail || mailError.message);
                         document.getElementById("announcement-message").textContent =
-                            `登録しました（メール送信に失敗しました: ${mailError.message}）。`;
+                            `登録しました（${friendly}）。`;
                         clearForm();
                         return;
                     }
                 } catch (mailEx) {
                     console.warn("メール送信例外:", mailEx);
+                    const detail = String(mailEx && mailEx.message ? mailEx.message : mailEx);
+                    const friendly = buildFriendlyMailError(detail);
                     document.getElementById("announcement-message").textContent =
-                        `登録しました（メール送信中にエラーが発生しました）。`;
+                        `登録しました（${friendly}）。`;
                     clearForm();
                     return;
                 }
@@ -661,7 +728,10 @@
                     }
                 });
 
-                if (mailError) throw new Error(mailError.message);
+                if (mailError) {
+                    const detail = await extractFunctionErrorDetail(mailError);
+                    throw new Error(buildFriendlyMailError(detail));
+                }
 
                 resendMsgEl.textContent = `✓ No.${announcementNo}「${ann.title}」を ${recipientEmails.length} 件に再送しました。`;
                 resendMsgEl.className = "mt-3 text-sm text-emerald-700";
