@@ -216,7 +216,7 @@
         let announcementModalContext = { client: null, userEmail: "", userRole: "viewer", responderName: "" };
         let currentAnnouncementDetailItem = null;
 
-        function getPersonalCalendarButtonText(item) {
+        function getPersonalCalendarActionState(item) {
             const lifecycle = String((item && item.lifecycle_status) || "active");
             const isCanceled = lifecycle === "canceled";
             const link = item && item.personal_link ? item.personal_link : null;
@@ -225,12 +225,31 @@
             const needsUpdate = !!(link && linkedVersion > 0 && linkedVersion < currentVersion && !isCanceled);
 
             if (isCanceled && link && link.google_event_id) {
-                return "Google予定を削除";
+                return "delete";
             }
             if (!isCanceled && link && link.google_event_link && !needsUpdate) {
-                return "Google予定を開く";
+                return "open";
             }
-            return "Googleカレンダーへ登録/更新";
+            if (needsUpdate) {
+                return "update";
+            }
+            return "create";
+        }
+
+        function getPersonalCalendarButtonText(item) {
+            const state = getPersonalCalendarActionState(item);
+            if (state === "delete") return "Google予定を削除";
+            if (state === "open") return "Google予定を開く";
+            if (state === "update") return "Google予定を更新";
+            return "Googleカレンダーへ登録";
+        }
+
+        function getPersonalCalendarHintText(item) {
+            const state = getPersonalCalendarActionState(item);
+            if (state === "delete") return "このお知らせは取消済みです。連携済みの個人Google予定を削除できます。";
+            if (state === "open") return "このお知らせはGoogleカレンダー連携済みです。予定を直接開けます。";
+            if (state === "update") return "お知らせ内容が更新されています。Google予定も更新してください。";
+            return "まだ連携されていません。Googleカレンダーへ新規登録できます。";
         }
 
         function setAnnouncementDetailMessage(text, isError = false) {
@@ -253,9 +272,18 @@
 
             const canUse = !!(announcementModalContext && announcementModalContext.client && announcementModalContext.userEmail);
             btn.disabled = processing || !canUse;
-            btn.className = btn.disabled
-                ? "bg-gray-100 text-gray-400 px-3 py-2 rounded-lg text-sm font-semibold cursor-not-allowed"
-                : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold";
+            const state = getPersonalCalendarActionState(item);
+            if (btn.disabled) {
+                btn.className = "bg-gray-100 text-gray-400 px-3 py-2 rounded-lg text-sm font-semibold cursor-not-allowed";
+            } else if (state === "delete") {
+                btn.className = "bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold";
+            } else if (state === "open") {
+                btn.className = "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg text-sm font-semibold";
+            } else if (state === "update") {
+                btn.className = "bg-amber-50 hover:bg-amber-100 text-amber-800 px-3 py-2 rounded-lg text-sm font-semibold";
+            } else {
+                btn.className = "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold";
+            }
             btn.textContent = processing ? "処理中..." : getPersonalCalendarButtonText(item);
         }
 
@@ -854,7 +882,7 @@
             if (item.contact_email) remarks.push(`<span class='font-semibold text-gray-700'>連絡先メール：</span>${escapeHtml(item.contact_email)}`);
             if (item.remarks) remarks.push(`<span class='font-semibold text-gray-700'>備考：</span>${escapeHtml(item.remarks)}`);
             document.getElementById("announcement-detail-remarks").innerHTML = remarks.length ? remarks.join("<br>") : "";
-            setAnnouncementDetailMessage("");
+            setAnnouncementDetailMessage(getPersonalCalendarHintText(item));
             updateAnnouncementDetailCalendarButton(item, false);
             document.getElementById("announcement-detail-modal").classList.remove("hidden");
         }
