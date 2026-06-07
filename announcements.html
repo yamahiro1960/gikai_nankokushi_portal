@@ -1259,6 +1259,10 @@
                 updated_at: new Date().toISOString()
             };
 
+            const dbPayload = { ...payload };
+            delete dbPayload.reminder_minutes_1;
+            delete dbPayload.reminder_minutes_2;
+
             const editMessage = document.getElementById("announcement-edit-message");
             if (!noValue || !payload.notice_date || !payload.start_time || !payload.end_time || !payload.title || !payload.content) {
                 editMessage.textContent = "必須項目を入力してください。";
@@ -1289,7 +1293,7 @@
 
             const { error } = await dbClient
                 .from("announcements")
-                .update(payload)
+                .update(dbPayload)
                 .eq("no", noValue);
 
             if (error) {
